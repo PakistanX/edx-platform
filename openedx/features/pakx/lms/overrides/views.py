@@ -1,3 +1,4 @@
+import waffle
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import ensure_csrf_cookie
@@ -13,8 +14,6 @@ from openedx.core.djangoapps.site_configuration import helpers as configuration_
 from openedx.features.course_experience.utils import get_course_outline_block_tree
 from openedx.features.pakx.cms.custom_settings.models import CourseOverviewContent
 from openedx.features.pakx.lms.overrides.utils import add_course_progress_and_resume_info_tags_to_enrolled_courses
-
-# Create your views here.
 
 
 @ensure_csrf_cookie
@@ -43,8 +42,9 @@ def courses(request):
     add_course_progress_and_resume_info_tags_to_enrolled_courses(request, courses_list)
 
     for course in courses_list:
-        if not course.enrolled:
-            continue
+        if waffle.switch_is_active('show_only_enrolled_courses'):
+            if not course.enrolled:
+                continue
         if course.user_progress == '100':
             completed_courses.append(course)
         elif course.has_started():
