@@ -43,7 +43,9 @@ def courses(request):
     add_course_progress_and_resume_info_tags_to_enrolled_courses(request, courses_list)
 
     for course in courses_list:
-        if course.enrolled and course.user_progress == '100':
+        if not course.enrolled:
+            continue
+        if course.user_progress == '100':
             completed_courses.append(course)
         elif course.has_started():
             in_progress_courses.append(course)
