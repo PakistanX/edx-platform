@@ -41,10 +41,11 @@ def courses(request):
 
     add_course_progress_and_resume_info_tags_to_enrolled_courses(request, courses_list)
 
+    show_only_enrolled_courses = waffle.switch_is_active('show_only_enrolled_courses')
+
     for course in courses_list:
-        if waffle.switch_is_active('show_only_enrolled_courses'):
-            if not course.enrolled:
-                continue
+        if show_only_enrolled_courses and not course.enrolled:
+            continue
         if course.user_progress == '100':
             completed_courses.append(course)
         elif course.has_started():
@@ -63,7 +64,8 @@ def courses(request):
             'completed_courses': completed_courses,
             'course_discovery_meanings': course_discovery_meanings,
             'programs_list': programs_list,
-            'section': 'in-progress'
+            'section': 'in-progress',
+            'show_only_enrolled_courses': show_only_enrolled_courses
         }
     )
 
