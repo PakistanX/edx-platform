@@ -57,9 +57,6 @@ from staticbook import views as staticbook_views
 from student import views as student_views
 from util import views as util_views
 
-#PakX related imports
-from openedx.features.pakx.lms.overrides.views import course_about, courses
-
 RESET_COURSE_DEADLINES_NAME = 'reset_course_deadlines'
 RENDER_XBLOCK_NAME = 'render_xblock'
 COURSE_DATES_NAME = 'dates'
@@ -103,7 +100,7 @@ urlpatterns = [
 
     url(r'', include('student.urls')),
     # TODO: Move lms specific student views out of common code
-    url(r'^dashboard/?$', courses, name='dashboard'),
+    url(r'^dashboard/?$', branding_views.courses, name='dashboard'),
     url(r'^change_enrollment$', student_views.change_enrollment, name='change_enrollment'),
 
     # Event tracking endpoints
@@ -179,8 +176,9 @@ urlpatterns = [
                                     namespace='api_discounts')),
 ]
 
-# include all pakx lms urls
-urlpatterns.extend(pakx_url_patterns)
+# include all pakx lms urls at the start of the url patterns list
+pakx_url_patterns.extend(urlpatterns)
+urlpatterns = pakx_url_patterns
 
 if settings.FEATURES.get('ENABLE_MOBILE_REST_API'):
     urlpatterns += [
@@ -335,20 +333,8 @@ urlpatterns += [
         name=RESET_COURSE_DEADLINES_NAME,
     ),
 
-    url(r'^courses/?/{section}$'.format(
-        section=r'(?P<section>[a-z-]+)'
-    ), courses, name='courses'),
-    url(r'^courses/?$', courses, name='courses'),
+    url(r'^courses/?$', branding_views.courses, name='courses'),
 
-    # About the course
-    url(
-        r'^courses/{category}/{course_id}/about$'.format(
-            category=r'(?P<category>[a-z-]+)',
-            course_id=settings.COURSE_ID_PATTERN,
-        ),
-        course_about,
-        name='about_course_with_category',
-    ),
     url(
         r'^courses/{}/about$'.format(
             settings.COURSE_ID_PATTERN,
