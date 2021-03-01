@@ -335,6 +335,7 @@ urlpatterns += [
 
     url(r'^courses/?$', branding_views.courses, name='courses'),
 
+    # About the course
     url(
         r'^courses/{}/about$'.format(
             settings.COURSE_ID_PATTERN,
