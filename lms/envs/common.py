@@ -625,6 +625,9 @@ CACHES = {
     },
 }
 
+############################ Course reminder email ###################################
+COURSE_REMINDER_EMAIL_REMAINING_DAYS = 5
+
 ############################ OAUTH2 Provider ###################################
 OAUTH_EXPIRE_CONFIDENTIAL_CLIENT_DAYS = 365
 OAUTH_EXPIRE_PUBLIC_CLIENT_DAYS = 30
