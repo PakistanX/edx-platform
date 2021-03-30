@@ -21,6 +21,8 @@ from openedx.core.djangoapps.content.course_overviews.models import CourseOvervi
 from openedx.core.djangoapps.site_configuration import helpers as configuration_helpers
 from openedx.core.djangoapps.ace_common.template_context import get_base_template_context
 
+from lms.envs.production import COURSE_REMINDER_EMAIL_REMAINING_DAYS
+
 log = getLogger(__name__)
 
 
@@ -128,10 +130,10 @@ def check_and_send_email_to_course_learners():
             item.save()
         elif course_overview.end_date:
             remaining_days = get_date_diff_in_days(course_overview.end_date)
-            if remaining_days <= 10 and item.status == 0:
+
+            if remaining_days <= COURSE_REMINDER_EMAIL_REMAINING_DAYS and item.status == 0:
                 log.info("Sending course reminder email to :{}, for:{}".format(data.get("email"),
                                                                                data.get("course_name")))
                 send_reminder_email.delay(data, text_type(item.course_id))
                 item.status = 1
                 item.save()
-
