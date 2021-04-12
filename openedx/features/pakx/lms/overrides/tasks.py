@@ -21,6 +21,8 @@ from openedx.core.djangoapps.content.course_overviews.models import CourseOvervi
 from openedx.core.djangoapps.site_configuration import helpers as configuration_helpers
 from openedx.core.djangoapps.ace_common.template_context import get_base_template_context
 
+from openedx.features.pakx.lms.overrides.utils import create_dummy_request, get_course_progress_percentage
+
 log = getLogger(__name__)
 
 
@@ -36,7 +38,8 @@ def _get_email_message_context(data):
     message_context.update({
         'platform_name': configuration_helpers.get_value('PLATFORM_NAME', settings.PLATFORM_NAME),
         'course_name': data.get('course_name'),
-        'status': data.get('status')
+        'completed': data.get('completed'),
+        'status_message': data.get('status_message')
     })
 
     return message_context
@@ -50,6 +53,8 @@ def send_reminder_email(data, course_key):
     :param course_key: (CourseKey)
     """
 
+    log.info("Sending course email to :{}, for:{} complete:{}".format(
+        data.get("email"), data.get("course_name"), data.get("completed")))
     site = Site.objects.get_current()
     course_url = '{url}{path}'.format(
         url=site.domain.strip(),
@@ -122,11 +127,11 @@ def check_and_send_email_to_course_learners():
         data = {'course_name': course_overview.display_name,
                 'username': item.user.username, 'email': item.user.email,
                 'language': get_user_preference(item.user, LANGUAGE_KEY),
-                'status': grades.percent >= 1.0,
-                'status_message': "Completed" if grades.percent >= 0 else "Pending"}
-        if grades.percent >= 1.0:
-            log.info("Sending course completion email to :{}, for:{}".format(data.get("email"),
-                                                                             data.get("course_name")))
+                'completed': grades.percent >= 1.0,
+                'status_message': "Completed" if grades.percent >= 1.0 else "Pending"}
+
+        if grades.passed and (float) (get_course_progress_percentage(create_dummy_request(Site.objects.get_current(), item.user),
+                                                            text_type(item.course_id))) >= 100:
             send_reminder_email.delay(data, text_type(item.course_id))
             item.status = 2
             item.save()
@@ -134,9 +139,6 @@ def check_and_send_email_to_course_learners():
             remaining_days = get_date_diff_in_days(course_overview.end_date)
 
             if remaining_days <= settings.COURSE_PROGRESS_REMINDER_EMAIL_DAYS and item.status == 0:
-                log.info("Sending course reminder email to :{}, for:{}".format(data.get("email"),
-                                                                               data.get("course_name")))
                 send_reminder_email.delay(data, text_type(item.course_id))
                 item.status = 1
                 item.save()
-
