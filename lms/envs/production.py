@@ -935,8 +935,9 @@ MAINTENANCE_BANNER_TEXT = ENV_TOKENS.get('MAINTENANCE_BANNER_TEXT', None)
 DASHBOARD_COURSE_LIMIT = ENV_TOKENS.get('DASHBOARD_COURSE_LIMIT', None)
 
 
-########################## Set Course Progress Reminder Email Days #######################
+########################## Settings for PakX #######################
 
+GOOGLE_ANALYTICS_ID = AUTH_TOKENS.get('GOOGLE_ANALYTICS_ID', GOOGLE_ANALYTICS_ID)
 COURSE_PROGRESS_REMINDER_EMAIL_DAYS = ENV_TOKENS.get('COURSE_PROGRESS_REMINDER_EMAIL_DAYS', 5)
 
 ############################### Plugin Settings ###############################
