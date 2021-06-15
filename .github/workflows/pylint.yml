@@ -16,6 +16,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
+        pip install edx_lint
         pip install pylint
     - name: Analysing the code with pylint
       run: |
