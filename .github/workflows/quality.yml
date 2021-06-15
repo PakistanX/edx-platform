@@ -54,7 +54,9 @@ jobs:
           source ./env/bin/activate 
           python3 -m pip install setuptools==50.3.0
           python3 -m pip install wheel==0.35.1
-          make requirements
+          pip install --disable-pip-version-check --exists-action w -r requirements/edx/django.txt
+          pip install --disable-pip-version-check --exists-action w -r requirements/edx/testing.txt
+
 
       - name: Creating pylint report
         id: pylint-report
