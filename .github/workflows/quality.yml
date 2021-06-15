@@ -12,6 +12,9 @@ on:
 jobs:
   quality:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.6]
     timeout-minutes: 25
 
     steps:
@@ -31,7 +34,7 @@ jobs:
       - name: Set up python
         uses: actions/setup-python@v2
         with:
-          python-version: 3.6
+          python-version: ${{ matrix.python-version }}
         if: env.GIT_DIFF
 
       - name: Cache python requirements
