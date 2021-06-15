@@ -1,15 +1,38 @@
 from django.contrib.auth.models import User
 from django.db.models.query_utils import Q
 from django.db.models import F
-from rest_framework import viewsets, status
+from rest_framework import viewsets, status, generics
 from rest_framework.authentication import SessionAuthentication, BasicAuthentication
 from rest_framework.filters import OrderingFilter
 from rest_framework.response import Response
 
-from .constants import GROUP_TRAINING_MANAGERS, ADMIN, STAFF, TRAINING_MANAGER, LEARNER
+from student.models import CourseEnrollment
 from .permissions import CanAccessPakXAdminPanel
-from .pagination import PakxAdminAppPagination
-from .serializers import UserSerializer
+from .serializers import UserSerializer, UserCourseEnrollmentSerializer
+from .pagination import PakxAdminAppPagination, CourseEnrollmentPagination
+from .constants import GROUP_TRAINING_MANAGERS, ADMIN, STAFF, TRAINING_MANAGER, LEARNER
+
+
+class UserCourseEnrollmentsListAPI(generics.ListAPIView):
+    serializer_class = UserCourseEnrollmentSerializer
+    authentication_classes = [SessionAuthentication]
+    permission_classes = [CanAccessPakXAdminPanel]
+    pagination_class = CourseEnrollmentPagination
+    model = CourseEnrollment
+
+    def get_queryset(self):
+        return CourseEnrollment.objects.filter(
+            user_id=self.kwargs['user_id']
+        ).select_related(
+            'course'
+        ).order_by(
+            '-id'
+        )
+
+    def get_serializer_context(self):
+        context = super(UserCourseEnrollmentsListAPI, self).get_serializer_context()
+        context.update({'request': self.request})
+        return context
 
 
 class UserProfileViewSet(viewsets.ModelViewSet):
