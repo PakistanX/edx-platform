@@ -18,6 +18,7 @@ jobs:
         python -m pip install --upgrade pip
         pip install edx_lint
         pip install pylint
+        make requirements
     - name: Analysing the code with pylint
       run: |
         pylint `ls -R|grep .py$|xargs`
