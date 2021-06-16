@@ -11,10 +11,8 @@ from edx_api_doc_tools import make_docs_urls
 from ratelimitbackend import admin
 
 import contentstore.views
-import openedx.core.djangoapps.common_views.xblock
-import openedx.core.djangoapps.debug.views
-import openedx.core.djangoapps.lang_pref.views
 from cms.djangoapps.contentstore.views.organization import OrganizationListView
+import openedx.core.djangoapps.lang_pref.views
 from openedx.core.djangoapps.password_policy import compliance as password_policy_compliance
 from openedx.core.djangoapps.password_policy.forms import PasswordPolicyAwareAdminAuthForm
 from openedx.core.apidocs import api_info
@@ -270,8 +268,14 @@ if settings.DEBUG:
     )
 
 if 'debug_toolbar' in settings.INSTALLED_APPS:
+    # pylint: disable=import-error
     import debug_toolbar
     urlpatterns.append(url(r'^__debug__/', include(debug_toolbar.urls)))
+
+if 'silk' in settings.INSTALLED_APPS:
+    urlpatterns += [
+        url(r'^silk/', include('silk.urls', namespace='silk'))
+    ]
 
 # UX reference templates
 urlpatterns.append(url(r'^template/(?P<template>.+)$', openedx.core.djangoapps.debug.views.show_reference_template,
@@ -291,5 +295,6 @@ if 'openedx.testing.coverage_context_listener' in settings.INSTALLED_APPS:
         url(r'coverage_context', include('openedx.testing.coverage_context_listener.urls'))
     ]
 
+# pylint: disable=wrong-import-position
 from openedx.core.djangoapps.plugins import constants as plugin_constants, plugin_urls
 urlpatterns.extend(plugin_urls.get_patterns(plugin_constants.ProjectType.CMS))
