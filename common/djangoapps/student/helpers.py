@@ -593,7 +593,7 @@ def do_create_account(form, custom_form=None):
     if not configuration_helpers.get_value(
             'ALLOW_PUBLIC_ACCOUNT_CREATION',
             settings.FEATURES.get('ALLOW_PUBLIC_ACCOUNT_CREATION', True)
-    ) and not form.data.get('allow_account_creation', False):
+    ):
         raise PermissionDenied()
 
     errors = {}

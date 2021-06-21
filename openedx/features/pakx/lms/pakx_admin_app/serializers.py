@@ -16,12 +16,12 @@ class UserSerializer(serializers.ModelSerializer):
     employee_id = serializers.CharField(source='profile.employee_id')
     language = serializers.CharField(source='profile.language')
     name = serializers.CharField(source='get_full_name')
-    organization = serializers.CharField(source='profile.organization')
     role = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ('username', 'id', 'email', 'name', 'employee_id', 'organization', 'language', 'is_active', 'role', 'date_joined', 'last_login')
+        fields = ('username', 'id', 'email', 'name', 'employee_id', 'language', 'is_active', 'role',
+                  'date_joined', 'last_login')
 
     def get_role(self, obj):
         if obj.staff_groups:
@@ -29,7 +29,7 @@ class UserSerializer(serializers.ModelSerializer):
 
         return LEARNER
 
-      
+
 class BasicUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
@@ -40,6 +40,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserProfile
         fields = ('user', 'employee_id', 'language', 'organization')
+
 
 class LearnersSerializer(serializers.ModelSerializer):
     """

@@ -5,7 +5,6 @@ import uuid
 from django.contrib.auth.models import Group, User
 from django.db import transaction
 from django.db.models import F, Prefetch
-from django.db.models.query_utils import Q
 from rest_framework import generics, status, views, viewsets
 from rest_framework.authentication import BasicAuthentication, SessionAuthentication
 from rest_framework.filters import OrderingFilter
@@ -22,8 +21,7 @@ from .constants import GROUP_ORGANIZATION_ADMIN, GROUP_TRAINING_MANAGERS, LEARNE
 from .pagination import PakxAdminAppPagination
 from .permissions import CanAccessPakXAdminPanel
 from .serializers import UserSerializer, BasicUserSerializer, UserProfileSerializer, LearnersSerializer
-from .helpers import get_roles_q_filters, specify_user_role, send_registration_email
-from .utils import get_learners_filter, get_user_org_filter
+from .utils import get_learners_filter, get_user_org_filter, get_roles_q_filters, specify_user_role, send_registration_email
 
 
 class UserProfileViewSet(viewsets.ModelViewSet):
@@ -47,15 +45,14 @@ class UserProfileViewSet(viewsets.ModelViewSet):
                 user = user_serializer.save()
                 user.set_password(uuid.uuid4().hex[:8])
                 user.save()
-            profile_data['user'] = user.id
-            profile_data['organization'] = Organization.objects.get(user_profiles__user=self.request.user).id
-            profile_serializer = UserProfileSerializer(data=profile_data)
-            if profile_serializer.is_valid():
-                with transaction.atomic():
+                profile_data['user'] = user.id
+                profile_data['organization'] = Organization.objects.get(user_profiles__user=self.request.user).id
+                profile_serializer = UserProfileSerializer(data=profile_data)
+                if profile_serializer.is_valid():
                     user_profile = profile_serializer.save()
-                specify_user_role(user, role)
-                send_registration_email(user, user_profile, request.scheme)
-                return Response(self.get_serializer(self.get_queryset().filter(id=user.id).first()).data, status=status.HTTP_200_OK)
+                    specify_user_role(user, role)
+                    send_registration_email(user, user_profile, request.scheme)
+                    return Response(self.get_serializer(self.get_queryset().filter(id=user.id).first()).data, status=status.HTTP_200_OK)
             return Response(profile_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         return Response(user_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -127,25 +124,6 @@ class UserProfileViewSet(viewsets.ModelViewSet):
 
     def deactivate_users(self, request, *args, **kwargs):
         return self.change_activation_status(False, request.data["ids"])
-
-    def get_roles_q_filters(self, roles):
-        """
-        return Q filter to be used for filter user queryset
-        :param roles: request params to filter roles
-        :return: Q filters
-        """
-        qs = Q()
-
-        for role in roles:
-            if int(role) == ORG_ADMIN:
-                qs |= Q(groups__name=GROUP_ORGANIZATION_ADMIN)
-            elif int(role) == LEARNER:
-                qs |= ~Q(Q(is_superuser=True) | Q(is_staff=True) | Q(
-                    groups__name__in=[GROUP_TRAINING_MANAGERS, GROUP_ORGANIZATION_ADMIN]))
-            elif int(role) == TRAINING_MANAGER:
-                qs |= Q(groups__name=GROUP_TRAINING_MANAGERS)
-
-        return qs
 
     def change_activation_status(self, activation_status, ids):
         """
