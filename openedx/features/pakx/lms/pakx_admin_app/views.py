@@ -22,6 +22,9 @@ from .utils import get_learners_filter, get_user_org_filter
 
 
 class UserCourseEnrollmentsListAPI(generics.ListAPIView):
+    """
+    List API of user course enrollment
+    """
     serializer_class = UserCourseEnrollmentSerializer
     authentication_classes = [SessionAuthentication]
     permission_classes = [CanAccessPakXAdminPanel]

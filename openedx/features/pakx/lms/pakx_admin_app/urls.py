@@ -13,10 +13,10 @@ router.register('users', UserProfileViewSet, basename='users')
 
 
 urlpatterns = [
-    path('', include(router.urls)),
     url(r'^users/activate/$', UserProfileViewSet.as_view({"post": "activate_users"})),
     url(r'^users/deactivate/$', UserProfileViewSet.as_view({"post": "deactivate_users"})),
     url(r'^user-course-enrollments/(?P<user_id>\d+)/$', UserCourseEnrollmentsListAPI.as_view()),
     url(r'^analytics/stats/$', AnalyticsStats.as_view()),
     url(r'^analytics/learners/$', LearnerListAPI.as_view()),
+    path('', include(router.urls)),
 ]

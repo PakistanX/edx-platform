@@ -9,10 +9,13 @@ from lms.djangoapps.grades.api import CourseGradeFactory
 from openedx.features.pakx.lms.overrides.utils import get_course_progress_percentage
 from student.models import CourseEnrollment
 
-from .constants import ADMIN, GROUP_TRAINING_MANAGERS, LEARNER, ORG_ADMIN, TRAINING_MANAGER
+from .constants import GROUP_TRAINING_MANAGERS, LEARNER, ORG_ADMIN, TRAINING_MANAGER
 
 
 class UserCourseEnrollmentSerializer(serializers.ModelSerializer):
+    """
+    Serializer for list API of user course enrollment
+    """
     display_name = serializers.CharField(source='course.display_name')
     enrollment_status = serializers.CharField(source='mode')
     enrollment_date = serializers.SerializerMethodField()
