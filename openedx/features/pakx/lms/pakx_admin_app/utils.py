@@ -1,3 +1,6 @@
+"""
+helpers functions for Admin Panel API
+"""
 from django.db.models.query_utils import Q
 from organizations.models import Organization
 

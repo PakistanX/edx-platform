@@ -44,9 +44,9 @@ class LearnersSerializer(serializers.ModelSerializer):
         return len(obj.enrollments)
 
     def get_incomplete_courses(self, obj):
-        # todo: use figure's data for course completion once it's integrated
-        return 0
+        # todo: placeholder data, use figure's data for course completion once it's integrated
+        return obj.id
 
     def get_completed_courses(self, obj):
-        # todo: use figure's data for course completion once it's integrated
-        return 0
+        # todo: placeholder data, use figure's data for course completion once it's integrated
+        return obj.id
