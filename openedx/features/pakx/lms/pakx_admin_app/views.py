@@ -4,7 +4,7 @@ Views for Admin Panel API
 from django.contrib.auth.models import Group, User
 from django.db.models import F, Prefetch
 from django.db.models.query_utils import Q
-from rest_framework import status, views, viewsets
+from rest_framework import generics, status, views, viewsets
 from rest_framework.authentication import BasicAuthentication, SessionAuthentication
 from rest_framework.filters import OrderingFilter
 from rest_framework.response import Response
@@ -17,8 +17,8 @@ from student.models import CourseEnrollment
 from .constants import GROUP_ORGANIZATION_ADMIN, GROUP_TRAINING_MANAGERS, LEARNER, ORG_ADMIN, TRAINING_MANAGER
 from .pagination import PakxAdminAppPagination
 from .permissions import CanAccessPakXAdminPanel
-from .serializers import UserSerializer
-from .utils import get_user_org_filter
+from .serializers import LearnersSerializer, UserSerializer
+from .utils import get_learners_filter, get_user_org_filter
 
 
 class UserProfileViewSet(viewsets.ModelViewSet):
@@ -133,11 +133,7 @@ class AnalyticsStats(views.APIView):
         """
         get analytics quick stats about learner and their assigned courses
         """
-        user_qs = User.objects.filter(
-            is_superuser=False, is_staff=False
-        ).filter(
-            ~Q(groups__name__in=[GROUP_TRAINING_MANAGERS, GROUP_TRAINING_MANAGERS])
-        )
+        user_qs = User.objects.filter(get_learners_filter())
 
         if not self.request.user.is_superuser:
             user_qs = user_qs.filter(get_user_org_filter(self.request.user))
@@ -156,3 +152,23 @@ class AnalyticsStats(views.APIView):
 
         data['course_in_progress'] = data['course_assignment_count'] - data['completed_course_count']
         return Response(status=status.HTTP_200_OK, data=data)
+
+
+class LearnerListAPI(generics.ListAPIView):
+    """
+    API view for learners list
+    """
+    authentication_classes = [SessionAuthentication]
+    permission_classes = [CanAccessPakXAdminPanel]
+    pagination_class = PakxAdminAppPagination
+    serializer_class = LearnersSerializer
+
+    def get_queryset(self):
+        user_qs = User.objects.filter(get_learners_filter())
+        if not self.request.user.is_superuser:
+            user_qs = user_qs.filter(get_user_org_filter(self.request.user))
+
+        active_enrollments = CourseEnrollment.objects.filter(is_active=True)
+        return user_qs.prefetch_related(
+            Prefetch('courseenrollment_set', to_attr='enrollments', queryset=active_enrollments)
+        )
