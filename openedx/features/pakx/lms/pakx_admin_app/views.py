@@ -19,11 +19,36 @@ from student.models import CourseEnrollment
 from organizations.models import Organization
 
 from .constants import GROUP_ORGANIZATION_ADMIN, GROUP_TRAINING_MANAGERS, LEARNER, ORG_ADMIN, TRAINING_MANAGER
-from .pagination import PakxAdminAppPagination
+from .pagination import CourseEnrollmentPagination, PakxAdminAppPagination
 from .permissions import CanAccessPakXAdminPanel
-from .serializers import UserSerializer, BasicUserSerializer, UserProfileSerializer, LearnersSerializer
+from .serializers import UserSerializer, BasicUserSerializer, UserProfileSerializer, LearnersSerializer, UserCourseEnrollmentSerializer
 from .helpers import get_roles_q_filters, specify_user_role, send_registration_email
 from .utils import get_learners_filter, get_user_org_filter
+
+
+class UserCourseEnrollmentsListAPI(generics.ListAPIView):
+    """
+    List API of user course enrollment
+    """
+    serializer_class = UserCourseEnrollmentSerializer
+    authentication_classes = [SessionAuthentication]
+    permission_classes = [CanAccessPakXAdminPanel]
+    pagination_class = CourseEnrollmentPagination
+    model = CourseEnrollment
+
+    def get_queryset(self):
+        return CourseEnrollment.objects.filter(
+            user_id=self.kwargs['user_id'], is_active=True
+        ).select_related(
+            'course'
+        ).order_by(
+            '-id'
+        )
+
+    def get_serializer_context(self):
+        context = super(UserCourseEnrollmentsListAPI, self).get_serializer_context()
+        context.update({'request': self.request})
+        return context
 
 
 class UserProfileViewSet(viewsets.ModelViewSet):
