@@ -4,7 +4,6 @@ Views for Admin Panel API
 from django.contrib.auth.models import Group, User
 from django.db.models import F, Prefetch
 from django.db.models.query_utils import Q
-from organizations.models import Organization
 from rest_framework import generics, status, views, viewsets
 from rest_framework.authentication import BasicAuthentication, SessionAuthentication
 from rest_framework.filters import OrderingFilter
@@ -15,14 +14,11 @@ from lms.djangoapps.grades.api import CourseGradeFactory
 from openedx.features.pakx.lms.overrides.utils import get_course_progress_percentage
 from student.models import CourseEnrollment
 
-from student.models import CourseEnrollment
-
 from .constants import GROUP_ORGANIZATION_ADMIN, GROUP_TRAINING_MANAGERS, LEARNER, ORG_ADMIN, TRAINING_MANAGER
 from .pagination import CourseEnrollmentPagination, PakxAdminAppPagination
 from .permissions import CanAccessPakXAdminPanel
-from .serializers import LearnersSerializer, UserSerializer
+from .serializers import LearnersSerializer, UserCourseEnrollmentSerializer, UserSerializer
 from .utils import get_learners_filter, get_user_org_filter
-from .serializers import UserCourseEnrollmentSerializer, UserSerializer
 
 
 class UserCourseEnrollmentsListAPI(generics.ListAPIView):
@@ -34,7 +30,7 @@ class UserCourseEnrollmentsListAPI(generics.ListAPIView):
 
     def get_queryset(self):
         return CourseEnrollment.objects.filter(
-            user_id=self.kwargs['user_id']
+            user_id=self.kwargs['user_id'], is_active=True
         ).select_related(
             'course'
         ).order_by(
