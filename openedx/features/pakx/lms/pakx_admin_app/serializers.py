@@ -29,7 +29,7 @@ class UserSerializer(serializers.ModelSerializer):
 
         return LEARNER
 
-
+      
 class BasicUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
@@ -40,3 +40,27 @@ class UserProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserProfile
         fields = ('user', 'employee_id', 'language', 'organization')
+
+class LearnersSerializer(serializers.ModelSerializer):
+    """
+    Serializer Learner list view for analytics view list view
+    """
+    name = serializers.CharField(source='get_full_name')
+    assigned_courses = serializers.SerializerMethodField()
+    incomplete_courses = serializers.SerializerMethodField()
+    completed_courses = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = ('id', 'name', 'email', 'last_login', 'assigned_courses', 'incomplete_courses', 'completed_courses')
+
+    def get_assigned_courses(self, obj):
+        return len(obj.enrollments)
+
+    def get_incomplete_courses(self, obj):
+        # todo: placeholder data, use figure's data for course completion once it's integrated
+        return obj.id
+
+    def get_completed_courses(self, obj):
+        # todo: placeholder data, use figure's data for course completion once it's integrated
+        return obj.id
