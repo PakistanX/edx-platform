@@ -11,7 +11,7 @@ from edx_ace.recipient import Recipient
 from openedx.core.djangoapps.ace_common.template_context import get_base_template_context
 from openedx.core.djangoapps.site_configuration import helpers as configuration_helpers
 
-from .constants import GROUP_TRAINING_MANAGERS, ADMIN, STAFF, TRAINING_MANAGER, LEARNER
+from .constants import GROUP_TRAINING_MANAGERS, ORG_ADMIN, STAFF, TRAINING_MANAGER, LEARNER, GROUP_ORGANIZATION_ADMIN
 from .message_types import RegistrationNotification
 
 
@@ -19,7 +19,7 @@ def get_roles_q_filters(roles):
     qs = Q()
 
     for role in roles:
-        if int(role) == ADMIN:
+        if int(role) == ORG_ADMIN:
             qs |= Q(is_superuser=True)
         elif int(role) == STAFF:
             qs |= Q(is_staff=True)
@@ -32,13 +32,10 @@ def get_roles_q_filters(roles):
 
 
 def specify_user_role(user, role):
-    if role == ADMIN:
-        user.is_superuser = True
-    elif role == STAFF:
-        user.is_staff = True
+    if role == ORG_ADMIN:
+        user.groups.add(Group.objects.get(name=GROUP_ORGANIZATION_ADMIN))
     elif role == TRAINING_MANAGER:
         user.groups.add(Group.objects.get(name=GROUP_TRAINING_MANAGERS))
-    user.save()
 
 
 def get_email_message_context(user, user_profile, protocol):
