@@ -17,7 +17,7 @@ from student.models import CourseEnrollment
 
 from organizations.models import Organization
 
-from .constants import GROUP_ORGANIZATION_ADMIN, GROUP_TRAINING_MANAGERS, LEARNER, ORG_ADMIN, TRAINING_MANAGER
+from .constants import GROUP_ORGANIZATION_ADMIN, GROUP_TRAINING_MANAGERS
 from .pagination import PakxAdminAppPagination
 from .permissions import CanAccessPakXAdminPanel
 from .serializers import UserSerializer, BasicUserSerializer, UserProfileSerializer, LearnersSerializer
