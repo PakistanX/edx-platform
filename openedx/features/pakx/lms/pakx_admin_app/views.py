@@ -12,10 +12,10 @@ from rest_framework.authentication import BasicAuthentication, SessionAuthentica
 from rest_framework.filters import OrderingFilter
 from rest_framework.response import Response
 from six import text_type
-from student.models import CourseEnrollment
 
 from lms.djangoapps.grades.api import CourseGradeFactory
 from openedx.features.pakx.lms.overrides.utils import get_course_progress_percentage
+from student.models import CourseEnrollment
 
 from .constants import GROUP_ORGANIZATION_ADMIN, GROUP_TRAINING_MANAGERS
 from .pagination import CourseEnrollmentPagination, PakxAdminAppPagination

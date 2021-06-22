@@ -4,10 +4,10 @@ Serializer for Admin Panel APIs
 from django.contrib.auth.models import User
 from rest_framework import serializers
 from six import text_type
-from student.models import CourseEnrollment, UserProfile
 
 from lms.djangoapps.grades.api import CourseGradeFactory
 from openedx.features.pakx.lms.overrides.utils import get_course_progress_percentage
+from student.models import CourseEnrollment, UserProfile
 
 from .constants import GROUP_TRAINING_MANAGERS, LEARNER, ORG_ADMIN, TRAINING_MANAGER
 
