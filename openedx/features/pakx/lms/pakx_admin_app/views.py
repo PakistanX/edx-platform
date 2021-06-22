@@ -5,6 +5,7 @@ import uuid
 from django.contrib.auth.models import Group, User
 from django.db import transaction
 from django.db.models import F, Prefetch
+from organizations.models import Organization
 from rest_framework import generics, status, views, viewsets
 from rest_framework.authentication import BasicAuthentication, SessionAuthentication
 from rest_framework.filters import OrderingFilter
@@ -14,13 +15,13 @@ from six import text_type
 from lms.djangoapps.grades.api import CourseGradeFactory
 from openedx.features.pakx.lms.overrides.utils import get_course_progress_percentage
 from student.models import CourseEnrollment
-from organizations.models import Organization
 
 from .utils import get_roles_q_filters, specify_user_role, send_registration_email
 from .constants import GROUP_ORGANIZATION_ADMIN, GROUP_TRAINING_MANAGERS
 from .pagination import CourseEnrollmentPagination, PakxAdminAppPagination
 from .permissions import CanAccessPakXAdminPanel
-from .serializers import UserSerializer, BasicUserSerializer, UserProfileSerializer, LearnersSerializer, UserCourseEnrollmentSerializer
+from .serializers import UserSerializer, BasicUserSerializer, UserProfileSerializer,\
+    LearnersSerializer, UserCourseEnrollmentSerializer
 from .utils import get_learners_filter, get_user_org_filter
 
 
@@ -77,7 +78,9 @@ class UserProfileViewSet(viewsets.ModelViewSet):
                     user_profile = profile_serializer.save()
                     specify_user_role(user, role)
                     send_registration_email(user, user_profile, request.scheme)
-                    return Response(self.get_serializer(self.get_queryset().filter(id=user.id).first()).data, status=status.HTTP_200_OK)
+                    return Response(
+                        self.get_serializer(
+                            self.get_queryset().filter(id=user.id).first()).data, status=status.HTTP_200_OK)
             return Response(profile_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         return Response(user_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
