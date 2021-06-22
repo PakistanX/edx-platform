@@ -16,12 +16,11 @@ from openedx.features.pakx.lms.overrides.utils import get_course_progress_percen
 from student.models import CourseEnrollment
 from organizations.models import Organization
 
-from .serializers import BasicUserSerializer, UserProfileSerializer
 from .utils import get_roles_q_filters, specify_user_role, send_registration_email
 from .constants import GROUP_ORGANIZATION_ADMIN, GROUP_TRAINING_MANAGERS
 from .pagination import CourseEnrollmentPagination, PakxAdminAppPagination
 from .permissions import CanAccessPakXAdminPanel
-from .serializers import LearnersSerializer, UserCourseEnrollmentSerializer, UserSerializer
+from .serializers import UserSerializer, BasicUserSerializer, UserProfileSerializer, LearnersSerializer, UserCourseEnrollmentSerializer
 from .utils import get_learners_filter, get_user_org_filter
 
 
