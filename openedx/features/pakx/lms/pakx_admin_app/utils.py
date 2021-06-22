@@ -58,6 +58,9 @@ def specify_user_role(user, role):
 
 
 def get_email_message_context(user, user_profile, protocol):
+    """
+    return context for registration notification email body
+    """
     site = Site.objects.get_current()
     message_context = {
         'site_name': site.domain
@@ -83,6 +86,9 @@ def get_email_message_context(user, user_profile, protocol):
 
 
 def send_registration_email(user, user_profile, protocol):
+    """
+    send a registration notification via email
+    """
     message = RegistrationNotification().personalize(
         recipient=Recipient(user.username, user.email),
         language=user_profile.language,
