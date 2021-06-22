@@ -1,10 +1,10 @@
 """
 helpers functions for Admin Panel API
 """
-from django.contrib.auth.models import Group
-from django.contrib.sites.models import Site
-from django.contrib.auth.tokens import default_token_generator
 from django.conf import settings
+from django.contrib.auth.models import Group
+from django.contrib.auth.tokens import default_token_generator
+from django.contrib.sites.models import Site
 from django.db.models.query_utils import Q
 from django.urls import reverse
 from django.utils.http import int_to_base36
@@ -15,7 +15,7 @@ from organizations.models import Organization
 from openedx.core.djangoapps.ace_common.template_context import get_base_template_context
 from openedx.core.djangoapps.site_configuration import helpers as configuration_helpers
 
-from .constants import GROUP_TRAINING_MANAGERS, ORG_ADMIN, TRAINING_MANAGER, LEARNER, GROUP_ORGANIZATION_ADMIN
+from .constants import GROUP_ORGANIZATION_ADMIN, GROUP_TRAINING_MANAGERS, LEARNER, ORG_ADMIN, TRAINING_MANAGER
 from .message_types import RegistrationNotification
 
 
