@@ -16,13 +16,13 @@ from lms.djangoapps.grades.api import CourseGradeFactory
 from openedx.features.pakx.lms.overrides.utils import get_course_progress_percentage
 from student.models import CourseEnrollment
 
-from .utils import get_roles_q_filters, specify_user_role, send_registration_email
 from .constants import GROUP_ORGANIZATION_ADMIN, GROUP_TRAINING_MANAGERS
 from .pagination import CourseEnrollmentPagination, PakxAdminAppPagination
 from .permissions import CanAccessPakXAdminPanel
 from .serializers import UserSerializer, BasicUserSerializer, UserProfileSerializer,\
     LearnersSerializer, UserCourseEnrollmentSerializer
-from .utils import get_learners_filter, get_user_org_filter
+from .utils import get_learners_filter, get_user_org_filter, \
+    get_roles_q_filters, specify_user_role, send_registration_email
 
 
 class UserCourseEnrollmentsListAPI(generics.ListAPIView):

@@ -5,10 +5,10 @@ from django.contrib.auth.models import User
 from rest_framework import serializers
 from six import text_type
 
-from lms.djangoapps.grades.api import CourseGradeFactory
-from openedx.features.pakx.lms.overrides.utils import get_course_progress_percentage
 from student.models import CourseEnrollment
 from student.models import UserProfile
+from lms.djangoapps.grades.api import CourseGradeFactory
+from openedx.features.pakx.lms.overrides.utils import get_course_progress_percentage
 
 from .constants import GROUP_TRAINING_MANAGERS, LEARNER, ORG_ADMIN, TRAINING_MANAGER
 
