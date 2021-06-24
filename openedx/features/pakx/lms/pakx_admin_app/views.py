@@ -182,10 +182,6 @@ class UserProfileViewSet(viewsets.ModelViewSet):
         return Response(status=status.HTTP_404_NOT_FOUND)
 
     def enroll_users(self, request, *args, **kwargs):
-
-        import pdb
-        pdb.set_trace()
-
         enrolled_courses = []
         organization_mismatch = []
         if request.data.get("ids") and request.data.get("course_keys"):

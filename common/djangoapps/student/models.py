@@ -13,6 +13,7 @@ file and check it in at the same time as your model changes. To do that,
 
 
 import hashlib
+import inspect
 import json
 import logging
 import uuid
