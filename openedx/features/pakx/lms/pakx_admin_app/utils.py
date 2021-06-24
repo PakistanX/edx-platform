@@ -10,7 +10,7 @@ from django.urls import reverse
 from django.utils.http import int_to_base36
 from edx_ace import ace
 from edx_ace.recipient import Recipient
-from organizations.models import Organization
+from organizations.models import Organization, OrganizationCourse
 
 from openedx.core.djangoapps.ace_common.template_context import get_base_template_context
 from openedx.core.djangoapps.site_configuration import helpers as configuration_helpers
@@ -95,3 +95,10 @@ def send_registration_email(user, user_profile, protocol):
         user_context=get_email_message_context(user, user_profile, protocol),
     )
     ace.send(message)
+
+
+def get_course_organization(course_key):
+    """
+    returns organization against course_key
+    """
+    return OrganizationCourse.objects.filter(course_id=course_key).first()
