@@ -6,6 +6,7 @@ import uuid
 from django.contrib.auth.models import Group, User
 from django.db import transaction
 from django.db.models import F, Prefetch
+from opaque_keys.edx.keys import CourseKey
 from organizations.models import Organization
 from rest_framework import generics, status, views, viewsets
 from rest_framework.authentication import BasicAuthentication, SessionAuthentication
@@ -179,6 +180,14 @@ class UserProfileViewSet(viewsets.ModelViewSet):
             return Response(status=status.HTTP_200_OK)
 
         return Response(status=status.HTTP_404_NOT_FOUND)
+
+    def enroll_users(self, request, *args, **kwargs):
+        if request.data.get("ids") and request.data.get("course_keys"):
+            for user_id in request.data["ids"]:
+                for course_key in request.data["course_keys"]:
+                    CourseEnrollment.enroll(self.get_queryset().filter(id=user_id).first(), CourseKey.from_string(course_key))
+            return Response(status=status.HTTP_200_OK)
+        return Response(status=status.HTTP_400_BAD_REQUEST)
 
 
 class AnalyticsStats(views.APIView):
