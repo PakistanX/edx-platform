@@ -6,16 +6,13 @@ import uuid
 from django.contrib.auth.models import Group, User
 from django.db import transaction
 from django.db.models import F, Prefetch, Q
-from organizations.models import Organization
+from django.http import Http404
 from rest_framework import generics, status, views, viewsets
 from rest_framework.authentication import SessionAuthentication
 from rest_framework.filters import OrderingFilter
 from rest_framework.response import Response
-from six import text_type
 
-from lms.djangoapps.grades.api import CourseGradeFactory
 from openedx.features.pakx.lms.overrides.models import CourseProgressStats
-from openedx.features.pakx.lms.overrides.utils import get_course_progress_percentage
 from student.models import CourseEnrollment
 
 from .constants import GROUP_ORGANIZATION_ADMIN, GROUP_TRAINING_MANAGERS
@@ -25,6 +22,7 @@ from .serializers import (
     BasicUserSerializer,
     LearnersSerializer,
     UserCourseEnrollmentSerializer,
+    UserDetailViewSerializer,
     UserProfileSerializer,
     UserSerializer
 )
@@ -49,9 +47,12 @@ class UserCourseEnrollmentsListAPI(generics.ListAPIView):
 
     def get_queryset(self):
         return CourseEnrollment.objects.filter(
-            user_id=self.kwargs['user_id'], is_active=True
+            user_id=self.kwargs['user_id'], is_active=True,
+            user__profile=self.request.user.profile.organization_id
         ).select_related(
             'course'
+        ).prefetch_related(
+            'user__courseprogressstats_set'
         ).order_by(
             '-id'
         )
@@ -74,39 +75,63 @@ class UserProfileViewSet(viewsets.ModelViewSet):
     OrderingFilter.ordering_fields = ('id', 'name', 'email', 'employee_id')
     ordering = ['-id']
 
+    def get_object(self):
+        user_obj = User.objects.filter(
+            id=self.kwargs['pk']
+        ).select_related(
+            'profile'
+        ).prefetch_related(
+            'courseprogressstats_set'
+        ).first()
+
+        if user_obj:
+            return user_obj
+        raise Http404
+
+    def get_serializer_class(self):
+        if self.action in ['retrieve', 'create']:
+            return UserDetailViewSerializer
+
+        return UserSerializer
+
     def create(self, request, *args, **kwargs):
         profile_data = request.data.pop('profile', None)
         role = request.data.pop('role', None)
+
         user_serializer = BasicUserSerializer(data=request.data)
-        if user_serializer.is_valid():
+        profile_serializer = UserProfileSerializer(data=profile_data)
+
+        if user_serializer.is_valid() and profile_serializer.is_valid():
             with transaction.atomic():
                 user = user_serializer.save()
                 user.set_password(uuid.uuid4().hex[:8])
                 user.save()
+
                 profile_data['user'] = user.id
-                profile_data['organization'] = Organization.objects.get(user_profiles__user=self.request.user).id
-                profile_serializer = UserProfileSerializer(data=profile_data)
-                if profile_serializer.is_valid():
-                    user_profile = profile_serializer.save()
-                    specify_user_role(user, role)
-                    send_registration_email(user, user_profile, request.scheme)
-                    return Response(
-                        self.get_serializer(
-                            self.get_queryset().filter(id=user.id).first()).data, status=status.HTTP_200_OK)
-            return Response(profile_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        return Response(user_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                profile_data['organization'] = self.request.user.profile.organization_id
+                user_profile = profile_serializer.save()
+                specify_user_role(user, role)
+                send_registration_email(user, user_profile, request.scheme)
+
+                self.kwargs = {'pk': user.id}
+                return Response(self.get_serializer(self.get_object()), status=status.HTTP_200_OK)
+
+        return Response({**user_serializer.errors, **profile_serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
     def partial_update(self, request, *args, **kwargs):
         user = self.get_object()
         user_profile_data = request.data.pop('profile', {})
         user_data = request.data
+
         user_serializer = BasicUserSerializer(user, data=user_data, partial=True)
         profile_serializer = UserProfileSerializer(user.profile, data=user_profile_data, partial=True)
+
         if user_serializer.is_valid() and profile_serializer.is_valid():
             user_serializer.save()
             profile_serializer.save()
             specify_user_role(user, request.data.pop("role", None))
             return Response(self.get_serializer(user).data, status=status.HTTP_200_OK)
+
         return Response({**user_serializer.errors, **profile_serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
     def destroy(self, request, *args, **kwargs):
@@ -152,7 +177,7 @@ class UserProfileViewSet(viewsets.ModelViewSet):
         if self.request.user.is_superuser:
             queryset = User.objects.all()
         else:
-            queryset = User.objects.filter(get_user_org_filter(self.request.user))
+            queryset = User.objects.filter(**get_user_org_filter(self.request.user))
 
         group_qs = Group.objects.filter(name__in=[GROUP_TRAINING_MANAGERS, GROUP_ORGANIZATION_ADMIN])
         return queryset.select_related(
@@ -202,16 +227,13 @@ class AnalyticsStats(views.APIView):
         user_qs = User.objects.filter(get_learners_filter())
 
         if not self.request.user.is_superuser:
-            user_qs = user_qs.filter(get_user_org_filter(self.request.user))
+            user_qs = user_qs.filter(**get_user_org_filter(self.request.user))
 
         user_ids = user_qs.values_list('id', flat=True)
         data = {'learner_count': len(user_ids), 'course_assignment_count': 0, 'completed_course_count': 0}
 
-        for c_enrollment in CourseEnrollment.objects.filter(user_id__in=user_ids):
-            # todo: move to figure's data for course completion once it's integrated
-            grades = CourseGradeFactory().read(c_enrollment.user, course_key=c_enrollment.course.id)
-            progress = get_course_progress_percentage(self.request, text_type(c_enrollment.course.id))
-            if grades.passed and progress >= 100:
+        for course_stats in CourseProgressStats.objects.filter(user_id__in=user_ids):
+            if course_stats.email_reminder_status == CourseProgressStats.COURSE_COMPLETED:
                 data['completed_course_count'] += 1
 
             data['course_assignment_count'] += 1
@@ -260,7 +282,7 @@ class LearnerListAPI(generics.ListAPIView):
     def get_queryset(self):
         user_qs = User.objects.filter(get_learners_filter())
         if not self.request.user.is_superuser:
-            user_qs = user_qs.filter(get_user_org_filter(self.request.user))
+            user_qs = user_qs.filter(**get_user_org_filter(self.request.user))
 
         course_stats = CourseProgressStats.objects.all()
         return user_qs.prefetch_related(
