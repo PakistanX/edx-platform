@@ -7,7 +7,7 @@ from django.contrib.auth.models import Group, User
 from django.db import transaction
 from django.db.models import F, Prefetch
 from opaque_keys.edx.keys import CourseKey
-from organizations.models import Organization
+from organizations.models import Organization, OrganizationCourse
 from rest_framework import generics, status, views, viewsets
 from rest_framework.authentication import BasicAuthentication, SessionAuthentication
 from rest_framework.filters import OrderingFilter
@@ -182,11 +182,21 @@ class UserProfileViewSet(viewsets.ModelViewSet):
         return Response(status=status.HTTP_404_NOT_FOUND)
 
     def enroll_users(self, request, *args, **kwargs):
+
+        import pdb
+        pdb.set_trace()
+
+        enrolled_courses = []
+        organization_mismatch = []
         if request.data.get("ids") and request.data.get("course_keys"):
             for user_id in request.data["ids"]:
                 for course_key in request.data["course_keys"]:
-                    CourseEnrollment.enroll(self.get_queryset().filter(id=user_id).first(), CourseKey.from_string(course_key))
-            return Response(status=status.HTTP_200_OK)
+                    if OrganizationCourse.objects.filter(course_id=course_key).first() == request.user.profile.organization:
+                        CourseEnrollment.enroll(self.get_queryset().filter(id=user_id).first(), CourseKey.from_string(course_key))
+                        enrolled_courses.append(course_key)
+                        continue
+                    organization_mismatch.append(course_key)
+            return Response({"Enrolled Courses": enrolled_courses, "Organization Mismatch": organization_mismatch}, status=status.HTTP_200_OK)
         return Response(status=status.HTTP_400_BAD_REQUEST)
 
 
