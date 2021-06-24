@@ -16,21 +16,29 @@ class UserCourseEnrollmentSerializer(serializers.ModelSerializer):
     display_name = serializers.CharField(source='course.display_name')
     enrollment_status = serializers.CharField(source='mode')
     enrollment_date = serializers.SerializerMethodField()
+    completion_date = serializers.SerializerMethodField()
     progress = serializers.SerializerMethodField()
     grades = serializers.SerializerMethodField()
 
     class Meta:
         model = CourseEnrollment
-        fields = ('display_name', 'enrollment_status', 'enrollment_date', 'progress', 'grades')
+        fields = ('display_name', 'enrollment_status', 'enrollment_date', 'progress', 'completion_date', 'grades')
 
     @staticmethod
     def get_enrollment_date(obj):
         return obj.created.strftime('%Y-%m-%d')
 
-    def get_progress(self, obj):
+    @staticmethod
+    def get_progress(obj):
         # todo: refactor this by refactoring courseprogressstats relation with user/organization
         course_stats = [c for c in obj.user.courseprogressstats_set.all() if c.course_id == obj.course_id]
         return course_stats[0].progress if course_stats else None
+
+    @staticmethod
+    def get_completion_date(obj):
+        # todo: refactor this by refactoring courseprogressstats relation with user/organization
+        course_stats = [c for c in obj.user.courseprogressstats_set.all() if c.course_id == obj.course_id]
+        return course_stats[0].completion_date if course_stats else None
 
     @staticmethod
     def get_grades(obj):

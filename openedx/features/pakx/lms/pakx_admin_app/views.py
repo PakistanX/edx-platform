@@ -15,7 +15,7 @@ from rest_framework.response import Response
 from openedx.features.pakx.lms.overrides.models import CourseProgressStats
 from student.models import CourseEnrollment
 
-from .constants import GROUP_ORGANIZATION_ADMIN, GROUP_TRAINING_MANAGERS
+from .constants import GROUP_ORGANIZATION_ADMIN, GROUP_TRAINING_MANAGERS, ORG_ADMIN, TRAINING_MANAGER
 from .pagination import CourseEnrollmentPagination, PakxAdminAppPagination
 from .permissions import CanAccessPakXAdminPanel
 from .serializers import (
@@ -113,8 +113,7 @@ class UserProfileViewSet(viewsets.ModelViewSet):
                 specify_user_role(user, role)
                 send_registration_email(user, user_profile, request.scheme)
 
-                self.kwargs = {'pk': user.id}
-                return Response(self.get_serializer(self.get_object()), status=status.HTTP_200_OK)
+                return Response(self.get_serializer(user), status=status.HTTP_201_CREATED)
 
         return Response({**user_serializer.errors, **profile_serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -179,7 +178,7 @@ class UserProfileViewSet(viewsets.ModelViewSet):
         else:
             queryset = User.objects.filter(**get_user_org_filter(self.request.user))
 
-        group_qs = Group.objects.filter(name__in=[GROUP_TRAINING_MANAGERS, GROUP_ORGANIZATION_ADMIN])
+        group_qs = Group.objects.filter(name__in=[GROUP_TRAINING_MANAGERS, GROUP_ORGANIZATION_ADMIN]).order_by('name')
         return queryset.select_related(
             'profile'
         ).prefetch_related(
@@ -288,3 +287,29 @@ class LearnerListAPI(generics.ListAPIView):
         return user_qs.prefetch_related(
             Prefetch('courseprogressstats_set', to_attr='course_stats', queryset=course_stats)
         )
+
+
+class UserInfo(views.APIView):
+    """
+    API for basic user information
+    """
+    authentication_classes = [SessionAuthentication]
+    permission_classes = [CanAccessPakXAdminPanel]
+
+    def get(self, *args, **kwargs):  # pylint: disable=unused-argument
+        """
+        get user's basic info
+        """
+        user_info = {
+            'name': self.request.user.get_full_name(),
+            'username': self.request.user.username,
+            'is_superuser': self.request.user.is_superuser,
+            'role': None
+        }
+        user_groups = Group.objects.filter(
+            user=self.request.user, name__in=[GROUP_TRAINING_MANAGERS, GROUP_ORGANIZATION_ADMIN]
+        ).order_by('name').first()
+        if user_groups:
+            user_info['role'] = TRAINING_MANAGER if user_groups.name == GROUP_TRAINING_MANAGERS else ORG_ADMIN
+
+        return Response(status=status.HTTP_200_OK, data=user_info)
