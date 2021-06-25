@@ -2,11 +2,9 @@
 Views for Admin Panel API
 """
 import uuid
-
 from django.contrib.auth.models import Group, User
 from django.db import transaction
 from django.db.models import F, Prefetch, Q
-from opaque_keys.edx.keys import CourseKey
 from organizations.models import Organization
 from rest_framework import generics, status, views, viewsets
 from rest_framework.authentication import SessionAuthentication
@@ -22,6 +20,7 @@ from student.models import CourseEnrollment
 from .constants import GROUP_ORGANIZATION_ADMIN, GROUP_TRAINING_MANAGERS
 from .pagination import CourseEnrollmentPagination, PakxAdminAppPagination
 from .permissions import CanAccessPakXAdminPanel
+from .tasks import enroll_users
 from .serializers import (
     BasicUserSerializer,
     LearnersSerializer,
@@ -30,7 +29,6 @@ from .serializers import (
     UserSerializer
 )
 from .utils import (
-    get_course_organization,
     get_learners_filter,
     get_roles_q_filters,
     get_user_org_filter,
@@ -189,22 +187,12 @@ class UserProfileViewSet(viewsets.ModelViewSet):
 
         return Response(status=status.HTTP_404_NOT_FOUND)
 
+
+class CourseEnrolmentViewSet(viewsets.ModelViewSet):
     def enroll_users(self, request, *args, **kwargs):
-        enrolled_courses = []
-        organization_mismatch = []
         if request.data.get("ids") and request.data.get("course_keys"):
-            for user_id in request.data["ids"]:
-                for course_key in request.data["course_keys"]:
-                    if get_course_organization(course_key) == request.user.profile.organization:
-                        CourseEnrollment.enroll(self.get_queryset().filter(id=user_id).first(),
-                                                CourseKey.from_string(course_key))
-                        enrolled_courses.append(course_key)
-                        continue
-                    organization_mismatch.append(course_key)
-            return Response({
-                "Enrolled Courses": enrolled_courses,
-                "Organization Mismatch": organization_mismatch},
-                status=status.HTTP_200_OK)
+            enroll_users.delay(self.request.user, request.data["ids"], request.data["course_keys"])
+            return Response(status=status.HTTP_200_OK)
         return Response(status=status.HTTP_400_BAD_REQUEST)
 
 

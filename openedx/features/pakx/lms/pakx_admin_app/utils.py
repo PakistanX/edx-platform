@@ -57,7 +57,7 @@ def specify_user_role(user, role):
         user.groups.add(Group.objects.get(name=GROUP_TRAINING_MANAGERS))
 
 
-def get_email_message_context(user, user_profile, protocol):
+def get_registration_email_message_context(user, user_profile, protocol):
     """
     return context for registration notification email body
     """
@@ -92,13 +92,6 @@ def send_registration_email(user, user_profile, protocol):
     message = RegistrationNotification().personalize(
         recipient=Recipient(user.username, user.email),
         language=user_profile.language,
-        user_context=get_email_message_context(user, user_profile, protocol),
+        user_context=get_registration_email_message_context(user, user_profile, protocol),
     )
     ace.send(message)
-
-
-def get_course_organization(course_key):
-    """
-    returns organization against course_key
-    """
-    return OrganizationCourse.objects.filter(course_id=course_key).first()
