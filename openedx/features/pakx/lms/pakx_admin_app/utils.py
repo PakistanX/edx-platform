@@ -20,8 +20,7 @@ from .message_types import RegistrationNotification
 
 
 def get_user_org_filter(user):
-    organization = Organization.objects.get(user_profiles__user=user)
-    return {'profile__organization': organization}
+    return {'profile__organization_id': user.profile.organization_id}
 
 
 def get_learners_filter():
