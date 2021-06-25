@@ -7,11 +7,13 @@ from django.contrib.auth.models import Group, User
 from django.db import transaction
 from django.db.models import F, Prefetch, Q
 from django.http import Http404
+from django.utils.decorators import method_decorator
 from rest_framework import generics, status, views, viewsets
 from rest_framework.authentication import SessionAuthentication
 from rest_framework.filters import OrderingFilter
 from rest_framework.response import Response
 
+from openedx.core.djangoapps.cors_csrf.decorators import ensure_csrf_cookie_cross_domain
 from openedx.features.pakx.lms.overrides.models import CourseProgressStats
 from student.models import CourseEnrollment
 
@@ -296,6 +298,7 @@ class UserInfo(views.APIView):
     authentication_classes = [SessionAuthentication]
     permission_classes = [CanAccessPakXAdminPanel]
 
+    @method_decorator(ensure_csrf_cookie_cross_domain)
     def get(self, *args, **kwargs):  # pylint: disable=unused-argument
         """
         get user's basic info
