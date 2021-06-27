@@ -7,6 +7,7 @@ from django.contrib.auth.models import Group, User
 from django.db import transaction
 from django.db.models import F, Prefetch, Q
 from django.http import Http404
+from django.middleware import csrf
 from django.utils.decorators import method_decorator
 from rest_framework import generics, status, views, viewsets
 from rest_framework.authentication import SessionAuthentication
@@ -307,6 +308,7 @@ class UserInfo(views.APIView):
             'name': self.request.user.get_full_name(),
             'username': self.request.user.username,
             'is_superuser': self.request.user.is_superuser,
+            'csrf_token': csrf.get_token(self.request),
             'role': None
         }
         user_groups = Group.objects.filter(
