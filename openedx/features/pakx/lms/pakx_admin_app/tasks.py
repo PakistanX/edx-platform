@@ -13,13 +13,7 @@ from opaque_keys.edx.keys import CourseKey
 from openedx.core.djangoapps.ace_common.template_context import get_base_template_context
 from openedx.core.djangoapps.site_configuration import helpers as configuration_helpers
 
-from student.models import (
-    CourseEnrollment,
-    NonExistentCourseError,
-    EnrollmentClosedError,
-    CourseFullError,
-    AlreadyEnrolledError
-)
+from student.models import CourseEnrollment
 
 from .message_types import EnrolmentNotification
 from .utils import get_user_org_filter

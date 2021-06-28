@@ -48,7 +48,6 @@ from eventtracking import tracker
 from model_utils.models import TimeStampedModel
 from opaque_keys.edx.django.models import CourseKeyField
 from opaque_keys.edx.keys import CourseKey
-from organizations.models import Organization
 from pytz import UTC
 from simple_history.models import HistoricalRecords
 from six import text_type
@@ -56,6 +55,7 @@ from six.moves import range
 from six.moves.urllib.parse import urlencode
 from slumber.exceptions import HttpClientError, HttpServerError
 from user_util import user_util
+from organizations.models import Organization
 
 import openedx.core.djangoapps.django_comment_common.comment_client as cc
 from course_modes.models import CourseMode, get_cosmetic_verified_display_price
