@@ -11,9 +11,9 @@ from rest_framework import generics, status, views, viewsets
 from rest_framework.authentication import SessionAuthentication
 from rest_framework.filters import OrderingFilter
 from rest_framework.response import Response
-from student.models import CourseEnrollment
 
 from openedx.features.pakx.lms.overrides.models import CourseProgressStats
+from student.models import CourseEnrollment
 
 from .constants import GROUP_ORGANIZATION_ADMIN, GROUP_TRAINING_MANAGERS, ORG_ADMIN, TRAINING_MANAGER
 from .pagination import CourseEnrollmentPagination, PakxAdminAppPagination

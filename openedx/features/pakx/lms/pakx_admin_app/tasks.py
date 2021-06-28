@@ -9,10 +9,10 @@ from django.contrib.sites.models import Site
 from django.db import DatabaseError, transaction
 from edx_ace import Recipient, ace
 from opaque_keys.edx.keys import CourseKey
-from student.models import CourseEnrollment
 
 from openedx.core.djangoapps.ace_common.template_context import get_base_template_context
 from openedx.core.djangoapps.site_configuration import helpers as configuration_helpers
+from student.models import CourseEnrollment
 
 from .message_types import EnrolmentNotification
 from .utils import get_user_org_filter
