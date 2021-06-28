@@ -2,6 +2,7 @@
 Views for Admin Panel API
 """
 import uuid
+
 from django.contrib.auth.models import Group, User
 from django.db import transaction
 from django.db.models import F, Prefetch, Q
@@ -10,9 +11,9 @@ from rest_framework import generics, status, views, viewsets
 from rest_framework.authentication import SessionAuthentication
 from rest_framework.filters import OrderingFilter
 from rest_framework.response import Response
+from student.models import CourseEnrollment
 
 from openedx.features.pakx.lms.overrides.models import CourseProgressStats
-from student.models import CourseEnrollment
 
 from .constants import GROUP_ORGANIZATION_ADMIN, GROUP_TRAINING_MANAGERS, ORG_ADMIN, TRAINING_MANAGER
 from .pagination import CourseEnrollmentPagination, PakxAdminAppPagination
@@ -25,6 +26,7 @@ from .serializers import (
     UserProfileSerializer,
     UserSerializer
 )
+from .tasks import enroll_users
 from .utils import (
     get_learners_filter,
     get_roles_q_filters,
@@ -212,6 +214,9 @@ class UserProfileViewSet(viewsets.ModelViewSet):
 
 
 class CourseEnrolmentViewSet(viewsets.ModelViewSet):
+    """
+    Course view-set for bulk enrolment task
+    """
     def enroll_users(self, request, *args, **kwargs):
         if request.data.get("ids") and request.data.get("course_keys"):
             enroll_users.delay(self.request.user, request.data["ids"], request.data["course_keys"])

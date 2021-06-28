@@ -5,7 +5,14 @@ from django.conf.urls import url
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
-from .views import AnalyticsStats, LearnerListAPI, UserCourseEnrollmentsListAPI, UserInfo, UserProfileViewSet, CourseEnrolmentViewSet
+from .views import (
+    AnalyticsStats,
+    CourseEnrolmentViewSet,
+    LearnerListAPI,
+    UserCourseEnrollmentsListAPI,
+    UserInfo,
+    UserProfileViewSet
+)
 
 router = DefaultRouter()
 router.register('users', UserProfileViewSet, basename='users')
