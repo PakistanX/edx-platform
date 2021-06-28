@@ -190,7 +190,7 @@ class UserProfileViewSet(viewsets.ModelViewSet):
             employee_id=F('profile__employee_id'), name=F('first_name')
         ).order_by(
             *self.ordering
-        )
+        ).distinct()
 
     def activate_users(self, request, *args, **kwargs):
         return self.change_activation_status(True, request.data["ids"])
