@@ -4,7 +4,6 @@ from logging import getLogger
 
 from celery import task
 from django.conf import settings
-from django.contrib.auth.models import User
 from django.contrib.sites.models import Site
 from django.db import DatabaseError, transaction
 from edx_ace import Recipient, ace
@@ -15,7 +14,7 @@ from openedx.core.djangoapps.site_configuration import helpers as configuration_
 from student.models import CourseEnrollment
 
 from .message_types import EnrolmentNotification
-from .utils import get_user_org_filter
+from .utils import get_accessible_users
 
 log = getLogger(__name__)
 
@@ -37,6 +36,7 @@ def get_enrolment_email_message_context(user, courses):
     return message_context
 
 
+@task(name='send course enrolment email')
 def send_course_enrolment_email(users, course_keys):
     """
     send a course enrolment notification via email
@@ -51,17 +51,6 @@ def send_course_enrolment_email(users, course_keys):
         ace.send(message)
 
 
-def get_queryset(user):
-    if user.is_superuser:
-        queryset = User.objects.all()
-    else:
-        queryset = User.objects.filter(get_user_org_filter(user))
-
-    return queryset.select_related(
-        'profile'
-    )
-
-
 @task(name='enroll_users')
 def enroll_users(request_user, user_ids, course_keys):
     """
@@ -73,12 +62,12 @@ def enroll_users(request_user, user_ids, course_keys):
     users_enrolled = []
     try:
         with transaction.atomic():
-            for user in get_queryset(request_user).filter(id__in=user_ids):
-                for course_key in course_keys:
+            for course_key in course_keys:
+                for user in get_accessible_users(request_user).filter(id__in=user_ids):
                     CourseEnrollment.enroll(user,
                                             CourseKey.from_string(course_key))
                     users_enrolled.append(user)
-        send_course_enrolment_email(users_enrolled, course_keys)
+        send_course_enrolment_email.delay(users_enrolled, course_keys)
         log.info("Enrolled user(s): {}".format(users_enrolled))
     except DatabaseError:
         log.info("Task terminated!")
