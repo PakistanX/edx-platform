@@ -10,13 +10,13 @@ from django.http import Http404
 from django.middleware import csrf
 from django.utils.decorators import method_decorator
 from rest_framework import generics, status, views, viewsets
-from rest_framework.authentication import SessionAuthentication, BasicAuthentication
+from rest_framework.authentication import BasicAuthentication, SessionAuthentication
 from rest_framework.filters import OrderingFilter
 from rest_framework.response import Response
 
+from student.models import CourseEnrollment
 from openedx.core.djangoapps.cors_csrf.decorators import ensure_csrf_cookie_cross_domain
 from openedx.features.pakx.lms.overrides.models import CourseProgressStats
-from student.models import CourseEnrollment
 
 from .constants import GROUP_ORGANIZATION_ADMIN, GROUP_TRAINING_MANAGERS, ORG_ADMIN, TRAINING_MANAGER
 from .pagination import CourseEnrollmentPagination, PakxAdminAppPagination
@@ -32,10 +32,11 @@ from .serializers import (
 from .tasks import enroll_users
 from .utils import (
     get_learners_filter,
+    get_org_users_qs,
     get_roles_q_filters,
     get_user_org_filter,
     send_registration_email,
-    specify_user_role, get_org_users_qs
+    specify_user_role
 )
 
 COMPLETED_COURSE_COUNT = Count("courseenrollment", filter=Q(

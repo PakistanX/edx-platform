@@ -2,7 +2,7 @@
 helpers functions for Admin Panel API
 """
 from django.conf import settings
-from django.contrib.auth.models import User, Group
+from django.contrib.auth.models import Group, User
 from django.contrib.auth.tokens import default_token_generator
 from django.contrib.sites.models import Site
 from django.db.models.query_utils import Q
