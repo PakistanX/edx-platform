@@ -13,6 +13,7 @@ class UserCourseEnrollmentSerializer(serializers.ModelSerializer):
     """
     Serializer for list API of user course enrollment
     """
+    course_id = serializers.CharField(source='course.id')
     display_name = serializers.CharField(source='course.display_name')
     enrollment_status = serializers.CharField(source='mode')
     enrollment_date = serializers.SerializerMethodField()
@@ -22,7 +23,10 @@ class UserCourseEnrollmentSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CourseEnrollment
-        fields = ('display_name', 'enrollment_status', 'enrollment_date', 'progress', 'completion_date', 'grades')
+        fields = (
+            'course_id', 'display_name', 'enrollment_status', 'enrollment_date',
+            'progress', 'completion_date', 'grades'
+        )
 
     @staticmethod
     def get_enrollment_date(obj):
@@ -30,21 +34,15 @@ class UserCourseEnrollmentSerializer(serializers.ModelSerializer):
 
     @staticmethod
     def get_progress(obj):
-        # todo: refactor this by refactoring courseprogressstats relation with user/organization
-        course_stats = [c for c in obj.user.courseprogressstats_set.all() if c.course_id == obj.course_id]
-        return course_stats[0].progress if course_stats else None
+        return obj.enrollment_stats.progress if obj.enrollment_stats else None
 
     @staticmethod
     def get_completion_date(obj):
-        # todo: refactor this by refactoring courseprogressstats relation with user/organization
-        course_stats = [c for c in obj.user.courseprogressstats_set.all() if c.course_id == obj.course_id]
-        return course_stats[0].completion_date if course_stats else None
+        return obj.enrollment_stats.completion_date if obj.enrollment_stats else None
 
     @staticmethod
     def get_grades(obj):
-        # todo: refactor this by refactoring courseprogressstats relation with user/organization
-        course_stats = [c for c in obj.user.courseprogressstats_set.all() if c.course_id == obj.course_id]
-        return course_stats[0].grade if course_stats else None
+        return obj.enrollment_stats.grade if obj.enrollment_stats else None
 
 
 class UserDetailViewSerializer(serializers.ModelSerializer):
@@ -52,7 +50,7 @@ class UserDetailViewSerializer(serializers.ModelSerializer):
     Serializer User's object retrieve view
     """
     employee_id = serializers.CharField(source='profile.employee_id')
-    name = serializers.CharField(source='get_full_name')
+    name = serializers.CharField(source='profile.name')
     course_enrolled = serializers.SerializerMethodField()
     completed_courses = serializers.SerializerMethodField()
 
@@ -63,11 +61,11 @@ class UserDetailViewSerializer(serializers.ModelSerializer):
 
     @staticmethod
     def get_course_enrolled(obj):
-        return len(obj.courseprogressstats_set.all())
+        return obj.completed + obj.in_prog
 
     @staticmethod
     def get_completed_courses(obj):
-        return len([stat for stat in obj.courseprogressstats_set.all() if stat.progress == 100])
+        return obj.completed
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -76,7 +74,7 @@ class UserSerializer(serializers.ModelSerializer):
     """
     employee_id = serializers.CharField(source='profile.employee_id')
     language = serializers.CharField(source='profile.language')
-    name = serializers.CharField(source='get_full_name')
+    name = serializers.CharField(source='profile.name')
     role = serializers.SerializerMethodField()
 
     class Meta:
@@ -107,7 +105,7 @@ class LearnersSerializer(serializers.ModelSerializer):
     """
     Serializer Learner list view for analytics view list view
     """
-    name = serializers.CharField(source='get_full_name')
+    name = serializers.CharField(source='profile.name')
     assigned_courses = serializers.SerializerMethodField()
     incomplete_courses = serializers.SerializerMethodField()
     completed_courses = serializers.SerializerMethodField()
@@ -118,12 +116,13 @@ class LearnersSerializer(serializers.ModelSerializer):
 
     @staticmethod
     def get_assigned_courses(obj):
-        return len(obj.course_stats)
+        return len(obj.enrollment)
 
     @staticmethod
     def get_incomplete_courses(obj):
-        return len([stat for stat in obj.course_stats if stat.progress < 100])
+
+        return len([stat for stat in obj.enrollment if stat.enrollment_stats.progress < 100])
 
     @staticmethod
     def get_completed_courses(obj):
-        return len([stat for stat in obj.course_stats if stat.progress == 100])
+        return len([stat for stat in obj.enrollment if stat.enrollment_stats.progress == 100])
