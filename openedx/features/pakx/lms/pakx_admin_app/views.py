@@ -8,7 +8,7 @@ from django.db import transaction
 from django.db.models import F, Prefetch, Q
 from django.http import Http404
 from rest_framework import generics, status, views, viewsets
-from rest_framework.authentication import SessionAuthentication
+from rest_framework.authentication import SessionAuthentication, BasicAuthentication
 from rest_framework.filters import OrderingFilter
 from rest_framework.response import Response
 
@@ -32,7 +32,7 @@ from .utils import (
     get_roles_q_filters,
     get_user_org_filter,
     send_registration_email,
-    specify_user_role
+    specify_user_role, get_org_users_qs
 )
 
 
@@ -67,7 +67,7 @@ class UserProfileViewSet(viewsets.ModelViewSet):
     """
     User view-set for user listing/create/update/active/de-active
     """
-    authentication_classes = [SessionAuthentication]
+    authentication_classes = [SessionAuthentication, BasicAuthentication]
     permission_classes = [CanAccessPakXAdminPanel]
     pagination_class = PakxAdminAppPagination
     serializer_class = UserSerializer
@@ -76,14 +76,14 @@ class UserProfileViewSet(viewsets.ModelViewSet):
     ordering = ['-id']
 
     def get_object(self):
+        group_qs = Group.objects.filter(name__in=[GROUP_TRAINING_MANAGERS, GROUP_ORGANIZATION_ADMIN]).order_by('name')
         user_obj = User.objects.filter(
             id=self.kwargs['pk']
         ).select_related(
             'profile'
         ).prefetch_related(
-            'courseprogressstats_set'
+            Prefetch('groups', to_attr='staff_groups', queryset=group_qs), 'courseprogressstats_set'
         ).first()
-
         if user_obj:
             return user_obj
         raise Http404
@@ -217,10 +217,18 @@ class CourseEnrolmentViewSet(viewsets.ModelViewSet):
     """
     Course view-set for bulk enrolment task
     """
+    authentication_classes = [SessionAuthentication, BasicAuthentication]
+    permission_classes = [CanAccessPakXAdminPanel]
+
     def enroll_users(self, request, *args, **kwargs):
-        if request.data.get("ids") and request.data.get("course_keys"):
-            enroll_users.delay(self.request.user, request.data["ids"], request.data["course_keys"])
-            return Response(status=status.HTTP_200_OK)
+        user_qs = get_org_users_qs(request.user).values_list('id', flat=True).filter(id__in=request.data["user_ids"])
+        if request.data.get("user_ids") and request.data.get("course_keys"):
+            if len(request.data["user_ids"]) == len(user_qs):
+                enroll_users.delay(self.request.user.id, request.data["user_ids"], request.data["course_keys"])
+                return Response(status=status.HTTP_200_OK)
+            return Response(
+                {"User(s) not found!": list(set(request.data["user_ids"]) - set(list(user_qs)))},
+                status=status.HTTP_404_NOT_FOUND)
         return Response(status=status.HTTP_400_BAD_REQUEST)
 
 

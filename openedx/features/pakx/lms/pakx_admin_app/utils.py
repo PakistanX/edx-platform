@@ -83,14 +83,14 @@ def get_registration_email_message_context(user, user_profile, protocol):
     return message_context
 
 
-def get_accessible_users(user):
+def get_org_users_qs(user):
     """
     return users from the same organization as of the request.user
     """
     if user.is_superuser:
         queryset = User.objects.all()
     else:
-        queryset = User.objects.filter(get_user_org_filter(user))
+        queryset = User.objects.filter(**get_user_org_filter(user))
 
     return queryset.select_related(
         'profile'
