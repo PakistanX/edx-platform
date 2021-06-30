@@ -10,7 +10,7 @@ from django.http import Http404
 from django.middleware import csrf
 from django.utils.decorators import method_decorator
 from rest_framework import generics, status, views, viewsets
-from rest_framework.authentication import BasicAuthentication, SessionAuthentication
+from rest_framework.authentication import SessionAuthentication
 from rest_framework.filters import OrderingFilter
 from rest_framework.response import Response
 
@@ -105,7 +105,7 @@ class UserProfileViewSet(viewsets.ModelViewSet):
     """
     User view-set for user listing/create/update/active/de-active
     """
-    authentication_classes = [SessionAuthentication, BasicAuthentication]
+    authentication_classes = [SessionAuthentication]
     permission_classes = [CanAccessPakXAdminPanel]
     pagination_class = PakxAdminAppPagination
     serializer_class = UserSerializer
@@ -260,7 +260,7 @@ class CourseEnrolmentViewSet(viewsets.ModelViewSet):
     """
     Course view-set for bulk enrolment task
     """
-    authentication_classes = [SessionAuthentication, BasicAuthentication]
+    authentication_classes = [SessionAuthentication]
     permission_classes = [CanAccessPakXAdminPanel]
 
     def enroll_users(self, request, *args, **kwargs):
