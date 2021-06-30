@@ -14,9 +14,9 @@ from rest_framework.authentication import BasicAuthentication, SessionAuthentica
 from rest_framework.filters import OrderingFilter
 from rest_framework.response import Response
 
-from student.models import CourseEnrollment
 from openedx.core.djangoapps.cors_csrf.decorators import ensure_csrf_cookie_cross_domain
 from openedx.features.pakx.lms.overrides.models import CourseProgressStats
+from student.models import CourseEnrollment
 
 from .constants import GROUP_ORGANIZATION_ADMIN, GROUP_TRAINING_MANAGERS, ORG_ADMIN, TRAINING_MANAGER
 from .pagination import CourseEnrollmentPagination, PakxAdminAppPagination
@@ -105,7 +105,7 @@ class UserProfileViewSet(viewsets.ModelViewSet):
     """
     User view-set for user listing/create/update/active/de-active
     """
-    authentication_classes = [SessionAuthentication]
+    authentication_classes = [SessionAuthentication, BasicAuthentication]
     permission_classes = [CanAccessPakXAdminPanel]
     pagination_class = PakxAdminAppPagination
     serializer_class = UserSerializer
@@ -271,7 +271,7 @@ class CourseEnrolmentViewSet(viewsets.ModelViewSet):
                 return Response(status=status.HTTP_200_OK)
             return Response(
                 {"User(s) not found!": list(set(request.data["user_ids"]) - set(list(user_qs)))},
-                status=status.HTTP_404_NOT_FOUND)
+                status=status.HTTP_403_FORBIDDEN)
         return Response(status=status.HTTP_400_BAD_REQUEST)
 
 

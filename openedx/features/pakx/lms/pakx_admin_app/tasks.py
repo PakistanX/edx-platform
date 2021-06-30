@@ -38,12 +38,12 @@ def get_enrolment_email_message_context(user, courses):
 
 
 @task(name='send course enrolment email')
-def send_course_enrolment_email(request_user_id, user_ids, course_keys):
+def send_course_enrolment_email(request_user_id, user_ids, course_keys_string):
     """
     send a course enrolment notification via email
     :param request_user_id: (int) request user id
     :param user_ids: (list<int>) user ids
-    :param course_keys: (list<string>) course key
+    :param course_keys_string: (list<string>) course key
     """
     request_user = User.objects.filter(id=request_user_id).first()
     if request_user:
@@ -51,7 +51,7 @@ def send_course_enrolment_email(request_user_id, user_ids, course_keys):
             message = EnrolmentNotification().personalize(
                 recipient=Recipient(user.username, user.email),
                 language='en',
-                user_context=get_enrolment_email_message_context(user, course_keys),
+                user_context=get_enrolment_email_message_context(user, course_keys_string),
             )
             ace.send(message)
     else:
@@ -59,23 +59,28 @@ def send_course_enrolment_email(request_user_id, user_ids, course_keys):
 
 
 @task(name='enroll_users')
-def enroll_users(request_user_id, user_ids, course_keys):
+def enroll_users(request_user_id, user_ids, course_keys_string):
     """
     Enroll users in courses
     :param request_user_id: (int) request user id
     :param user_ids: (list<int>) user ids
-    :param course_keys: (list<string>) course key
+    :param course_keys_string: (list<string>) course key
     """
     request_user = User.objects.filter(id=request_user_id).first()
     if request_user:
         enrolled_users_id = []
+        all_users = get_org_users_qs(request_user).filter(id__in=user_ids)
+        course_keys = []
+        for course_key_string in course_keys_string:
+            course_keys.append(CourseKey.from_string(course_key_string))
         try:
             with transaction.atomic():
                 for course_key in course_keys:
-                    for user in get_org_users_qs(request_user).filter(id__in=user_ids):
-                        CourseEnrollment.enroll(user, CourseKey.from_string(course_key))
-                        enrolled_users_id.append(user.id)
-            send_course_enrolment_email.delay(request_user_id, enrolled_users_id, course_keys)
+                    for user in all_users:
+                        CourseEnrollment.enroll(user, course_key)
+                        if user.id not in enrolled_users_id:
+                            enrolled_users_id.append(user.id)
+            send_course_enrolment_email.delay(request_user_id, enrolled_users_id, course_keys_string)
             log.info("Enrolled user(s): {}".format(enrolled_users_id))
         except DatabaseError:
             log.info("Task terminated!")
