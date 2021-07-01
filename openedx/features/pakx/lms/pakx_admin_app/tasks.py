@@ -70,12 +70,10 @@ def enroll_users(request_user_id, user_ids, course_keys_string):
     if request_user:
         enrolled_users_id = []
         all_users = get_org_users_qs(request_user).filter(id__in=user_ids)
-        course_keys = []
-        for course_key_string in course_keys_string:
-            course_keys.append(CourseKey.from_string(course_key_string))
         try:
             with transaction.atomic():
-                for course_key in course_keys:
+                for course_key_string in course_keys_string:
+                    course_key = CourseKey.from_string(course_key_string)
                     for user in all_users:
                         CourseEnrollment.enroll(user, course_key)
                         if user.id not in enrolled_users_id:
