@@ -264,7 +264,7 @@ class CourseEnrolmentViewSet(viewsets.ModelViewSet):
     permission_classes = [CanAccessPakXAdminPanel]
 
     def enroll_users(self, request, *args, **kwargs):
-        user_qs = get_org_users_qs(request.user).values_list('id', flat=True).filter(id__in=request.data["user_ids"])
+        user_qs = get_org_users_qs(request.user).filter(id__in=request.data["user_ids"]).values_list('id', flat=True)
         if request.data.get("user_ids") and request.data.get("course_keys"):
             if len(request.data["user_ids"]) == len(user_qs):
                 enroll_users.delay(self.request.user.id, request.data["user_ids"], request.data["course_keys"])
