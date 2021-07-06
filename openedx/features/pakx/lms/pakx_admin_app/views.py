@@ -16,7 +16,7 @@ from rest_framework.response import Response
 
 from openedx.core.djangoapps.cors_csrf.decorators import ensure_csrf_cookie_cross_domain
 from openedx.features.pakx.lms.overrides.models import CourseProgressStats
-from student.models import CourseEnrollment
+from student.models import CourseEnrollment, LanguageProficiency
 
 from .constants import GROUP_ORGANIZATION_ADMIN, GROUP_TRAINING_MANAGERS, ORG_ADMIN, TRAINING_MANAGER
 from .pagination import CourseEnrollmentPagination, PakxAdminAppPagination
@@ -198,9 +198,9 @@ class UserProfileViewSet(viewsets.ModelViewSet):
             'languages') else []
 
         if languages:
-            self.queryset = self.queryset.filter(profile__language__in=languages)
+            self.queryset = self.queryset.filter(profile__language_proficiencies__code__in=languages)
 
-        search = self.request.query_params.get('search', '').strip()
+        search = self.request.query_params.get('search', '').strip().lower()
         for s_text in search.split():
             self.queryset = self.queryset.filter(
                 Q(first_name__contains=s_text) | Q(last_name__contains=s_text) | Q(email__contains=s_text)
@@ -373,11 +373,19 @@ class UserInfo(views.APIView):
         """
         get user's basic info
         """
+        if self.request.user.is_superuser:
+            languages_qs = LanguageProficiency.objects.all()
+        else:
+            languages_qs = LanguageProficiency.objects.filter(
+                user_profile__organization=self.request.user.profile.organization_id
+            )
+
         user_info = {
             'name': self.request.user.get_full_name(),
             'username': self.request.user.username,
             'is_superuser': self.request.user.is_superuser,
             'csrf_token': csrf.get_token(self.request),
+            'languages': [{'code': lang.code, 'value': lang.get_code_display()} for lang in languages_qs],
             'role': None
         }
         user_groups = Group.objects.filter(
