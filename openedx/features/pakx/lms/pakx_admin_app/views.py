@@ -89,8 +89,6 @@ class UserCourseEnrollmentsListAPI(generics.ListAPIView):
         ).select_related(
             'enrollment_stats',
             'course'
-        ).prefetch_related(
-            'user__courseprogressstats_set'
         ).order_by(
             '-id'
         )
