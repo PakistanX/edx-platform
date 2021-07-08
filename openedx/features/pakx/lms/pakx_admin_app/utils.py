@@ -24,8 +24,7 @@ def get_user_org_filter(user):
 
 def get_learners_filter():
     return Q(
-        Q(is_superuser=False) & Q(is_staff=False) &
-        ~Q(groups__name__in=[GROUP_TRAINING_MANAGERS, GROUP_ORGANIZATION_ADMIN])
+        Q(is_superuser=False) & Q(is_staff=False)
     )
 
 
