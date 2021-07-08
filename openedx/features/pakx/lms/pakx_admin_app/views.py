@@ -211,7 +211,8 @@ class UserProfileViewSet(viewsets.ModelViewSet):
             return self.get_paginated_response(self.get_serializer(page, many=True).data + [
                 {"total users": len(self.get_queryset())}])
 
-        return Response(self.get_serializer(self.queryset, many=True).data + [{"total users": len(self.get_queryset())}])
+        return Response(
+            self.get_serializer(self.queryset, many=True).data + [{"total users": len(self.get_queryset())}])
 
     def get_queryset(self):
         if self.request.query_params.get("ordering"):
