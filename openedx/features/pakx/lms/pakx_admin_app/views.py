@@ -200,9 +200,7 @@ class UserProfileViewSet(viewsets.ModelViewSet):
 
         search = self.request.query_params.get('search', '').strip().lower()
         for s_text in search.split():
-            self.queryset = self.queryset.filter(
-                Q(first_name__contains=s_text) | Q(last_name__contains=s_text) | Q(email__contains=s_text)
-            )
+            self.queryset = self.queryset.filter(Q(profile__name__icontains=s_text) | Q(email__icontains=s_text))
 
         page = self.paginate_queryset(self.queryset)
         if page is not None:
