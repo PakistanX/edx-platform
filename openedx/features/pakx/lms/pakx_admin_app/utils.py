@@ -87,9 +87,9 @@ def get_org_users_qs(user):
     return users from the same organization as of the request.user
     """
     if user.is_superuser:
-        queryset = User.objects.all()
+        queryset = User.objects.filter(is_superuser=False, is_staff=False)
     else:
-        queryset = User.objects.filter(**get_user_org_filter(user))
+        queryset = User.objects.filter(**get_user_org_filter(user), is_superuser=False, is_staff=False)
 
     return queryset.select_related(
         'profile'
