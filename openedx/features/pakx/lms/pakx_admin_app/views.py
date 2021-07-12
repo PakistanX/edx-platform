@@ -10,16 +10,17 @@ from django.http import Http404
 from django.middleware import csrf
 from django.utils.decorators import method_decorator
 from rest_framework import generics, status, views, viewsets
-from rest_framework.authentication import SessionAuthentication
+from rest_framework.authentication import SessionAuthentication, BasicAuthentication
 from rest_framework.filters import OrderingFilter
 from rest_framework.response import Response
 
 from openedx.core.djangoapps.cors_csrf.decorators import ensure_csrf_cookie_cross_domain
 from openedx.features.pakx.lms.overrides.models import CourseProgressStats
+from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
 from student.models import CourseEnrollment, LanguageProficiency
 
 from .constants import GROUP_ORGANIZATION_ADMIN, GROUP_TRAINING_MANAGERS, ORG_ADMIN, TRAINING_MANAGER
-from .pagination import CourseEnrollmentPagination, PakxAdminAppPagination
+from .pagination import CourseEnrollmentPagination, UserViewSetPagination, CourseViewSetPagination
 from .permissions import CanAccessPakXAdminPanel, IsSameOrganization
 from .serializers import (
     BasicUserSerializer,
@@ -27,7 +28,8 @@ from .serializers import (
     UserCourseEnrollmentSerializer,
     UserDetailViewSerializer,
     UserProfileSerializer,
-    UserSerializer
+    UserSerializer,
+    CoursesSerializer
 )
 from .tasks import enroll_users
 from .utils import (
@@ -105,7 +107,7 @@ class UserProfileViewSet(viewsets.ModelViewSet):
     """
     authentication_classes = [SessionAuthentication]
     permission_classes = [CanAccessPakXAdminPanel]
-    pagination_class = PakxAdminAppPagination
+    pagination_class = UserViewSetPagination
     serializer_class = UserSerializer
     filter_backends = [OrderingFilter]
     OrderingFilter.ordering_fields = ('id', 'name', 'email', 'employee_id')
@@ -298,8 +300,9 @@ class AnalyticsStats(views.APIView):
 
         user_ids = user_qs.values_list('id', flat=True)
         course_stats = user_qs.annotate(passed=ExpressionWrapper(COMPLETED_COURSE_COUNT,
-                                        output_field=IntegerField()), in_progress=ExpressionWrapper(
-            IN_PROGRESS_COURSE_COUNT, output_field=IntegerField())).aggregate(
+                                                                 output_field=IntegerField()),
+                                        in_progress=ExpressionWrapper(
+                                            IN_PROGRESS_COURSE_COUNT, output_field=IntegerField())).aggregate(
             completions=Sum(F('passed')), pending=Sum(F('in_progress')))
         data = {'learner_count': len(user_ids), 'course_in_progress': course_stats.get('pending', 0),
                 'completed_course_count': course_stats.get('completions', 0)}
@@ -343,7 +346,7 @@ class LearnerListAPI(generics.ListAPIView):
 
     authentication_classes = [SessionAuthentication]
     permission_classes = [CanAccessPakXAdminPanel]
-    pagination_class = PakxAdminAppPagination
+    pagination_class = UserViewSetPagination
     serializer_class = LearnersSerializer
 
     def get_queryset(self):
@@ -391,3 +394,20 @@ class UserInfo(views.APIView):
             user_info['role'] = TRAINING_MANAGER if user_groups.name == GROUP_TRAINING_MANAGERS else ORG_ADMIN
 
         return Response(status=status.HTTP_200_OK, data=user_info)
+
+
+class CourseViewSet(viewsets.ModelViewSet):
+    authentication_classes = [SessionAuthentication]
+    permission_classes = [CanAccessPakXAdminPanel]
+    pagination_class = CourseViewSetPagination
+    serializer_class = CoursesSerializer
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            return self.get_paginated_response(self.get_serializer(page, many=True).data)
+        return Response(self.get_serializer(queryset, many=True).data)
+
+    def get_queryset(self):
+        return CourseOverview.objects.all()

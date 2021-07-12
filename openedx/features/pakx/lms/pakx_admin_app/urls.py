@@ -11,11 +11,14 @@ from .views import (
     LearnerListAPI,
     UserCourseEnrollmentsListAPI,
     UserInfo,
-    UserProfileViewSet
+    UserProfileViewSet,
+    CourseViewSet
 )
 
-router = DefaultRouter()
-router.register('users', UserProfileViewSet, basename='users')
+user_viewset_router = DefaultRouter()
+user_viewset_router.register('users', UserProfileViewSet, basename='users')
+course_viewset_router = DefaultRouter()
+course_viewset_router.register('courses', CourseViewSet, basename='courses')
 
 urlpatterns = [
     url(r'^users/activate/$', UserProfileViewSet.as_view({"post": "activate_users"})),
@@ -25,5 +28,6 @@ urlpatterns = [
     url(r'^userinfo/$', UserInfo.as_view()),
     url(r'^analytics/stats/$', AnalyticsStats.as_view()),
     url(r'^analytics/learners/$', LearnerListAPI.as_view()),
-    path('', include(router.urls)),
+    path('', include(user_viewset_router.urls)),
+    path('', include(course_viewset_router.urls)),
 ]

@@ -4,6 +4,7 @@ Serializer for Admin Panel APIs
 from django.contrib.auth.models import User
 from rest_framework import serializers
 
+from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
 from student.models import CourseEnrollment, UserProfile
 
 from .constants import GROUP_TRAINING_MANAGERS, LEARNER, ORG_ADMIN, TRAINING_MANAGER
@@ -126,3 +127,9 @@ class LearnersSerializer(serializers.ModelSerializer):
     @staticmethod
     def get_completed_courses(obj):
         return len([stat for stat in obj.enrollment if stat.enrollment_stats.progress == 100])
+
+
+class CoursesSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CourseOverview
+        fields = ('display_name', 'start_date', 'end_date')
