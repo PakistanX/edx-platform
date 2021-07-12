@@ -8,11 +8,11 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     AnalyticsStats,
     CourseEnrolmentViewSet,
+    CourseViewSet,
     LearnerListAPI,
     UserCourseEnrollmentsListAPI,
     UserInfo,
-    UserProfileViewSet,
-    CourseViewSet
+    UserProfileViewSet
 )
 
 user_viewset_router = DefaultRouter()

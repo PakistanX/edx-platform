@@ -14,22 +14,22 @@ from rest_framework.authentication import SessionAuthentication
 from rest_framework.filters import OrderingFilter
 from rest_framework.response import Response
 
+from student.models import CourseEnrollment, LanguageProficiency
+from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
 from openedx.core.djangoapps.cors_csrf.decorators import ensure_csrf_cookie_cross_domain
 from openedx.features.pakx.lms.overrides.models import CourseProgressStats
-from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
-from student.models import CourseEnrollment, LanguageProficiency
 
 from .constants import GROUP_ORGANIZATION_ADMIN, GROUP_TRAINING_MANAGERS, ORG_ADMIN, TRAINING_MANAGER
-from .pagination import CourseEnrollmentPagination, UserViewSetPagination, CourseViewSetPagination
+from .pagination import CourseEnrollmentPagination, CourseViewSetPagination, UserViewSetPagination
 from .permissions import CanAccessPakXAdminPanel, IsSameOrganization
 from .serializers import (
     BasicUserSerializer,
+    CoursesSerializer,
     LearnersSerializer,
     UserCourseEnrollmentSerializer,
     UserDetailViewSerializer,
     UserProfileSerializer,
-    UserSerializer,
-    CoursesSerializer
+    UserSerializer
 )
 from .tasks import enroll_users
 from .utils import (
