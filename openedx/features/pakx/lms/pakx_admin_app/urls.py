@@ -9,6 +9,7 @@ from .views import (
     AnalyticsStats,
     CourseEnrolmentViewSet,
     CourseListAPI,
+    CourseStatsListAPI,
     LearnerListAPI,
     UserCourseEnrollmentsListAPI,
     UserInfo,
@@ -28,4 +29,6 @@ urlpatterns = [
     url(r'^analytics/learners/$', LearnerListAPI.as_view()),
     url(r'^courses/$', CourseListAPI.as_view()),
     path('', include(user_viewset_router.urls)),
+    url(r'^courses/stats/$', CourseStatsListAPI.as_view()),
+    path('', include(router.urls)),
 ]

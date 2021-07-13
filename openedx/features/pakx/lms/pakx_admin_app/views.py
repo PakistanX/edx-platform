@@ -25,6 +25,7 @@ from .permissions import CanAccessPakXAdminPanel, IsSameOrganization
 from .serializers import (
     BasicUserSerializer,
     CoursesSerializer,
+    CourseStatsListSerializer,
     LearnersSerializer,
     UserCourseEnrollmentSerializer,
     UserDetailViewSerializer,
@@ -309,6 +310,49 @@ class AnalyticsStats(views.APIView):
 
         data['course_assignment_count'] = data['course_in_progress'] + data['completed_course_count']
         return Response(status=status.HTTP_200_OK, data=data)
+
+
+class CourseStatsListAPI(generics.ListAPIView):
+    """
+    API view for learners list
+    <lms>/adminpanel/courses/stats/
+    :returns
+        [
+            {
+                "display_name": "Preventing Workplace Harassment",
+                "enrolled": 2,
+                "completed": 1,
+                "in_progress": 1,
+                "completion_rate": 50
+            },
+            {
+                "display_name": "Demonstration Course",
+                "enrolled": 2,
+                "completed": 0,
+                "in_progress": 2,
+                "completion_rate": 0
+            },
+            {
+                "display_name": "E2E Test Course",
+                "enrolled": 0,
+                "completed": 0,
+                "in_progress": 0,
+                "completion_rate": 0
+            }
+        ]
+    """
+
+    authentication_classes = [SessionAuthentication]
+    permission_classes = [CanAccessPakXAdminPanel]
+    pagination_class = None
+    queryset = CourseOverview.objects.all()
+    serializer_class = CourseStatsListSerializer
+
+    def get_queryset(self):
+        return CourseOverview.objects.all().annotate(
+            in_progress=IN_PROGRESS_COURSE_COUNT,
+            completed=COMPLETED_COURSE_COUNT
+        )
 
 
 class LearnerListAPI(generics.ListAPIView):
