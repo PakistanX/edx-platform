@@ -8,7 +8,7 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     AnalyticsStats,
     CourseEnrolmentViewSet,
-    CourseViewSet,
+    CourseListAPI,
     LearnerListAPI,
     UserCourseEnrollmentsListAPI,
     UserInfo,
@@ -17,8 +17,6 @@ from .views import (
 
 user_viewset_router = DefaultRouter()
 user_viewset_router.register('users', UserProfileViewSet, basename='users')
-course_viewset_router = DefaultRouter()
-course_viewset_router.register('courses', CourseViewSet, basename='courses')
 
 urlpatterns = [
     url(r'^users/activate/$', UserProfileViewSet.as_view({"post": "activate_users"})),
@@ -28,6 +26,6 @@ urlpatterns = [
     url(r'^userinfo/$', UserInfo.as_view()),
     url(r'^analytics/stats/$', AnalyticsStats.as_view()),
     url(r'^analytics/learners/$', LearnerListAPI.as_view()),
+    url(r'^courses/$', CourseListAPI.as_view()),
     path('', include(user_viewset_router.urls)),
-    path('', include(course_viewset_router.urls)),
 ]

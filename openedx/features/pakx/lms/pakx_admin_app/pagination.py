@@ -4,19 +4,11 @@ module for custom pagination classes
 from rest_framework.pagination import PageNumberPagination
 
 
-class UserViewSetPagination(PageNumberPagination):
+class PakxAdminAppPagination(PageNumberPagination):
     """
     Basic pagination for PakX Admin Panel
     """
     page_size = 10
-    page_size_query_param = 'page_size'
-
-
-class CourseViewSetPagination(PageNumberPagination):
-    """
-    Basic pagination for PakX Admin Panel
-    """
-    page_size = 1
     page_size_query_param = 'page_size'
 
 

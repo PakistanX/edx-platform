@@ -6,6 +6,7 @@ from rest_framework import serializers
 
 from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
 from student.models import CourseEnrollment, UserProfile
+from student.roles import CourseInstructorRole
 
 from .constants import GROUP_TRAINING_MANAGERS, LEARNER, ORG_ADMIN, TRAINING_MANAGER
 
@@ -130,6 +131,13 @@ class LearnersSerializer(serializers.ModelSerializer):
 
 
 class CoursesSerializer(serializers.ModelSerializer):
+
+    instructor = serializers.SerializerMethodField()
+
     class Meta:
         model = CourseOverview
-        fields = ('display_name', 'start_date', 'end_date')
+        fields = ('display_name', 'instructor', 'start_date', 'end_date', 'course_image_url')
+
+    @staticmethod
+    def get_instructor(obj):
+        return CourseInstructorRole(obj.id).users_with_role().values_list('username', flat=True)

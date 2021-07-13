@@ -20,7 +20,7 @@ from openedx.core.djangoapps.cors_csrf.decorators import ensure_csrf_cookie_cros
 from openedx.features.pakx.lms.overrides.models import CourseProgressStats
 
 from .constants import GROUP_ORGANIZATION_ADMIN, GROUP_TRAINING_MANAGERS, ORG_ADMIN, TRAINING_MANAGER
-from .pagination import CourseEnrollmentPagination, CourseViewSetPagination, UserViewSetPagination
+from .pagination import CourseEnrollmentPagination, PakxAdminAppPagination
 from .permissions import CanAccessPakXAdminPanel, IsSameOrganization
 from .serializers import (
     BasicUserSerializer,
@@ -107,7 +107,7 @@ class UserProfileViewSet(viewsets.ModelViewSet):
     """
     authentication_classes = [SessionAuthentication]
     permission_classes = [CanAccessPakXAdminPanel]
-    pagination_class = UserViewSetPagination
+    pagination_class = PakxAdminAppPagination
     serializer_class = UserSerializer
     filter_backends = [OrderingFilter]
     OrderingFilter.ordering_fields = ('id', 'name', 'email', 'employee_id')
@@ -346,7 +346,7 @@ class LearnerListAPI(generics.ListAPIView):
 
     authentication_classes = [SessionAuthentication]
     permission_classes = [CanAccessPakXAdminPanel]
-    pagination_class = UserViewSetPagination
+    pagination_class = PakxAdminAppPagination
     serializer_class = LearnersSerializer
 
     def get_queryset(self):
@@ -396,18 +396,13 @@ class UserInfo(views.APIView):
         return Response(status=status.HTTP_200_OK, data=user_info)
 
 
-class CourseViewSet(viewsets.ModelViewSet):
+class CourseListAPI(generics.ListAPIView):
     authentication_classes = [SessionAuthentication]
     permission_classes = [CanAccessPakXAdminPanel]
-    pagination_class = CourseViewSetPagination
+    pagination_class = PakxAdminAppPagination
     serializer_class = CoursesSerializer
 
-    def list(self, request, *args, **kwargs):
-        queryset = self.get_queryset()
-        page = self.paginate_queryset(queryset)
-        if page is not None:
-            return self.get_paginated_response(self.get_serializer(page, many=True).data)
-        return Response(self.get_serializer(queryset, many=True).data)
+    PakxAdminAppPagination.page_size = 3
 
     def get_queryset(self):
         return CourseOverview.objects.all()
