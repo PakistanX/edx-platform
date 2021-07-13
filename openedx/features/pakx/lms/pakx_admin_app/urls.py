@@ -28,7 +28,6 @@ urlpatterns = [
     url(r'^analytics/stats/$', AnalyticsStats.as_view()),
     url(r'^analytics/learners/$', LearnerListAPI.as_view()),
     url(r'^courses/$', CourseListAPI.as_view()),
-    path('', include(user_viewset_router.urls)),
     url(r'^courses/stats/$', CourseStatsListAPI.as_view()),
-    path('', include(router.urls)),
+    path('', include(user_viewset_router.urls)),
 ]
