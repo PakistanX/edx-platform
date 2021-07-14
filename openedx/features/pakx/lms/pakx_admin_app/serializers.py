@@ -1,14 +1,12 @@
 """
 Serializer for Admin Panel APIs
 """
-import pdb
 
 from django.contrib.auth.models import User
 from rest_framework import serializers
 
 from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
 from student.models import CourseEnrollment, UserProfile
-from student.roles import CourseInstructorRole
 
 from .constants import GROUP_TRAINING_MANAGERS, LEARNER, ORG_ADMIN, TRAINING_MANAGER
 

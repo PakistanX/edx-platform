@@ -13,8 +13,8 @@ from rest_framework import generics, status, views, viewsets
 from rest_framework.authentication import SessionAuthentication
 from rest_framework.filters import OrderingFilter
 from rest_framework.response import Response
+from student.models import CourseAccessRole, CourseEnrollment, LanguageProficiency
 
-from student.models import CourseEnrollment, LanguageProficiency, CourseAccessRole
 from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
 from openedx.core.djangoapps.cors_csrf.decorators import ensure_csrf_cookie_cross_domain
 from openedx.features.pakx.lms.overrides.models import CourseProgressStats
