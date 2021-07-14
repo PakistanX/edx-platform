@@ -14,7 +14,7 @@ from rest_framework.authentication import SessionAuthentication
 from rest_framework.filters import OrderingFilter
 from rest_framework.response import Response
 
-from student.models import CourseEnrollment, LanguageProficiency
+from student.models import CourseEnrollment, LanguageProficiency, CourseAccessRole
 from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
 from openedx.core.djangoapps.cors_csrf.decorators import ensure_csrf_cookie_cross_domain
 from openedx.features.pakx.lms.overrides.models import CourseProgressStats
@@ -448,5 +448,16 @@ class CourseListAPI(generics.ListAPIView):
 
     PakxAdminAppPagination.page_size = 3
 
+    instructors = {}
+
+    def get_serializer_context(self):
+        context = super(CourseListAPI, self).get_serializer_context()
+        context.update({"instructors": self.instructors})
+        return context
+
     def get_queryset(self):
-        return CourseOverview.objects.all()
+        queryset = CourseOverview.objects.all()
+        course_access_role_qs = CourseAccessRole.objects.filter(course_id__in=queryset.values_list('id'))
+        for course_access_role in course_access_role_qs:
+            self.instructors[course_access_role.course_id] = course_access_role.user.username
+        return queryset

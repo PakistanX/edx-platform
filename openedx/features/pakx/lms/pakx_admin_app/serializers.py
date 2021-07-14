@@ -1,6 +1,8 @@
 """
 Serializer for Admin Panel APIs
 """
+import pdb
+
 from django.contrib.auth.models import User
 from rest_framework import serializers
 
@@ -152,7 +154,6 @@ class LearnersSerializer(serializers.ModelSerializer):
 
     @staticmethod
     def get_incomplete_courses(obj):
-
         return len([stat for stat in obj.enrollment if stat.enrollment_stats.progress < 100])
 
     @staticmethod
@@ -161,13 +162,14 @@ class LearnersSerializer(serializers.ModelSerializer):
 
 
 class CoursesSerializer(serializers.ModelSerializer):
-
     instructor = serializers.SerializerMethodField()
 
     class Meta:
         model = CourseOverview
         fields = ('display_name', 'instructor', 'start_date', 'end_date', 'course_image_url')
 
-    @staticmethod
-    def get_instructor(obj):
-        return CourseInstructorRole(obj.id).users_with_role().values_list('username', flat=True)
+    def get_instructor(self, obj):
+        try:
+            return self.context['instructors'][obj.id]
+        except KeyError:
+            return None
