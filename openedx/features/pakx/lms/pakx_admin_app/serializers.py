@@ -167,7 +167,6 @@ class CoursesSerializer(serializers.ModelSerializer):
         fields = ('display_name', 'instructor', 'start_date', 'end_date', 'course_image_url')
 
     def get_instructor(self, obj):
-        try:
-            return self.context['instructors'][obj.id]
-        except KeyError:
-            return None
+        if self.context['instructors'].get(obj.id):
+            return self.context['instructors'][obj.id].keys()
+        return None
