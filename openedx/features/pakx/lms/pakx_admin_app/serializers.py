@@ -27,7 +27,7 @@ class CourseStatsListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CourseOverview
-        fields = ('display_name', 'enrolled', 'completed', 'in_progress', 'completion_rate')
+        fields = ('id', 'display_name', 'enrolled', 'completed', 'in_progress', 'completion_rate')
 
     @staticmethod
     def get_enrolled(obj):
