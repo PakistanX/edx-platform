@@ -20,7 +20,6 @@ from .constants import GROUP_ORGANIZATION_ADMIN, GROUP_TRAINING_MANAGERS, ORG_AD
 from .pagination import CourseEnrollmentPagination, PakxAdminAppPagination
 from .permissions import CanAccessPakXAdminPanel, IsSameOrganization
 from .serializers import (
-    BasicUserSerializer,
     CoursesSerializer,
     CourseStatsListSerializer,
     LearnersSerializer,
