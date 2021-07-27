@@ -442,9 +442,9 @@ class CourseListAPI(generics.ListAPIView):
         queryset = CourseOverview.objects.all()
         course_access_role_qs = CourseAccessRole.objects.filter(course_id__in=queryset.values_list('id'))
         for course_access_role in course_access_role_qs:
-            if self.instructors.get(course_access_role.course_id):
-                self.instructors[course_access_role.course_id][course_access_role.user.profile.name] = None
-                continue
-            self.instructors[course_access_role.course_id] = {course_access_role.user.profile.name: None}
+            course_instructors = self.instructors.get(course_access_role.course_id, [])
+            if course_access_role.user.profile.name not in course_instructors:
+                course_instructors.append(course_access_role.user.profile.name)
+            self.instructors[course_access_role.course_id] = course_instructors
 
         return queryset
