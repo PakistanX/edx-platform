@@ -440,7 +440,8 @@ class CourseListAPI(generics.ListAPIView):
 
     def get_queryset(self):
         queryset = CourseOverview.objects.all()
-        course_access_role_qs = CourseAccessRole.objects.filter(course_id__in=queryset.values_list('id')).select_related('user__profile')
+        course_access_role_qs = CourseAccessRole.objects.filter(course_id__in=queryset.values_list('id'))\
+            .select_related('user__profile')
 
         for course_access_role in course_access_role_qs:
             course_instructors = self.instructors.get(course_access_role.course_id, [])
