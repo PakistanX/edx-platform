@@ -1,6 +1,7 @@
 """
 Serializer for Admin Panel APIs
 """
+import re
 from uuid import uuid4
 
 from django.contrib.auth.models import User
@@ -35,7 +36,8 @@ class CourseStatsListSerializer(serializers.ModelSerializer):
 
     @staticmethod
     def get_completion_rate(obj):
-        return 0 if not obj.completed else (obj.completed / (obj.completed + obj.in_progress)) * 100
+        completion_rate = 0 if not obj.completed else (obj.completed / (obj.completed + obj.in_progress)) * 100
+        return format(completion_rate, ".2f")
 
     @staticmethod
     def get_in_progress(obj):
@@ -129,19 +131,27 @@ class UserListingSerializer(serializers.ModelSerializer):
 class UserProfileSerializer(serializers.ModelSerializer):
     language_code = LanguageProficiencySerializer(write_only=True)
     languages = serializers.SerializerMethodField(read_only=True)
+    name = serializers.CharField(required=True)
 
     class Meta:
         model = UserProfile
         fields = ('name', 'employee_id', 'languages', 'language_code', 'organization')
 
     def validate_name(self, value):
-        if not self.instance and not value.strip():
-            raise serializers.ValidationError('This field required!')
+        if not value.strip():
+            raise serializers.ValidationError('User\'s name is required')
+        elif not re.match('^[a-zA-Z ]+$', value):
+            raise serializers.ValidationError('Only alphabets are allowed')
         return value
 
     def validate_organization(self, value):
-        if not self.instance and not value:
-            raise serializers.ValidationError('This field required!')
+        if not value:
+            raise serializers.ValidationError('Organization can\'t be empty')
+        return value
+
+    def validate_employee_id(self, value):
+        if value and not re.match('^[A-Za-z0-9-_]+$', value):
+            raise serializers.ValidationError('Invalid input, only alphanumeric and -_ allowed')
         return value
 
     def get_languages(self, obj):
