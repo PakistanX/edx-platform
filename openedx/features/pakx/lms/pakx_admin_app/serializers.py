@@ -1,7 +1,7 @@
 """
 Serializer for Admin Panel APIs
 """
-import re
+from re import match
 from uuid import uuid4
 
 from django.contrib.auth.models import User
@@ -139,18 +139,18 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
     def validate_name(self, value):
         if not value.strip():
-            raise serializers.ValidationError('User\'s name is required')
-        if not re.match('^[a-zA-Z ]+$', value):
+            raise serializers.ValidationError("User's name is required")
+        if not match('^[a-zA-Z ]+$', value):
             raise serializers.ValidationError('Only alphabets are allowed')
         return value
 
     def validate_organization(self, value):
         if not value:
-            raise serializers.ValidationError('Organization can\'t be empty')
+            raise serializers.ValidationError("Organization can't be empty")
         return value
 
     def validate_employee_id(self, value):
-        if value and not re.match('^[A-Za-z0-9-_]+$', value):
+        if value and not match('^[A-Za-z0-9-_]+$', value):
             raise serializers.ValidationError('Invalid input, only alphanumeric and -_ allowed')
         return value
 

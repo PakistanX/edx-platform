@@ -1,7 +1,7 @@
 """
 Views for Admin Panel API
 """
-import itertools
+from itertools import groupby
 
 from django.contrib.auth.models import Group, User
 from django.db.models import Count, ExpressionWrapper, F, IntegerField, Prefetch, Q, Sum
@@ -417,7 +417,7 @@ class UserInfo(views.APIView):
             'username': self.request.user.username,
             'is_superuser': self.request.user.is_superuser,
             'csrf_token': csrf.get_token(self.request),
-            'languages': [lang[0] for lang in itertools.groupby(languages)],
+            'languages': [lang[0] for lang in groupby(languages)],
             'role': None
         }
         user_groups = Group.objects.filter(
@@ -435,7 +435,7 @@ class CourseListAPI(generics.ListAPIView):
     pagination_class = PakxAdminAppPagination
     serializer_class = CoursesSerializer
 
-    PakxAdminAppPagination.page_size = 3
+    PakxAdminAppPagination.page_size = 5
 
     instructors = {}
 
