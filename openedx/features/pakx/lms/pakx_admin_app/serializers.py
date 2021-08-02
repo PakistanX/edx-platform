@@ -140,7 +140,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
     def validate_name(self, value):
         if not value.strip():
             raise serializers.ValidationError('User\'s name is required')
-        elif not re.match('^[a-zA-Z ]+$', value):
+        if not re.match('^[a-zA-Z ]+$', value):
             raise serializers.ValidationError('Only alphabets are allowed')
         return value
 
