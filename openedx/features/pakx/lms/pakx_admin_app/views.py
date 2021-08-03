@@ -3,6 +3,7 @@ Views for Admin Panel API
 """
 from itertools import groupby
 
+from django.conf import settings
 from django.contrib.auth.models import Group, User
 from django.db.models import Count, ExpressionWrapper, F, IntegerField, Prefetch, Q, Sum
 from django.http import Http404
@@ -13,7 +14,6 @@ from rest_framework.authentication import SessionAuthentication
 from rest_framework.filters import OrderingFilter
 from rest_framework.response import Response
 
-from django.conf import settings
 from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
 from openedx.core.djangoapps.cors_csrf.decorators import ensure_csrf_cookie_cross_domain
 from openedx.core.djangoapps.user_api.accounts.image_helpers import get_profile_image_urls_for_user
@@ -457,7 +457,7 @@ class CourseListAPI(generics.ListAPIView):
 
         search_text = self.request.query_params.get('name', '').strip().lower()
         if search_text:
-            queryset = CourseOverview.objects.filter(display_name__icontains=search_text)
+            queryset = queryset.filter(display_name__icontains=search_text)
 
         course_access_role_qs = CourseAccessRole.objects.filter(
             course_id__in=queryset.values_list('id')
