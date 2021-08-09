@@ -131,7 +131,7 @@ class UserListingSerializer(serializers.ModelSerializer):
 class UserProfileSerializer(serializers.ModelSerializer):
     language_code = LanguageProficiencySerializer(write_only=True)
     languages = serializers.SerializerMethodField(read_only=True)
-    name = serializers.CharField(required=True)
+    name = serializers.CharField(max_length=30, required=True)
 
     class Meta:
         model = UserProfile
