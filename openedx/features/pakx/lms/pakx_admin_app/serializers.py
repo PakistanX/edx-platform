@@ -234,7 +234,10 @@ class LearnersSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('id', 'name', 'email', 'last_login', 'assigned_courses', 'incomplete_courses', 'completed_courses')
+        fields = (
+            'id', 'username', 'name', 'email', 'last_login',
+            'assigned_courses', 'incomplete_courses', 'completed_courses'
+        )
 
     @staticmethod
     def get_assigned_courses(obj):

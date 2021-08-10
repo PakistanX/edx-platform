@@ -21,11 +21,12 @@ from openedx.features.pakx.lms.overrides.models import CourseProgressStats
 from student.models import CourseAccessRole, CourseEnrollment, LanguageProficiency
 
 from .constants import (
+    ENROLLMENT_SUCCESS_MESSAGE,
     GROUP_ORGANIZATION_ADMIN,
     GROUP_TRAINING_MANAGERS,
     ORG_ADMIN,
     SELF_ACTIVE_STATUS_CHANGE_ERROR_MSG,
-    TRAINING_MANAGER
+    TRAINING_MANAGER,
 )
 from .pagination import CourseEnrollmentPagination, PakxAdminAppPagination
 from .permissions import CanAccessPakXAdminPanel, IsSameOrganization
@@ -276,7 +277,7 @@ class CourseEnrolmentViewSet(viewsets.ModelViewSet):
             return Response(data={'users': other_org_users, 'message': err_msg}, status=status.HTTP_403_FORBIDDEN)
 
         enroll_users.delay(self.request.user.id, request.data["user_ids"], request.data["course_keys"])
-        return Response('Enrollment task Has been started successfully!', status=status.HTTP_200_OK)
+        return Response(ENROLLMENT_SUCCESS_MESSAGE, status=status.HTTP_200_OK)
 
 
 class AnalyticsStats(views.APIView):
@@ -481,8 +482,9 @@ class CourseListAPI(generics.ListAPIView):
 
         for course_access_role in course_access_role_qs:
             course_instructors = self.instructors.get(course_access_role.course_id, [])
-            if course_access_role.user.profile.name not in course_instructors:
-                course_instructors.append(course_access_role.user.profile.name)
+            instructor_name = course_access_role.user.profile.name or course_access_role.user.username
+            if instructor_name not in course_instructors:
+                course_instructors.append(instructor_name)
             self.instructors[course_access_role.course_id] = course_instructors
 
         return queryset
