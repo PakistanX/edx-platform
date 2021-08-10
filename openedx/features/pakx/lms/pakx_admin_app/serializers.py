@@ -95,7 +95,7 @@ class UserDetailViewSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('id', 'email', 'name', 'employee_id', 'is_active', 'date_joined',
+        fields = ('id', 'username', 'email', 'name', 'employee_id', 'is_active', 'date_joined',
                   'last_login', 'course_enrolled', 'completed_courses')
 
     @staticmethod
