@@ -21,13 +21,13 @@ from openedx.features.pakx.lms.overrides.models import CourseProgressStats
 from student.models import CourseAccessRole, CourseEnrollment, LanguageProficiency
 
 from .constants import (
-    ENROLLMENT_SUCCESS_MESSAGE,
     ENROLLMENT_COURSE_EXPIRED_MSG,
+    ENROLLMENT_SUCCESS_MESSAGE,
     GROUP_ORGANIZATION_ADMIN,
     GROUP_TRAINING_MANAGERS,
     ORG_ADMIN,
     SELF_ACTIVE_STATUS_CHANGE_ERROR_MSG,
-    TRAINING_MANAGER,
+    TRAINING_MANAGER
 )
 from .pagination import CourseEnrollmentPagination, PakxAdminAppPagination
 from .permissions import CanAccessPakXAdminPanel, IsSameOrganization
@@ -47,7 +47,7 @@ from .utils import (
     get_org_users_qs,
     get_roles_q_filters,
     get_user_org_filter,
-    send_registration_email,
+    send_registration_email
 )
 
 COMPLETED_COURSE_COUNT = Count("courseenrollment", filter=Q(

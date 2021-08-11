@@ -13,8 +13,7 @@ from opaque_keys.edx.keys import CourseKey
 from openedx.core.djangoapps.ace_common.template_context import get_base_template_context
 from openedx.core.djangoapps.site_configuration import helpers as configuration_helpers
 from openedx.core.lib.celery.task_utils import emulate_http_request
-
-from student.models import CourseEnrollment  # pylint: disable=import-error
+from student.models import CourseEnrollment
 
 from .message_types import EnrolmentNotification
 from .utils import get_org_users_qs

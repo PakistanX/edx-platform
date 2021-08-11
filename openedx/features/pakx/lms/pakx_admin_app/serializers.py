@@ -185,6 +185,11 @@ class UserSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         profile_data = validated_data.pop('profile')
         role = validated_data.pop('role')
+
+        if profile_data.get('name'):
+            f_name, *l_names = profile_data.get('name').split()
+            validated_data['first_name'], validated_data['last_name'] = f_name, ' '.join(l_names)
+
         user = User.objects.create(**validated_data)
         user.set_password(uuid4().hex[:8])
         user.save()
