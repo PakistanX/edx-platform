@@ -50,9 +50,7 @@ def send_course_enrolment_email(request_user_id, user_ids, courses_map):
     send a course enrolment notification via email
     :param request_user_id: (int) request user id
     :param user_ids: (list<int>) user ids
-    :param courses: (list<string>) courses display names
-    :param urls: (list<string>) courses urls
-    :param image_urls: (list<string>) courses image urls
+    :param courses_map: (list<dict>) contains dict with course_display_name, course_url, course_image_url
     """
     site = Site.objects.get_current()
     request_user = User.objects.filter(id=request_user_id).first()
