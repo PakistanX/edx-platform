@@ -77,8 +77,8 @@ def get_registration_email_message_context(user, user_profile, protocol):
     message_context.update({
         'platform_name': configuration_helpers.get_value('PLATFORM_NAME', settings.PLATFORM_NAME),
         'date': datetime.today().strftime("%A, %B %d, %Y"),
-        'firstname': user.first_name,
-        'username': user.profile.name.title() or user.username.title(),
+        'username': user.username,
+        'profile_name': (user.profile.name or user.username).title(),
         'email': user.email,
         'employee_id': user_profile.employee_id,
         'language': user_profile.language,
