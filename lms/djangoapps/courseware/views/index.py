@@ -435,7 +435,7 @@ class CoursewareIndex(View):
         staff_access = self.is_staff
         staff_title = self.course.display_name
         rtl_class = get_rtl_class(staff_title)
-
+        course_mode = 'normal'   # TODO: associate course mode with course
 
         courseware_context = {
             'csrf': csrf(self.request)['csrf_token'],
@@ -483,7 +483,8 @@ class CoursewareIndex(View):
             self.course,
             course_block_tree,
             self.chapter_url_name,
-            self.section_url_name
+            self.section_url_name,
+            course_mode
         )
 
         courseware_context['course_sock_fragment'] = CourseSockFragmentView().render_to_fragment(
@@ -585,7 +586,7 @@ class CoursewareIndex(View):
         return section_context
 
 
-def render_accordion(request, course, table_of_contents, active_section, active_subsection):
+def render_accordion(request, course, table_of_contents, active_section, active_subsection, course_mode):
     """
     Returns the HTML that renders the navigation for the given course.
     Expects the table_of_contents to have data on each chapter and section,
@@ -600,6 +601,7 @@ def render_accordion(request, course, table_of_contents, active_section, active_
             ('action_section', active_section),
             ('active_subsection', active_subsection),
             ('due_date_display_format', course.due_date_display_format),
+            ('course_mode', course_mode)
         ] + list(TEMPLATE_IMPORTS.items())
     )
     return render_to_string('courseware/accordion.html', context)
