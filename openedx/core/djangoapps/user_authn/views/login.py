@@ -10,11 +10,11 @@ import logging
 
 import six
 from django.conf import settings
+from django.contrib import admin
 from django.contrib.auth import authenticate
 from django.contrib.auth import login as django_login
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
-from django.contrib import admin
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect
 from django.urls import reverse
@@ -27,22 +27,21 @@ from edx_django_utils.monitoring import set_custom_metric
 from ratelimitbackend.exceptions import RateLimitException
 from rest_framework.views import APIView
 
+import third_party_auth
 from edxmako.shortcuts import render_to_response
 from openedx.core.djangoapps.password_policy import compliance as password_policy_compliance
 from openedx.core.djangoapps.site_configuration import helpers as configuration_helpers
-from openedx.core.djangoapps.user_authn.views.login_form import get_login_session_form
+from openedx.core.djangoapps.user_authn.config.waffle import ENABLE_LOGIN_USING_THIRDPARTY_AUTH_ONLY
 from openedx.core.djangoapps.user_authn.cookies import refresh_jwt_cookies, set_logged_in_cookies
 from openedx.core.djangoapps.user_authn.exceptions import AuthFailedError
-from openedx.core.djangoapps.util.user_messages import PageLevelMessages
+from openedx.core.djangoapps.user_authn.views.login_form import get_login_session_form
 from openedx.core.djangoapps.user_authn.views.password_reset import send_password_reset_email_for_user
-from openedx.core.djangoapps.user_authn.config.waffle import ENABLE_LOGIN_USING_THIRDPARTY_AUTH_ONLY
+from openedx.core.djangoapps.util.user_messages import PageLevelMessages
 from openedx.core.djangolib.markup import HTML, Text
 from openedx.core.lib.api.view_utils import require_post_params
 from student.helpers import get_next_url_for_login_page
-from student.models import AllowedAuthUser, LoginFailures, Registration, UserProfile
-from student.views import compose_and_send_activation_email
+from student.models import AllowedAuthUser, LoginFailures, Registration
 from third_party_auth import pipeline, provider
-import third_party_auth
 from track import segment
 from util.json_request import JsonResponse
 from util.password_policy_validators import normalize_password
@@ -134,17 +133,17 @@ def _generate_not_activated_message(user):
     Generates the message displayed on the sign-in screen when a learner attempts to access the
     system with an inactive account.
     """
-
+    contact_email = configuration_helpers.get_value('CONTACT_EMAIL', settings.CONTACT_EMAIL)
     not_activated_message = Text(_(
         u'In order to sign in, you need to activate your account.{blank_lines}'
         u'Please check your inbox for the activation link. If you do not '
         u'receive an email, check your spam folder or contact us {link}.'
     )).format(
         blank_lines=HTML('<br/><br/>'),
-        link=HTML(u'<a href="mailto:contact@pakistanx.org">here</a>'),
+        link=HTML(u'<a href="mailto:{}">here</a>').format(contact_email),
     )
 
-    # UPDATED MESSAGE TO DISABLE THE ACTIVATION EMAIL
+    # PKX-449 - UPDATED MESSAGE TO DISABLE THE ACTIVATION EMAIL
 
     # support_url = configuration_helpers.get_value(
     #     'SUPPORT_SITE_LINK',

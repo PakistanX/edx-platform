@@ -162,6 +162,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
 class UserSerializer(serializers.ModelSerializer):
     profile = UserProfileSerializer(required=True)
     role = serializers.ChoiceField(choices=ORG_ROLES, write_only=True)
+    password = serializers.CharField(write_only=True)
 
     class Meta:
         model = User
@@ -183,6 +184,7 @@ class UserSerializer(serializers.ModelSerializer):
     @transaction.atomic()
     def create(self, validated_data):
         profile_data = validated_data.pop('profile')
+        password = validated_data.pop('password')
         role = validated_data.pop('role')
         validated_data['is_active'] = False
 
@@ -191,7 +193,7 @@ class UserSerializer(serializers.ModelSerializer):
             validated_data['first_name'], validated_data['last_name'] = f_name, ' '.join(l_names)
 
         user = User.objects.create(**validated_data)
-        user.set_password(validated_data['password'])
+        user.set_password(password)
         user.save()
 
         Registration().register(user)

@@ -6,7 +6,6 @@ from datetime import datetime
 import pytz
 from django.conf import settings
 from django.contrib.auth.models import Group, User
-from django.contrib.auth.tokens import default_token_generator
 from django.contrib.sites.models import Site
 from django.db.models.query_utils import Q
 from django.urls import reverse
@@ -14,8 +13,8 @@ from edx_ace import ace
 from edx_ace.recipient import Recipient
 
 from openedx.core.djangoapps.ace_common.template_context import get_base_template_context
-from student.models import Registration
 from openedx.core.djangoapps.site_configuration import helpers as configuration_helpers
+from student.models import Registration
 
 from .constants import GROUP_ORGANIZATION_ADMIN, GROUP_TRAINING_MANAGERS, LEARNER, ORG_ADMIN, TRAINING_MANAGER
 from .message_types import RegistrationNotification
