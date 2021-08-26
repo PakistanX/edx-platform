@@ -135,29 +135,40 @@ def _generate_not_activated_message(user):
     system with an inactive account.
     """
 
-    support_url = configuration_helpers.get_value(
-        'SUPPORT_SITE_LINK',
-        settings.SUPPORT_SITE_LINK
-    )
-
-    platform_name = configuration_helpers.get_value(
-        'PLATFORM_NAME',
-        settings.PLATFORM_NAME
-    )
     not_activated_message = Text(_(
         u'In order to sign in, you need to activate your account.{blank_lines}'
-        u'We just sent an activation link to {email_strong}. If '
-        u'you do not receive an email, check your spam folders or '
-        u'{link_start}contact {platform_name} Support{link_end}.'
+        u'Please check your inbox for the activation link. If you do not '
+        u'receive an email, check your spam folder or contact us {link}.'
     )).format(
-        platform_name=platform_name,
         blank_lines=HTML('<br/><br/>'),
-        email_strong=HTML('<strong>{email}</strong>').format(email=user.email),
-        link_start=HTML(u'<a href="{support_url}">').format(
-            support_url=support_url,
-        ),
-        link_end=HTML("</a>"),
+        link=HTML(u'<a href="mailto:contact@pakistanx.org">here</a>'),
     )
+
+    # UPDATED MESSAGE TO DISABLE THE ACTIVATION EMAIL
+
+    # support_url = configuration_helpers.get_value(
+    #     'SUPPORT_SITE_LINK',
+    #     settings.SUPPORT_SITE_LINK
+    # )
+    #
+    # platform_name = configuration_helpers.get_value(
+    #     'PLATFORM_NAME',
+    #     settings.PLATFORM_NAME
+    # )
+    # not_activated_message = Text(_(
+    #     u'In order to sign in, you need to activate your account.{blank_lines}'
+    #     u'We just sent an activation link to {email_strong}. If '
+    #     u'you do not receive an email, check your spam folders or '
+    #     u'{link_start}contact {platform_name} Support{link_end}.'
+    # )).format(
+    #     platform_name=platform_name,
+    #     blank_lines=HTML('<br/><br/>'),
+    #     email_strong=HTML('<strong>{email}</strong>').format(email=user.email),
+    #     link_start=HTML(u'<a href="{support_url}">').format(
+    #         support_url=support_url,
+    #     ),
+    #     link_end=HTML("</a>"),
+    # )
 
     return not_activated_message
 
@@ -180,8 +191,8 @@ def _log_and_raise_inactive_user_auth_error(unauthenticated_user):
     if unauthenticated_user.last_login or not Registration.objects.filter(user=unauthenticated_user).exists():
         raise AuthFailedError(_('This account has been deactivated.'))
 
-    profile = UserProfile.objects.get(user=unauthenticated_user)
-    compose_and_send_activation_email(unauthenticated_user, profile)
+    # profile = UserProfile.objects.get(user=unauthenticated_user)
+    # compose_and_send_activation_email(unauthenticated_user, profile)
 
     raise AuthFailedError(_generate_not_activated_message(unauthenticated_user))
 

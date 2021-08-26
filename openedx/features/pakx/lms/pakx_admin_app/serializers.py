@@ -2,7 +2,6 @@
 Serializer for Admin Panel APIs
 """
 from re import match
-from uuid import uuid4
 
 from django.contrib.auth.models import User
 from django.db import transaction
@@ -11,7 +10,7 @@ from rest_framework import serializers
 
 from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
 from openedx.core.djangoapps.user_api.accounts.serializers import LanguageProficiencySerializer
-from student.models import CourseEnrollment, LanguageProficiency, UserProfile
+from student.models import CourseEnrollment, LanguageProficiency, Registration, UserProfile
 
 from .constants import GROUP_TRAINING_MANAGERS, LEARNER, ORG_ADMIN, ORG_ROLES, TRAINING_MANAGER
 from .utils import specify_user_role
@@ -166,7 +165,7 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'profile', 'role')
+        fields = ('id', 'username', 'email', 'profile', 'role', 'password')
         read_only_fields = ['id']
 
     def validate_email(self, value):
@@ -185,15 +184,17 @@ class UserSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         profile_data = validated_data.pop('profile')
         role = validated_data.pop('role')
+        validated_data['is_active'] = False
 
         if profile_data.get('name'):
             f_name, *l_names = profile_data.get('name').split()
             validated_data['first_name'], validated_data['last_name'] = f_name, ' '.join(l_names)
 
         user = User.objects.create(**validated_data)
-        user.set_password(uuid4().hex[:8])
+        user.set_password(validated_data['password'])
         user.save()
 
+        Registration().register(user)
         specify_user_role(user, role)
         profile_data['user'] = user
         language_code = profile_data.pop('language_code', None)
