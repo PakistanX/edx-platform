@@ -433,9 +433,7 @@ class CoursewareIndex(View):
         )
         hide_course_navigation = settings.FEATURES.get('HIDE_COURSEWARE_NAVIGATION')
         staff_access = self.is_staff
-        staff_title = self.course.display_name
-        rtl_class = get_rtl_class(staff_title)
-
+        rtl_class = get_rtl_class(self.course.language)
 
         courseware_context = {
             'csrf': csrf(self.request)['csrf_token'],
