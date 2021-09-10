@@ -7,7 +7,7 @@ import pytz
 from django.conf import settings
 from django.contrib.auth.models import Group, User
 from django.contrib.sites.models import Site
-from django.db.models import Count, Q
+from django.db.models import Count, Q, F
 from django.urls import reverse
 from edx_ace import ace
 from edx_ace.recipient import Recipient
@@ -27,7 +27,7 @@ def get_user_org_filter(user):
 
 def get_learners_filter():
     return Q(
-        Q(is_superuser=False) & Q(is_staff=False)
+        Q(is_superuser=False) & Q(is_staff=False) & ~(Q(email__icontains='fake') | Q(email__icontains='exmaple'))
     )
 
 
@@ -65,6 +65,12 @@ def specify_user_role(user, role):
         user.groups.remove(g_admin, g_tm)
 
 
+def get_same_org_filter(user):
+    """get same org filter"""
+
+    return Q(org=getattr(user.profile.organization, "short_name", ""))
+
+
 def get_registration_email_message_context(user, password, protocol, is_public_registration):
     """
     return context for registration notification email body
@@ -93,14 +99,16 @@ def get_registration_email_message_context(user, password, protocol, is_public_r
     return message_context
 
 
-def get_completed_course_count_filters(exclude_staff_superuser=False):
+def get_completed_course_count_filters(exclude_staff_superuser=False, user=None):
     completed = Q(
         Q(courseenrollment__enrollment_stats__email_reminder_status=CourseProgressStats.COURSE_COMPLETED) &
-        Q(courseenrollment__is_active=True)
+        Q(courseenrollment__is_active=True) & Q(courseenrollment__course__org=
+                                                getattr(user.profile.organization, "short_name", ""))
     )
     in_progress = Q(
         Q(courseenrollment__enrollment_stats__email_reminder_status__lt=CourseProgressStats.COURSE_COMPLETED) &
-        Q(courseenrollment__is_active=True)
+        Q(courseenrollment__is_active=True) & Q(courseenrollment__course__org=
+                                                getattr(user.profile.organization, "short_name", ""))
     )
 
     if exclude_staff_superuser:
@@ -117,7 +125,7 @@ def get_org_users_qs(user):
     """
     return users from the same organization as of the request.user
     """
-    queryset = User.objects.filter(is_superuser=False, is_staff=False)
+    queryset = User.objects.filter(get_learners_filter())
     if not user.is_superuser:
         queryset = queryset.filter(**get_user_org_filter(user))
 
@@ -126,19 +134,18 @@ def get_org_users_qs(user):
     )
 
 
-def get_available_course_qs():
+def get_available_course_qs(user):
     now = datetime.now(pytz.UTC)
-    # A Course is "enrollable" if its enrollment start date has passed,
+    # A Course is "enroll-able" if its enrollment start date has passed,
     # is now, or is None, and its enrollment end date is in the future or is None.
+
     return (
         (
-            Q(enrollment_start__lte=now) |
-            Q(enrollment_start__isnull=True)
+            Q(enrollment_start__lte=now) | Q(enrollment_start__isnull=True)
         ) &
         (
-            Q(enrollment_end__gt=now) |
-            Q(enrollment_end__isnull=True)
-        )
+            Q(enrollment_end__gt=now) | Q(enrollment_end__isnull=True)
+        ) & get_same_org_filter(user)
     )
 
 
