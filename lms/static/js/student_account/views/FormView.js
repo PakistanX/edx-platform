@@ -255,7 +255,7 @@
             clearFormErrors: function() {
                 var passwordErrorMsg = document.querySelector("#login-password-validation-error-msg");
                 if (passwordErrorMsg) {
-                    passwordErrorMsg.innerHTML = "Incorrect Password"
+                    passwordErrorMsg.innerHTML = gettext("Incorrect Password")
                 }
                 var query = '.' + this.formErrorsJsHook;
                 this.clearFormFeedbackItems(query);
