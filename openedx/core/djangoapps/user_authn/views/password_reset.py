@@ -106,7 +106,7 @@ def send_password_reset_email_for_user(user, request, preferred_email=None):
         preferred_email (str): Send email to this address if present, otherwise fallback to user's email address.
     """
     site = get_current_site()
-    message_context = get_base_template_context(site)
+    message_context = get_base_template_context(site, user=user)
     message_context.update({
         'request': request,  # Used by google_analytics_tracking_pixel
         # TODO: This overrides `platform_name` from `get_base_template_context` to make the tests passes
@@ -570,7 +570,7 @@ def password_change_request_handler(request):
             if configuration_helpers.get_value('ENABLE_PASSWORD_RESET_FAILURE_EMAIL',
                                                settings.FEATURES['ENABLE_PASSWORD_RESET_FAILURE_EMAIL']):
                 site = get_current_site()
-                message_context = get_base_template_context(site)
+                message_context = get_base_template_context(site, user=user)
 
                 message_context.update({
                     'failed': True,

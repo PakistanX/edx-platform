@@ -40,7 +40,7 @@ def _get_email_message_context(data):
     """
 
     site = Site.objects.get_current()
-    message_context = get_base_template_context(site)
+    message_context = get_base_template_context(site, user=user)
     message_context.update({
         'platform_name': configuration_helpers.get_value('PLATFORM_NAME', settings.PLATFORM_NAME),
         'course_name': data.get('course_name'),
