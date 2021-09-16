@@ -1,7 +1,7 @@
 from django.conf import settings
 from django.conf.urls import url
 
-from .views import business_view, ContactUsView, overview_tab_view
+from .views import ContactUsView, business_view, overview_tab_view
 
 urlpatterns = [
     url(r'^support/contact_us/?$', ContactUsView.as_view(), name="contact_us"),

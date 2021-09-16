@@ -41,8 +41,8 @@ from openedx.features.course_experience.utils import get_course_outline_block_tr
 from openedx.features.course_experience.waffle import ENABLE_COURSE_ABOUT_SIDEBAR_HTML
 from openedx.features.course_experience.waffle import waffle as course_experience_waffle
 from openedx.features.pakx.cms.custom_settings.models import CourseOverviewContent
-from openedx.features.pakx.lms.overrides.utils import add_course_progress_to_enrolled_courses
 from openedx.features.pakx.lms.overrides.forms import ContactUsForm
+from openedx.features.pakx.lms.overrides.utils import add_course_progress_to_enrolled_courses
 from student.models import CourseEnrollment
 from util.cache import cache_if_anonymous
 from util.milestones_helpers import get_prerequisite_courses_display
@@ -139,7 +139,7 @@ def overview_tab_view(request, course_id=None):
         'user': request.user,
         'course': course,
         'accordion': render_accordion(request, course, course_block_tree, '', '',
-                                      course_experience=course_overview_content.get_course_experience_display())
+                                      course_experience_mode=course_overview_content.get_course_experience_display())
     }
     return render_to_response('courseware/overview.html', context)
 
