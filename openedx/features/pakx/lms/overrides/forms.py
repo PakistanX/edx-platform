@@ -6,7 +6,7 @@ from .models import ContactUs
 class ContactUsForm(ModelForm):
     class Meta:
         model = ContactUs
-        exclude = ('created_by',)
+        fields = ('full_name', 'organization', 'phone', 'email', 'message')
 
     def __init__(self, *args, **kwargs):
         super(ContactUsForm, self).__init__(*args, **kwargs)

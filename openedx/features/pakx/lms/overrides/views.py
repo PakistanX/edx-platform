@@ -4,6 +4,7 @@ import waffle
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.forms.models import model_to_dict
 from django.http import Http404, HttpResponseRedirect
 from django.shortcuts import redirect
 from django.urls import reverse
@@ -42,6 +43,7 @@ from openedx.features.course_experience.waffle import ENABLE_COURSE_ABOUT_SIDEBA
 from openedx.features.course_experience.waffle import waffle as course_experience_waffle
 from openedx.features.pakx.cms.custom_settings.models import CourseOverviewContent
 from openedx.features.pakx.lms.overrides.forms import ContactUsForm
+from openedx.features.pakx.lms.overrides.tasks import send_contact_us_email
 from openedx.features.pakx.lms.overrides.utils import add_course_progress_to_enrolled_courses
 from student.models import CourseEnrollment
 from util.cache import cache_if_anonymous
@@ -319,6 +321,12 @@ class ContactUsView(View):
             if request.user.is_authenticated:
                 instance.created_by = request.user
             instance.save()
+
+            email_data = model_to_dict(
+                instance, fields=['full_name', 'email', 'organization', 'phone', 'message']
+            )
+            email_data['form_message'] = email_data.pop('message')
+            send_contact_us_email(email_data)
 
             messages.success(
                 self.request,
