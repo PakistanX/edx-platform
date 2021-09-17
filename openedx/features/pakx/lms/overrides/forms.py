@@ -6,7 +6,7 @@ from .models import ContactUs
 class ContactUsForm(ModelForm):
     class Meta:
         model = ContactUs
-        fields = ('full_name', 'organization', 'phone', 'email', 'message')
+        fields = ('full_name', 'email', 'organization', 'phone', 'message')
 
     def __init__(self, *args, **kwargs):
         super(ContactUsForm, self).__init__(*args, **kwargs)

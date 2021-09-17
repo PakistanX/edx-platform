@@ -42,7 +42,7 @@ class ContactUs(models.Model):
         max_length=16,
         validators=[RegexValidator(message='Phone number can only contain numbers.', regex='^\\+?1?\\d*$')]
     )
-    email = models.EmailField(verbose_name=_('Work Email'))
+    email = models.EmailField()
     message = models.TextField(verbose_name=_('How can we help you?'))
     created_by = models.ForeignKey(User, blank=True, null=True, on_delete=models.DO_NOTHING)
     created_at = models.DateTimeField(auto_now_add=True)
