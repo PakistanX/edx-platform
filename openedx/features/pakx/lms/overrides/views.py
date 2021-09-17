@@ -4,10 +4,9 @@ import waffle
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.models import AnonymousUser
 from django.forms.models import model_to_dict
 from django.http import Http404, HttpResponseRedirect
-from django.contrib.auth.models import AnonymousUser
-from django.http import Http404
 from django.shortcuts import redirect
 from django.urls import reverse
 from django.utils.translation import ugettext as _
