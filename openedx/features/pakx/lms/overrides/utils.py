@@ -1,8 +1,8 @@
 """ Overrides app util functions """
 
-import re
 from datetime import datetime
 from logging import getLogger
+from re import compile, findall
 
 from completion.models import BlockCompletion
 from django.conf import settings
@@ -322,7 +322,7 @@ def validate_text(text):
 
     :raise: validation error
     """
-    pattern = re.compile(
+    pattern = compile(
         "(["
         "\U0001F1E0-\U0001F1FF"  # flags (iOS)
         "\U0001F300-\U0001F5FF"  # symbols & pictographs
@@ -337,5 +337,5 @@ def validate_text(text):
         "\U00002702-\U000027B0"  # Dingbats
         "])"
     )
-    if re.findall(pattern, text):
+    if findall(pattern, text):
         raise ValidationError(_('Invalid data! text should not contain any emoji.'))
