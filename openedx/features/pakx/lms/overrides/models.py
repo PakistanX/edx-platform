@@ -1,7 +1,7 @@
 """Django models for overrides app"""
 
 from django.contrib.auth.models import User
-from django.core.validators import EmailValidator, MaxLengthValidator, MinLengthValidator, RegexValidator
+from django.core.validators import MaxLengthValidator, MinLengthValidator, RegexValidator
 from django.db import models
 from django.utils.translation import ugettext as _
 

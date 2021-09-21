@@ -1,8 +1,8 @@
-from django.core.exceptions import ValidationError
-from django.forms import EmailField, ModelForm
+from django.forms import ModelForm
 from django.utils.translation import ugettext as _
 
 from openedx.features.pakx.lms.overrides.utils import validate_text
+
 from .models import ContactUs
 
 
@@ -25,6 +25,5 @@ class ContactUsForm(ModelForm):
 
     def clean_organization(self):
         value = self.cleaned_data['organization']
-        import pdb; pdb.set_trace()
         validate_text(value)
         return value

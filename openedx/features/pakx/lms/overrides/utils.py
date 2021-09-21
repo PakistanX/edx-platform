@@ -15,11 +15,7 @@ from six import text_type
 
 from lms.djangoapps.course_api.blocks.serializers import BlockDictSerializer
 from lms.djangoapps.course_api.blocks.transformers.blocks_api import BlocksAPITransformer
-from lms.djangoapps.courseware.courses import (
-    get_courses,
-    sort_by_announcement,
-    sort_by_start_date
-)
+from lms.djangoapps.courseware.courses import get_courses, sort_by_announcement, sort_by_start_date
 from openedx.core.djangoapps.content.block_structure.api import get_course_in_cache
 from openedx.core.djangoapps.content.block_structure.transformers import BlockStructureTransformers
 from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
@@ -343,4 +339,3 @@ def validate_text(text):
     )
     if re.findall(pattern, text):
         raise ValidationError(_('Invalid data! text should not contain any emoji.'))
-
