@@ -337,5 +337,5 @@ def validate_text_for_emoji(text):
         "\U00002702-\U000027B0"  # Dingbats
         "])"
     )
-    if findall(pattern, text):
+    if text and findall(pattern, text):
         raise ValidationError(_('Invalid data! text should not contain any emoji.'))
