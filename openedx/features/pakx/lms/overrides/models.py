@@ -5,7 +5,7 @@ from django.core.validators import MaxLengthValidator, MinLengthValidator, Regex
 from django.db import models
 from django.utils.translation import ugettext as _
 
-from openedx.features.pakx.lms.overrides.utils import validate_text
+from openedx.features.pakx.lms.overrides.utils import validate_text_for_emoji
 from student.models import CourseEnrollment
 
 
@@ -40,13 +40,13 @@ class ContactUs(models.Model):
     full_name = models.CharField(
         max_length=24,
         validators=[
-            validate_text,
+            validate_text_for_emoji,
             MinLengthValidator(limit_value=3, message='Name should be of minimum 3 chars.'),
             RegexValidator(message=_('Name can only contain alphabets.'), regex='^[a-zA-Z ]*$')
         ]
     )
     email = models.EmailField()
-    organization = models.CharField(max_length=40, null=True, blank=True, validators=[validate_text])
+    organization = models.CharField(max_length=40, null=True, blank=True, validators=[validate_text_for_emoji])
     phone = models.CharField(
         max_length=16,
         validators=[
@@ -56,7 +56,7 @@ class ContactUs(models.Model):
     )
     message = models.TextField(
         verbose_name=_('How can we help you?'),
-        validators=[MaxLengthValidator(4000, message=_('Message should be of maximum 4000 chars.')), validate_text]
+        validators=[MaxLengthValidator(4000, message=_('Message should be of maximum 4000 chars.')), validate_text_for_emoji]
     )
     created_by = models.ForeignKey(User, blank=True, null=True, on_delete=models.DO_NOTHING)
     created_at = models.DateTimeField(auto_now_add=True)

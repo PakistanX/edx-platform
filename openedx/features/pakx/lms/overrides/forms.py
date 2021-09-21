@@ -1,7 +1,7 @@
 from django.forms import ModelForm
 from django.utils.translation import ugettext as _
 
-from openedx.features.pakx.lms.overrides.utils import validate_text
+from openedx.features.pakx.lms.overrides.utils import validate_text_for_emoji
 
 from .models import ContactUs
 
@@ -25,5 +25,5 @@ class ContactUsForm(ModelForm):
 
     def clean_organization(self):
         value = self.cleaned_data['organization']
-        validate_text(value)
+        validate_text_for_emoji(value)
         return value

@@ -314,7 +314,7 @@ def get_date_diff_in_days(future_date):
     return (future_date.date() - current_date).days
 
 
-def validate_text(text):
+def validate_text_for_emoji(text):
     """
     get date diff validates the text and raise validation
     error if a emoji exists in the text
