@@ -9,8 +9,10 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db.models import Case, IntegerField, Sum, When
 from django.db.models.functions import Coalesce
+from django.urls import reverse
 from django.utils.translation import ugettext as _
 from opaque_keys.edx.keys import CourseKey
+from organizations.models import Organization
 from six import text_type
 
 from lms.djangoapps.course_api.blocks.serializers import BlockDictSerializer
@@ -33,16 +35,64 @@ BLOCK_TYPES_TO_FILTER = [
 ]
 
 
-def get_featured_course():
+def get_course_card_data(course, org_prefetched=False):
+    """
+    Get course data required for home page course card
+
+    :returns (dict): dict of course card data
+    """
+    pakx_short_logo = '/static/pakx/images/mooc/pX.png'
+    course_custom_setting = getattr(course, 'custom_settings', None)
+
+    if not org_prefetched:
+        course_org = Organization.objects.filter(name__iexact=course.org).first()
+        org_logo_url = course_org and course_org.logo
+        org_name = course.org
+    else:
+        org_name = course.custom_settings.course_set.publisher_org.name
+        org_logo_url = course.custom_settings.course_set.publisher_org.logo
+
+    return {
+        'key': course.id,
+        'org_name': org_name,
+        'effort': course.effort,
+        'image': course.course_image_url,
+        'name': course.display_name_with_default,
+        'org_logo_url': org_logo_url or pakx_short_logo,
+        'url': reverse('about_course', kwargs={'course_id': text_type(course.id)}),
+        'short_description': course_custom_setting and course_custom_setting.card_description,
+        'publisher_logo_url': course_custom_setting and course_custom_setting.publisher_logo_url,
+    }
+
+
+def get_featured_course_set():
+    """
+    Get featured course-set data in a list of dict
+    :return (list): return list of dict containing course data
+    """
+    feature_course_set_key = configuration_helpers.get_value('feature_course_set_name')
+    if not feature_course_set_key:
+        return []
+
+    courses = CourseOverview.objects.filter(
+        custom_settings__course_set__name__iexact=feature_course_set_key
+    ).prefetch_related(
+        'custom_settings__course_set__publisher_org',
+    )
+    return [get_course_card_data(course, org_prefetched=True) for course in courses]
+
+
+def get_featured_course_data():
     """
     Get featured course, if feature_course_key is set in Site Configurations
 
     :returns (CourseOverview): course or None
     """
 
-    feature_course_key = configuration_helpers.get_value('feature_course_key', None)
+    feature_course_key = configuration_helpers.get_value('feature_course_key')
     if feature_course_key:
-        return CourseOverview.get_from_id(CourseKey.from_string(feature_course_key))
+        course = CourseOverview.get_from_id(CourseKey.from_string(feature_course_key))
+        return get_course_card_data(course)
 
 
 def get_courses_for_user(user):
