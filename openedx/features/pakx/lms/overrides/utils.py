@@ -1,13 +1,14 @@
 """ Overrides app util functions """
 
-import re
 from datetime import datetime
 from logging import getLogger
+from re import compile as re_compile
+from re import findall
 
 from completion.models import BlockCompletion
 from django.conf import settings
 from django.core.exceptions import ValidationError
-from django.db.models import Case, IntegerField, Sum, When
+from django.db.models import Avg, Case, Count, IntegerField, Sum, When
 from django.db.models.functions import Coalesce
 from django.urls import reverse
 from django.utils.translation import ugettext as _
@@ -26,6 +27,7 @@ from openedx.core.djangoapps.site_configuration import helpers as configuration_
 from openedx.core.lib.request_utils import get_request_or_stub
 from openedx.features.course_experience.utils import get_course_outline_block_tree, get_resume_block
 from openedx.features.pakx.cms.custom_settings.models import CourseOverviewContent
+from pakx_feedback.feedback_app.models import UserFeedbackModel
 from student.models import CourseEnrollment
 
 log = getLogger(__name__)
@@ -96,6 +98,59 @@ def get_featured_course_set():
 
 
 def get_featured_course_data():
+    """
+    Get featured course, if feature_course_key is set in Site Configurations
+    :returns (CourseOverview): course or None
+    """
+
+    feature_course_key = configuration_helpers.get_value('feature_course_key')
+    if feature_course_key:
+        course = CourseOverview.get_from_id(CourseKey.from_string(feature_course_key))
+        return get_course_card_data(course)
+
+
+def get_rating_course(course_id):
+    """
+    Get course rating for given course ID
+    :param course_id: (CourseKeyField) course key
+
+    :return: (dict) {'rating': 4.3, 'total_responses': 34}
+    """
+
+    course_rating = UserFeedbackModel.objects.filter(course_id=course_id).aggregate(rating=Avg('experience'),
+                                                                                    total_responses=Count('experience'))
+    if course_rating.get("rating"):
+        course_rating.update({"rating": round(course_rating.get("rating") * 2.0) / 2.0})
+    return course_rating
+
+
+def get_rating_classes_for_course(course_id):
+    """
+    Get total number of responses and stars classes for given course ID
+    :param course_id: (CourseKeyField) course Key
+
+    :return: (dict) {1:'fa-star', 2: 'fa-star', 3: 'fa-star', 4: 'fa-star-half-o', 5: 'fa-star-o'
+                    'rating': 4.3, 'total_responses': 34}
+    """
+
+    full_star = 'fa-star'
+    half_star = 'fa-star-half-o'
+    class_dict = {1: 'fa-star-o', 2: 'fa-star-o', 3: 'fa-star-o', 4: 'fa-star-o', 5: 'fa-star-o'}  # Default empty stars
+    rating_dict = get_rating_course(course_id)
+    course_rating = rating_dict.get('rating')
+    if course_rating is not None:
+        for i, key in enumerate(class_dict):
+            star_number = i + 1
+            if int(course_rating) >= star_number:
+                class_dict[key] = full_star
+            elif (star_number - 0.5) == course_rating:
+                class_dict[key] = half_star
+
+    rating_dict.update(class_dict)
+    return rating_dict
+
+
+def get_featured_course():
     """
     Get featured course, if feature_course_key is set in Site Configurations
 
@@ -380,7 +435,7 @@ def validate_text_for_emoji(text):
 
     :raise: validation error
     """
-    pattern = re.compile(
+    pattern = re_compile(
         "(["
         "\U0001F1E0-\U0001F1FF"  # flags (iOS)
         "\U0001F300-\U0001F5FF"  # symbols & pictographs
@@ -395,5 +450,5 @@ def validate_text_for_emoji(text):
         "\U00002702-\U000027B0"  # Dingbats
         "])"
     )
-    if text and re.findall(pattern, text):
+    if text and findall(pattern, text):
         raise ValidationError(_('Invalid data! text should not contain any emoji.'))
