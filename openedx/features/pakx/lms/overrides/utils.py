@@ -15,6 +15,7 @@ from opaque_keys.edx.keys import CourseKey
 from organizations.models import Organization
 from six import text_type
 
+from edxmako.shortcuts import render_to_string
 from lms.djangoapps.course_api.blocks.serializers import BlockDictSerializer
 from lms.djangoapps.course_api.blocks.transformers.blocks_api import BlocksAPITransformer
 from lms.djangoapps.courseware.courses import get_courses, sort_by_announcement, sort_by_start_date
@@ -24,6 +25,7 @@ from openedx.core.djangoapps.content.course_overviews.models import CourseOvervi
 from openedx.core.djangoapps.site_configuration import helpers as configuration_helpers
 from openedx.core.lib.request_utils import get_request_or_stub
 from openedx.features.course_experience.utils import get_course_outline_block_tree, get_resume_block
+from openedx.features.pakx.cms.custom_settings.models import CourseOverviewContent
 from student.models import CourseEnrollment
 
 log = getLogger(__name__)
@@ -35,6 +37,17 @@ BLOCK_TYPES_TO_FILTER = [
 ]
 
 
+def get_or_create_course_overview_content(course_key, custom_setting=None):
+    if not custom_setting:
+        custom_setting = render_to_string('courseware/overview.html', {})
+
+    course_overview_content, _ = CourseOverviewContent.objects.get_or_create(
+        course_id=course_key,
+        defaults=custom_setting
+    )
+    return course_overview_content
+
+
 def get_course_card_data(course, org_prefetched=False):
     """
     Get course data required for home page course card
@@ -42,10 +55,10 @@ def get_course_card_data(course, org_prefetched=False):
     :returns (dict): dict of course card data
     """
     pakx_short_logo = '/static/pakx/images/mooc/pX.png'
-    course_custom_setting = getattr(course, 'custom_settings', None)
+    course_custom_setting = get_or_create_course_overview_content(course.id)
 
     if not org_prefetched:
-        course_org = Organization.objects.filter(name__iexact=course.org).first()
+        course_org = Organization.objects.filter(short_name__iexact=course.org).first()
         org_logo_url = course_org and course_org.logo
         org_name = course.org
     else:
@@ -59,9 +72,9 @@ def get_course_card_data(course, org_prefetched=False):
         'image': course.course_image_url,
         'name': course.display_name_with_default,
         'org_logo_url': org_logo_url or pakx_short_logo,
+        'short_description': course_custom_setting.card_description,
+        'publisher_logo_url': course_custom_setting.publisher_logo_url,
         'url': reverse('about_course', kwargs={'course_id': text_type(course.id)}),
-        'short_description': course_custom_setting and course_custom_setting.card_description,
-        'publisher_logo_url': course_custom_setting and course_custom_setting.publisher_logo_url,
     }
 
 
@@ -121,14 +134,9 @@ def get_course_mode_and_content_class(course_overview):
     :return (str, str): tuple of string
 
     """
-
-    content_class = ''
-    course_experience_mode = "Normal"
-    if hasattr(course_overview, 'custom_settings'):
-        custom_settings = course_overview.custom_settings
-        course_experience_mode = custom_settings.get_course_experience_display()
-        content_class = 'video-course-content' if course_experience_mode == 'Video' else ''
-
+    custom_settings = get_or_create_course_overview_content(course_overview.id)
+    course_experience_mode = custom_settings.get_course_experience_display()
+    content_class = 'video-course-content' if course_experience_mode == 'Video' else ''
     return course_experience_mode, content_class
 
 
