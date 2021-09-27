@@ -2,8 +2,7 @@
 
 from datetime import datetime
 from logging import getLogger
-from re import compile as re_compile
-from re import findall
+from re import compile as re_compile, findall
 
 from completion.models import BlockCompletion
 from django.conf import settings
