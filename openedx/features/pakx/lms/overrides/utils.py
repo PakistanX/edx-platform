@@ -79,12 +79,12 @@ def get_featured_course_set():
     Get featured course-set data in a list of dict
     :return (list): return list of dict containing course data
     """
-    feature_course_set_key = configuration_helpers.get_value('feature_course_set_name')
-    if not feature_course_set_key:
+    feature_course_set_name = configuration_helpers.get_value('feature_course_set_name')
+    if not feature_course_set_name:
         return []
 
     courses = CourseOverview.objects.filter(
-        custom_settings__course_set__name__iexact=feature_course_set_key
+        custom_settings__course_set__name__iexact=feature_course_set_name
     ).prefetch_related(
         'custom_settings__course_set__publisher_org',
     )
