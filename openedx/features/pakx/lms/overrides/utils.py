@@ -15,7 +15,6 @@ from opaque_keys.edx.keys import CourseKey
 from organizations.models import Organization
 from six import text_type
 
-from edxmako.shortcuts import render_to_string
 from lms.djangoapps.course_api.blocks.serializers import BlockDictSerializer
 from lms.djangoapps.course_api.blocks.transformers.blocks_api import BlocksAPITransformer
 from lms.djangoapps.courseware.courses import get_courses, sort_by_announcement, sort_by_start_date
@@ -39,12 +38,8 @@ BLOCK_TYPES_TO_FILTER = [
 
 
 def get_or_create_course_overview_content(course_key, custom_setting=None):
-    if not custom_setting:
-        custom_setting = render_to_string('courseware/overview.html', {})
-
     course_overview_content, _ = CourseOverviewContent.objects.get_or_create(
-        course_id=course_key,
-        defaults=custom_setting
+        course_id=course_key, defaults=custom_setting or {}
     )
     return course_overview_content
 
