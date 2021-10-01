@@ -44,8 +44,8 @@ from openedx.features.pakx.cms.custom_settings.models import CourseOverviewConte
 from openedx.features.pakx.lms.overrides.forms import ContactUsForm
 from openedx.features.pakx.lms.overrides.tasks import send_contact_us_email
 from openedx.features.pakx.lms.overrides.utils import (
-    get_course_card_data,
     add_course_progress_to_enrolled_courses,
+    get_course_card_data,
     get_course_progress_percentage,
     get_courses_for_user,
     get_featured_course_data,
