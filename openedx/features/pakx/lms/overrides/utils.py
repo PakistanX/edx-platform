@@ -50,22 +50,28 @@ def get_course_card_data(course, org_prefetched=False):
 
     :returns (dict): dict of course card data
     """
+    if not isinstance(course, CourseOverview):
+        course = CourseOverview.objects.filter(id=course.id).first()
+
     pakx_short_logo = '/static/pakx/images/mooc/pX.png'
     course_custom_setting = get_or_create_course_overview_content(course.id)
 
     if not org_prefetched:
         course_org = Organization.objects.filter(short_name__iexact=course.org).first()
+        org_description = course_org and course_org.description
         org_logo_url = course_org and course_org.logo
-        org_name = course.org
+        org_name = course_org and course_org.name
     else:
         org_name = course.custom_settings.course_set.publisher_org.name
         org_logo_url = course.custom_settings.course_set.publisher_org.logo
+        org_description = course.custom_settings.course_set.publisher_org.description
 
     return {
         'key': course.id,
         'org_name': org_name,
         'effort': course.effort,
         'image': course.course_image_url,
+        'org_description': org_description,
         'name': course.display_name_with_default,
         'org_logo_url': org_logo_url or pakx_short_logo,
         'short_description': course_custom_setting.card_description,
