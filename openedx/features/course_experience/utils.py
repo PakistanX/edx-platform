@@ -205,7 +205,9 @@ def get_course_outline_block_tree(request, course_id, user=None, allow_start_dat
         'pakx_flashcard',
         'image-explorer',
         'adventure',
-        'pakx_feedback'
+        'pakx_feedback',
+        'pakx_video',
+        'pakx_grid_dropdown'
     ]
     all_blocks = get_blocks(
         request,
