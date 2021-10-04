@@ -44,7 +44,7 @@ from .tasks import enroll_users
 from .utils import (
     get_user_org,
     get_course_overview_same_org_filter,
-    get_available_course_qs,
+    get_user_available_course_qs,
     get_completed_course_count_filters,
     get_learners_filter,
     get_org_users_qs,
@@ -269,7 +269,7 @@ class CourseEnrolmentViewSet(viewsets.ModelViewSet):
 
     def enroll_users(self, request, *args, **kwargs):
         available_courses_count = CourseOverview.objects.filter(
-            get_available_course_qs(self.request.user),
+            get_user_available_course_qs(self.request.user),
             id__in=request.data["course_keys"],
         ).count()
         if available_courses_count != len(request.data["course_keys"]):
