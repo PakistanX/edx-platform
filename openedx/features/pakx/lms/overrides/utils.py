@@ -2,7 +2,6 @@
 
 from datetime import datetime
 from logging import getLogger
-from pytz import utc
 from re import compile as re_compile
 from re import findall
 
@@ -14,6 +13,7 @@ from django.db.models.functions import Coalesce
 from django.urls import reverse
 from django.utils.translation import ugettext as _
 from opaque_keys.edx.keys import CourseKey
+from pytz import utc
 from six import text_type
 
 from lms.djangoapps.course_api.blocks.serializers import BlockDictSerializer
@@ -28,8 +28,8 @@ from openedx.features.course_experience.utils import get_course_outline_block_tr
 from openedx.features.pakx.cms.custom_settings.models import CourseOverviewContent
 from pakx_feedback.feedback_app.models import UserFeedbackModel
 from student.models import CourseEnrollment
-from xmodule import course_metadata_utils
 from util.organizations_helpers import get_organization_by_short_name
+from xmodule import course_metadata_utils
 
 log = getLogger(__name__)
 

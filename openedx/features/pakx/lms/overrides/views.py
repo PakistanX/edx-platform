@@ -1,6 +1,5 @@
 """ Overridden views from core """
 from datetime import datetime
-from pytz import utc
 
 from django.conf import settings
 from django.contrib import messages
@@ -14,6 +13,7 @@ from django.utils.translation import ugettext as _
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.generic import View
 from opaque_keys.edx.keys import CourseKey
+from pytz import utc
 from six import text_type
 from waffle import switch_is_active
 

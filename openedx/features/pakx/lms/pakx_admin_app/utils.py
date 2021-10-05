@@ -59,7 +59,7 @@ def get_user_enrollment_same_org_filter(user):
     return Q(courseenrollment__user__profile__organization__short_name__iregex=get_user_org(user))
 
 
-def get_roles_q_filters(roles, user):
+def get_roles_q_filters(roles):
     """
     return Q filter to be used for filter user queryset
     :param roles: request params to filter roles

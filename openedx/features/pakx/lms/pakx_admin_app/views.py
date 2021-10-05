@@ -42,16 +42,16 @@ from .serializers import (
 )
 from .tasks import enroll_users
 from .utils import (
-    get_user_org,
-    get_course_overview_same_org_filter,
-    get_user_available_course_qs,
     get_completed_course_count_filters,
+    get_course_overview_same_org_filter,
     get_learners_filter,
     get_org_users_qs,
     get_roles_q_filters,
+    get_user_available_course_qs,
+    get_user_org,
     get_user_org_filter,
-    send_registration_email,
-    get_user_same_org_filter
+    get_user_same_org_filter,
+    send_registration_email
 )
 
 
@@ -190,7 +190,7 @@ class UserProfileViewSet(viewsets.ModelViewSet):
         total_users_count = self.get_queryset().count()
 
         roles = self.request.query_params['roles'].split(',') if self.request.query_params.get('roles') else []
-        roles_qs = get_roles_q_filters(roles, self.request.user)
+        roles_qs = get_roles_q_filters(roles)
         if roles_qs:
             self.queryset = self.queryset.filter(roles_qs)
 
