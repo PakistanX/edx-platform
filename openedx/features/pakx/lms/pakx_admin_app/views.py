@@ -45,10 +45,10 @@ from .tasks import enroll_users
 from .utils import (
     get_completed_course_count_filters,
     get_course_overview_same_org_filter,
+    get_enroll_able_course_qs,
     get_learners_filter,
     get_org_users_qs,
     get_roles_q_filters,
-    get_enroll_able_course_qs,
     get_user_org,
     get_user_org_filter,
     get_user_same_org_filter,
