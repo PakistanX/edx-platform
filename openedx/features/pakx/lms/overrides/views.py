@@ -381,6 +381,11 @@ def business_view(request, *args, **kwargs):
     return render_to_response('overrides/business.html', {})
 
 
+def partner_with_us_view(request, *args, **kwargs):
+    """Business View"""
+    return render_to_response('overrides/partner_with_us.html', {})
+
+
 class ContactUsView(View):
     """
     View for viewing and submitting contact us form.
