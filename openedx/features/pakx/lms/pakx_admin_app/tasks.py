@@ -1,12 +1,12 @@
 """Celery tasks to enroll users in courses and send registration email"""
 
-from datetime import datetime
 from logging import getLogger
 
 from celery import task
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.contrib.sites.models import Site
+from django.core.mail.message import EmailMultiAlternatives
 from django.db import DatabaseError, transaction
 from edx_ace import Recipient, ace
 from opaque_keys.edx.keys import CourseKey
@@ -18,7 +18,7 @@ from openedx.core.lib.celery.task_utils import emulate_http_request
 from student.models import CourseEnrollment
 
 from .message_types import EnrolmentNotification
-from .utils import get_org_users_qs
+from .utils import create_user, get_org_users_qs
 
 log = getLogger(__name__)
 
@@ -68,6 +68,30 @@ def send_course_enrolment_email(request_user_id, user_ids, courses_map):
 
     else:
         log.info("Invalid request user id - Task terminated!")
+
+
+def send_bulk_registration_stats_email(created, errors, recipient):
+    email_msg = EmailMultiAlternatives(
+        subject='Bulk Registration', plain_content, settings.PUBLISHER_FROM_EMAIL, recipient
+    )
+    try:
+        email_msg.send()
+    except Exception:  # pylint: disable=broad-except
+        log.exception('Failed to send registration stats email to {}'.format(recipient))
+
+
+@task(name='bulk_user_registration')
+def bulk_user_registration(users_data, request_user, request_scheme):
+    errors = []
+    created = []
+    for idx, user in enumerate(users_data):
+        is_created, res_data = create_user(user, request_scheme)
+        res_data = {
+            user.get('email') or user.get('username') or user.get('name') or idx: res_data
+        }
+        created.append(res_data) if is_created else errors.append(res_data)
+
+    send_bulk_registration_stats_email(created, errors, request_user.email)
 
 
 @task(name='enroll_users')

@@ -22,6 +22,7 @@ user_viewset_router.register('users', UserProfileViewSet, basename='users')
 urlpatterns = [
     url(r'^users/activate/$', UserProfileViewSet.as_view({"post": "activate_users"})),
     url(r'^users/deactivate/$', UserProfileViewSet.as_view({"post": "deactivate_users"})),
+    url(r'^users/bulk-registration/$', UserProfileViewSet.as_view({"post": "bulk_registration"})),
     url(r'^users/enroll/$', CourseEnrolmentViewSet.as_view({'post': 'enroll_users'})),
     url(r'^user-course-enrollments/(?P<user_id>\d+)/$', UserCourseEnrollmentsListAPI.as_view()),
     url(r'^userinfo/$', UserInfo.as_view()),

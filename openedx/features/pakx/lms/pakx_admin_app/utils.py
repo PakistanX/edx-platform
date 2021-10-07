@@ -2,6 +2,7 @@
 helpers functions for Admin Panel API
 """
 from datetime import datetime
+from uuid import uuid4
 
 import pytz
 from django.conf import settings
@@ -19,6 +20,7 @@ from student.models import Registration
 
 from .constants import GROUP_ORGANIZATION_ADMIN, GROUP_TRAINING_MANAGERS, LEARNER, ORG_ADMIN, TRAINING_MANAGER
 from .message_types import RegistrationNotification
+from .serializers import UserSerializer
 
 
 def get_user_org_filter(user):
@@ -93,6 +95,23 @@ def specify_user_role(user, role):
         user.groups.add(g_tm)
     elif role == LEARNER:
         user.groups.remove(g_admin, g_tm)
+
+
+def create_user(user_data, request_scheme):
+    """
+    util function
+    :param user_data: user data for registration
+    :param request_scheme: variable containing http or https
+    :return: error if validation failed else None
+    """
+    user_data['password'] = uuid4().hex[:8]
+    user_serializer = UserSerializer(data=user_data)
+    if not user_serializer.is_valid():
+        return False, {**user_serializer.errors}
+
+    user = user_serializer.save()
+    # send_registration_email(user, user_data['password'], request_scheme)
+    return True, user
 
 
 def get_registration_email_message_context(user, password, protocol, is_public_registration):

@@ -1,8 +1,9 @@
 """
 Views for Admin Panel API
 """
+import csv
 from itertools import groupby
-from uuid import uuid4
+
 
 from django.conf import settings
 from django.contrib.auth.models import Group, User
@@ -40,8 +41,10 @@ from .serializers import (
     UserListingSerializer,
     UserSerializer
 )
-from .tasks import enroll_users
+from .tasks import bulk_user_registration, enroll_users
 from .utils import (
+    create_user,
+    generate_user_password,
     get_completed_course_count_filters,
     get_course_overview_same_org_filter,
     get_learners_filter,
@@ -155,15 +158,22 @@ class UserProfileViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         if request.data.get('profile'):
             request.data['profile']['organization'] = self.request.user.profile.organization_id
-        password = uuid4().hex[:8]
-        request.data['password'] = password
-        user_serializer = UserSerializer(data=request.data)
-        if user_serializer.is_valid():
-            user = user_serializer.save()
-            send_registration_email(user, password, request.scheme)
-            return Response(UserSerializer(user).data, status=status.HTTP_201_CREATED)
 
-        return Response({**user_serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+        is_created, res_data = create_user(request.data, request.scheme)
+        if is_created:
+            return Response(UserSerializer(res_data).data, status=status.HTTP_201_CREATED)
+
+        return Response(res_data, status=status.HTTP_400_BAD_REQUEST)
+
+        # password = generate_user_password()
+        # request.data['password'] = password
+        # user_serializer = UserSerializer(data=request.data)
+        # if user_serializer.is_valid():
+        #     user = user_serializer.save()
+        #     send_registration_email(user, password, request.scheme)
+        #     return Response(UserSerializer(user).data, status=status.HTTP_201_CREATED)
+        #
+        # return Response({**user_serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
     def partial_update(self, request, *args, **kwargs):
         user = self.get_object()
@@ -239,6 +249,33 @@ class UserProfileViewSet(viewsets.ModelViewSet):
 
     def deactivate_users(self, request, *args, **kwargs):
         return self.change_activation_status(False, request.data["ids"])
+
+    def bulk_registration(self, request, *args, **kwargs):
+        def clean(str_to_clean):
+            return str_to_clean.strip() if isinstance(str_to_clean, str) else str_to_clean
+
+        if not request.FILES.get('file'):
+            return Response('File is required!', status=status.HTTP_400_BAD_REQUEST)
+
+        users = []
+        for user_map in csv.DictReader(request.FILES['file'].decode('utf-8').splitlines()):
+            user = {
+                'email': clean(user_map.get('email', '')),
+                'username': clean(user_map.get('username', '')),
+                'profile': {
+                    'name': clean(user_map.get('name', '').title()),
+                    'organization': clean(user_map.get('organization_id')) or self.request.user.profile.organization_id,
+                }
+            }
+            users.append(user)
+
+        # add delay
+        bulk_user_registration(users, request.user, request.scheme)
+
+        return Response(
+            'Task has been started successfully. You will receive the stats email shortly',
+            status=status.HTTP_200_OK
+        )
 
     def change_activation_status(self, activation_status, ids):
         """
