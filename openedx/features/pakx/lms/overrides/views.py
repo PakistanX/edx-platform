@@ -381,12 +381,37 @@ def business_view(request, *args, **kwargs):
     return render_to_response('overrides/business.html', {})
 
 
-def partner_with_us_view(request, *args, **kwargs):
-    """Business View"""
-    return render_to_response('overrides/partner_with_us.html', {})
+class PartnerWithUsView(View):
+    """
+    View for partner-with-us page.
+    """
+
+    def get_context_data(self, request):
+        context = {
+            'tags': ['LMS'],
+            'form': ContactUsForm(),
+            'platform_name': configuration_helpers.get_value('platform_name', settings.PLATFORM_NAME),
+            'support_email': configuration_helpers.get_value('CONTACT_EMAIL', settings.CONTACT_EMAIL),
+            'custom_fields': settings.ZENDESK_CUSTOM_FIELDS
+        }
+        if request.user.is_authenticated:
+            context['course_id'] = request.session.get('course_id', '')
+
+        return context
+
+    def get(self, request):
+        context = self.get_context_data(request)
+        if request.user.is_authenticated:
+            context['form'] = ContactUsForm(initial={
+                'email': request.user.email,
+                'full_name': (request.user.profile.name or request.user.get_full_name()).title().strip(),
+                'organization': getattr(request.user.profile.organization, 'name', ''),
+            })
+
+        return render_to_response("overrides/partner_with_us.html", context)
 
 
-class ContactUsView(View):
+class AboutUsView(View):
     """
     View for viewing and submitting contact us form.
     """
@@ -414,7 +439,7 @@ class ContactUsView(View):
                 'organization': getattr(request.user.profile.organization, 'name', ''),
             })
 
-        return render_to_response("support/contact_us.html", context)
+        return render_to_response("overrides/about_us.html", context)
 
     def post(self, request):
         form_data = request.POST.copy()
@@ -436,8 +461,8 @@ class ContactUsView(View):
                 self.request,
                 _(u'Thanks for contacting us. Our team member will contact you soon.')
             )
-            return HttpResponseRedirect('/support/contact_us/')
+            return HttpResponseRedirect('/about_us/')
 
         context = self.get_context_data(request)
         context['form'] = form
-        return render_to_response("support/contact_us.html", context)
+        return render_to_response("overrides/about_us.html", context)
