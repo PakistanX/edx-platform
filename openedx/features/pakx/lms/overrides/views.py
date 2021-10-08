@@ -428,7 +428,7 @@ class AboutUsView(TemplateView):
 
             messages.success(
                 self.request,
-                _(u'Thanks for contacting us. Our team member will contact you soon.')
+                _(u'Thank you for contacting us! Our team will get in touch with you soon')
             )
             return HttpResponseRedirect(self.success_redirect)
 
