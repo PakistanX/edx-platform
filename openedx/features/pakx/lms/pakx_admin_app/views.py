@@ -45,13 +45,14 @@ from .tasks import enroll_users
 from .utils import (
     get_completed_course_count_filters,
     get_course_overview_same_org_filter,
-    get_enroll_able_course_qs,
     get_learners_filter,
     get_org_users_qs,
     get_roles_q_filters,
     get_user_org,
     get_user_org_filter,
     get_user_same_org_filter,
+    is_courses_enroll_able,
+    is_courses_user_have_same_org,
     send_registration_email
 )
 
@@ -277,14 +278,10 @@ class CourseEnrolmentViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        courses_qs = CourseOverview.objects.filter(id__in=request.data["course_keys"])
-
-        enroll_able_courses_count = courses_qs.filter(get_enroll_able_course_qs()).count()
-        if enroll_able_courses_count != len(request.data["course_keys"]):
+        if not is_courses_enroll_able(request.data["course_keys"]):
             return Response(ENROLLMENT_COURSE_EXPIRED_MSG, status=status.HTTP_400_BAD_REQUEST)
 
-        user_org_courses_count = courses_qs.filter(get_course_overview_same_org_filter(self.request.user)).count()
-        if user_org_courses_count != len(request.data["course_keys"]):
+        if is_courses_user_have_same_org(request.data["course_keys"], request.user):
             return Response(ENROLLMENT_COURSE_DIFF_ORG_ERROR_MSG, status=status.HTTP_400_BAD_REQUEST)
 
         user_qs = get_org_users_qs(request.user).filter(id__in=request.data["user_ids"]).values_list('id', flat=True)
@@ -321,7 +318,9 @@ class AnalyticsStats(views.APIView):
         user_qs = get_org_users_qs(self.request.user)
         user_ids = user_qs.values_list('id', flat=True)
 
-        completed_count, in_progress_count = get_completed_course_count_filters(True, user=self.request.user)
+        completed_count, in_progress_count = get_completed_course_count_filters(
+            exclude_staff_superuser=True, user=self.request.user
+        )
         course_stats = user_qs.annotate(
             passed=ExpressionWrapper(completed_count, output_field=IntegerField()),
             in_progress=ExpressionWrapper(in_progress_count, output_field=IntegerField())
@@ -375,7 +374,9 @@ class CourseStatsListAPI(generics.ListAPIView):
     serializer_class = CourseStatsListSerializer
 
     def get_queryset(self):
-        completed_count, in_progress_count = get_completed_course_count_filters(True, self.request.user)
+        completed_count, in_progress_count = get_completed_course_count_filters(
+            exclude_staff_superuser=True, user=self.request.user
+        )
         overview_qs = CourseOverview.objects.all()
         if not self.request.user.is_superuser:
             overview_qs = overview_qs.filter(get_course_overview_same_org_filter(self.request.user))
