@@ -22,6 +22,7 @@ from openedx.core.djangoapps.user_api.accounts.image_helpers import get_profile_
 from student.models import CourseAccessRole, CourseEnrollment, LanguageProficiency
 
 from .constants import (
+    ENROLLMENT_COURSE_DIFF_ORG_ERROR_MSG,
     ENROLLMENT_COURSE_EXPIRED_MSG,
     ENROLLMENT_SUCCESS_MESSAGE,
     GROUP_ORGANIZATION_ADMIN,
@@ -50,10 +51,11 @@ from .utils import (
     get_learners_filter,
     get_org_users_qs,
     get_roles_q_filters,
-    get_user_available_course_qs,
     get_user_org,
     get_user_org_filter,
     get_user_same_org_filter,
+    is_courses_enroll_able,
+    is_courses_user_have_same_org,
     send_registration_email
 )
 
@@ -97,10 +99,12 @@ class UserCourseEnrollmentsListAPI(generics.ListAPIView):
     model = CourseEnrollment
 
     def get_queryset(self):
-        return CourseEnrollment.objects.filter(
-            user_id=self.kwargs['user_id'], is_active=True,
-            course__org__iregex=get_user_org(self.request.user)
-        ).select_related(
+        qs = CourseEnrollment.objects.filter(user_id=self.kwargs['user_id'], is_active=True)
+
+        if not self.request.user.is_superuser:
+            qs = qs.filter(course__org__iregex=get_user_org(self.request.user))
+
+        return qs.select_related(
             'enrollment_stats',
             'course'
         ).order_by(
@@ -305,19 +309,19 @@ class CourseEnrolmentViewSet(viewsets.ModelViewSet):
     permission_classes = [CanAccessPakXAdminPanel]
 
     def enroll_users(self, request, *args, **kwargs):
-        available_courses_count = CourseOverview.objects.filter(
-            get_user_available_course_qs(self.request.user),
-            id__in=request.data["course_keys"],
-        ).count()
-        if available_courses_count != len(request.data["course_keys"]):
-            return Response(ENROLLMENT_COURSE_EXPIRED_MSG, status=status.HTTP_400_BAD_REQUEST)
-
-        user_qs = get_org_users_qs(request.user).filter(id__in=request.data["user_ids"]).values_list('id', flat=True)
         if not request.data.get("user_ids") or not request.data.get("course_keys"):
             return Response(
                 "Invalid request data! User IDs and course keys are required",
                 status=status.HTTP_400_BAD_REQUEST
             )
+
+        if not is_courses_enroll_able(request.data["course_keys"]):
+            return Response(ENROLLMENT_COURSE_EXPIRED_MSG, status=status.HTTP_400_BAD_REQUEST)
+
+        if is_courses_user_have_same_org(request.data["course_keys"], request.user):
+            return Response(ENROLLMENT_COURSE_DIFF_ORG_ERROR_MSG, status=status.HTTP_400_BAD_REQUEST)
+
+        user_qs = get_org_users_qs(request.user).filter(id__in=request.data["user_ids"]).values_list('id', flat=True)
 
         if len(request.data["user_ids"]) != len(user_qs):
             other_org_users = list(set(request.data["user_ids"]) - set(list(user_qs)))
@@ -351,7 +355,9 @@ class AnalyticsStats(views.APIView):
         user_qs = get_org_users_qs(self.request.user)
         user_ids = user_qs.values_list('id', flat=True)
 
-        completed_count, in_progress_count = get_completed_course_count_filters(user=self.request.user)
+        completed_count, in_progress_count = get_completed_course_count_filters(
+            exclude_staff_superuser=True, user=self.request.user
+        )
         course_stats = user_qs.annotate(
             passed=ExpressionWrapper(completed_count, output_field=IntegerField()),
             in_progress=ExpressionWrapper(in_progress_count, output_field=IntegerField())
@@ -405,7 +411,9 @@ class CourseStatsListAPI(generics.ListAPIView):
     serializer_class = CourseStatsListSerializer
 
     def get_queryset(self):
-        completed_count, in_progress_count = get_completed_course_count_filters(True, self.request.user)
+        completed_count, in_progress_count = get_completed_course_count_filters(
+            exclude_staff_superuser=True, user=self.request.user
+        )
         overview_qs = CourseOverview.objects.all()
         if not self.request.user.is_superuser:
             overview_qs = overview_qs.filter(get_course_overview_same_org_filter(self.request.user))
