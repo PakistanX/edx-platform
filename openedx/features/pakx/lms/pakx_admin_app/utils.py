@@ -1,6 +1,7 @@
 """
 helpers functions for Admin Panel API
 """
+import csv
 from datetime import datetime
 from uuid import uuid4
 
@@ -21,7 +22,6 @@ from student.models import Registration
 
 from .constants import GROUP_ORGANIZATION_ADMIN, GROUP_TRAINING_MANAGERS, LEARNER, ORG_ADMIN, TRAINING_MANAGER
 from .message_types import RegistrationNotification
-from .serializers import UserSerializer
 
 
 def get_user_org_filter(user):
@@ -98,20 +98,43 @@ def specify_user_role(user, role):
         user.groups.remove(g_admin, g_tm)
 
 
-def create_user(user_data, request_scheme):
+def get_user_data_from_bulk_registration_file(file_reader, default_org_id):
+    def clean(str_to_clean):
+        return str_to_clean.strip() if isinstance(str_to_clean, str) else str_to_clean
+
+    users = []
+    for user_map in file_reader:
+        user = {
+            'role': clean(user_map.get('role', '')),
+            'email': clean(user_map.get('email', '')),
+            'username': clean(user_map.get('username', '')),
+            'profile': {
+                'name': clean(user_map.get('name', '').title()),
+                'employee_id': clean(user_map.get('employee_id')),
+                'language_code': {'code': clean(user_map.get('language', ''))},
+                'organization': clean(user_map.get('organization_id')) or default_org_id,
+            }
+        }
+        users.append(user)
+    return users
+
+
+def create_user(user_data, request_url_scheme):
     """
     util function
     :param user_data: user data for registration
-    :param request_scheme: variable containing http or https
+    :param request_url_scheme: variable containing http or https
     :return: error if validation failed else None
     """
     user_data['password'] = uuid4().hex[:8]
+    from .serializers import UserSerializer
     user_serializer = UserSerializer(data=user_data)
+
     if not user_serializer.is_valid():
         return False, {**user_serializer.errors}
 
     user = user_serializer.save()
-    # send_registration_email(user, user_data['password'], request_scheme)
+    send_registration_email(user, user_data['password'], request_url_scheme)
     return True, user
 
 

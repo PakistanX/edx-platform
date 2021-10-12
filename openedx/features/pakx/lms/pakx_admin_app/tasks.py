@@ -70,9 +70,9 @@ def send_course_enrolment_email(request_user_id, user_ids, courses_map):
         log.info("Invalid request user id - Task terminated!")
 
 
-def send_bulk_registration_stats_email(created, errors, recipient):
+def send_bulk_registration_stats_email(email_msg, recipient):
     email_msg = EmailMultiAlternatives(
-        subject='Bulk Registration', plain_content, settings.PUBLISHER_FROM_EMAIL, recipient
+        to=[recipient], body=email_msg, subject='User Bulk Registration Stats',
     )
     try:
         email_msg.send()
@@ -81,17 +81,36 @@ def send_bulk_registration_stats_email(created, errors, recipient):
 
 
 @task(name='bulk_user_registration')
-def bulk_user_registration(users_data, request_user, request_scheme):
-    errors = []
-    created = []
-    for idx, user in enumerate(users_data):
-        is_created, res_data = create_user(user, request_scheme)
-        res_data = {
-            user.get('email') or user.get('username') or user.get('name') or idx: res_data
-        }
-        created.append(res_data) if is_created else errors.append(res_data)
+def bulk_user_registration(users_data, recipient, request_url_scheme):
+    def get_formatted_error_msg(err_map):
+        profile_err_map = err_map.pop('profile', {})
 
-    send_bulk_registration_stats_email(created, errors, request_user.email)
+        lang_err = profile_err_map.pop('language_code', {})
+        if lang_err:
+            err_map.update({'language': [' |'.join(r) for r in lang_err.values()]})
+
+        err_map.update(profile_err_map)
+
+        return '\n'.join(['{}: {}'.format(field, '|'.join(err)) for field, err in err_map.items()])
+
+    error_map = {}
+    created_emails = []
+    for idx, user in enumerate(users_data):
+        is_created, user_data = create_user(user, request_url_scheme)
+        if is_created:
+            created_emails.append(user_data.email)
+        else:
+            user_key = user.get('email') or user.get('username') or user.get('name') or idx
+            error_map[user_key] = user_data
+
+    err_msg_t = "User's email/username/name or index in file: {}\n{}"
+    errors_msg = [err_msg_t.format(user_key, get_formatted_error_msg(err)) for user_key, err in error_map.items()]
+
+    success_msg_t = 'The following users have been created:\n{}'
+    success_msg = success_msg_t.format('\n'.join(['email: {}'.format(email) for email in created_emails] or ['N/A']))
+
+    email_msg = '{}\n\nThe following errors occurred:\n{}'.format(success_msg, '\n\n'.join(errors_msg or ['N/A']))
+    send_bulk_registration_stats_email(email_msg, recipient)
 
 
 @task(name='enroll_users')
