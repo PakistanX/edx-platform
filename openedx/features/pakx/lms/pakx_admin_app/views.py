@@ -57,7 +57,7 @@ from .utils import (
     get_user_org_filter,
     get_user_same_org_filter,
     is_courses_enroll_able,
-    is_user_and_courses_have_same_org
+    do_user_and_courses_have_same_org
 )
 
 
@@ -179,7 +179,10 @@ class UserProfileViewSet(viewsets.ModelViewSet):
 
         required_col_names = {'name', 'username', 'email', 'organization_id', 'role', 'employee_id', 'language'}
         if not set(file_reader.fieldnames) == required_col_names:
-            return Response('Invalid file format! Column names are incorrect!', status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                'Invalid column names! Correct names are: "{}"'.format('" | "'.join(required_col_names)),
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         users = get_user_data_from_bulk_registration_file(file_reader, get_request_user_org_id(self.request))
         bulk_user_registration.delay(users, request.user.email, request.scheme)
@@ -298,7 +301,7 @@ class CourseEnrolmentViewSet(viewsets.ModelViewSet):
         if not is_courses_enroll_able(request.data["course_keys"]):
             return Response(ENROLLMENT_COURSE_EXPIRED_MSG, status=status.HTTP_400_BAD_REQUEST)
 
-        if not is_user_and_courses_have_same_org(request.data["course_keys"], request.user):
+        if not do_user_and_courses_have_same_org(request.data["course_keys"], request.user):
             return Response(ENROLLMENT_COURSE_DIFF_ORG_ERROR_MSG, status=status.HTTP_400_BAD_REQUEST)
 
         user_qs = get_org_users_qs(request.user).filter(id__in=request.data["user_ids"]).values_list('id', flat=True)

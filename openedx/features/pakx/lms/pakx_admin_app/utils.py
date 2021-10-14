@@ -228,7 +228,7 @@ def is_courses_enroll_able(course_keys):
     return courses_qs.filter(get_enroll_able_course_qs()).count() == len(course_keys)
 
 
-def is_user_and_courses_have_same_org(course_keys, user):
+def do_user_and_courses_have_same_org(course_keys, user):
     """
     Check if all courses have same org as the user
     :param course_keys: list of course keys
