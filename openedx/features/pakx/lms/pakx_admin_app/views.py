@@ -46,6 +46,7 @@ from .serializers import (
 from .tasks import bulk_user_registration, enroll_users
 from .utils import (
     create_user,
+    do_user_and_courses_have_same_org,
     get_completed_course_count_filters,
     get_course_overview_same_org_filter,
     get_learners_filter,
@@ -56,8 +57,7 @@ from .utils import (
     get_user_org,
     get_user_org_filter,
     get_user_same_org_filter,
-    is_courses_enroll_able,
-    do_user_and_courses_have_same_org
+    is_courses_enroll_able
 )
 
 
