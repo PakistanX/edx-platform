@@ -1,8 +1,8 @@
 """
 Views for Admin Panel API
 """
-import csv
-import io
+from csv import DictReader
+from io import StringIO
 from itertools import groupby
 
 from django.conf import settings
@@ -50,13 +50,14 @@ from .utils import (
     get_course_overview_same_org_filter,
     get_learners_filter,
     get_org_users_qs,
+    get_request_user_org_id,
     get_roles_q_filters,
     get_user_data_from_bulk_registration_file,
     get_user_org,
     get_user_org_filter,
     get_user_same_org_filter,
     is_courses_enroll_able,
-    is_courses_user_have_same_org
+    is_user_and_courses_have_same_org
 )
 
 
@@ -161,7 +162,7 @@ class UserProfileViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         if request.data.get('profile'):
-            request.data['profile']['organization'] = self.request.user.profile.organization_id
+            request.data['profile']['organization'] = get_request_user_org_id(self.request)
 
         is_created, res_data = create_user(request.data, request.scheme)
         if is_created:
@@ -173,21 +174,21 @@ class UserProfileViewSet(viewsets.ModelViewSet):
         if not request.FILES.get('file'):
             return Response('File is required!', status=status.HTTP_400_BAD_REQUEST)
 
-        file_data = io.StringIO(request.FILES['file'].read().decode('utf-8'))
-        file_reader = csv.DictReader(file_data)
+        file_data = StringIO(request.FILES['file'].read().decode('utf-8'))
+        file_reader = DictReader(file_data)
 
         required_col_names = {'name', 'username', 'email', 'organization_id', 'role', 'employee_id', 'language'}
         if not set(file_reader.fieldnames) == required_col_names:
             return Response('Invalid file format! Column names are incorrect!', status=status.HTTP_400_BAD_REQUEST)
 
-        users = get_user_data_from_bulk_registration_file(file_reader, self.request.user.profile.organization_id)
+        users = get_user_data_from_bulk_registration_file(file_reader, get_request_user_org_id(self.request))
         bulk_user_registration.delay(users, request.user.email, request.scheme)
 
         return Response(BULK_REGISTRATION_TASK_SUCCESS_MSG, status=status.HTTP_200_OK)
 
     def partial_update(self, request, *args, **kwargs):
         user = self.get_object()
-        request.data['profile'].update({'organization': self.request.user.profile.organization_id})
+        request.data['profile'].update({'organization': get_request_user_org_id(self.request)})
         user_serializer = UserSerializer(user, data=request.data, partial=True)
 
         if user_serializer.is_valid():
@@ -297,7 +298,7 @@ class CourseEnrolmentViewSet(viewsets.ModelViewSet):
         if not is_courses_enroll_able(request.data["course_keys"]):
             return Response(ENROLLMENT_COURSE_EXPIRED_MSG, status=status.HTTP_400_BAD_REQUEST)
 
-        if not is_courses_user_have_same_org(request.data["course_keys"], request.user):
+        if not is_user_and_courses_have_same_org(request.data["course_keys"], request.user):
             return Response(ENROLLMENT_COURSE_DIFF_ORG_ERROR_MSG, status=status.HTTP_400_BAD_REQUEST)
 
         user_qs = get_org_users_qs(request.user).filter(id__in=request.data["user_ids"]).values_list('id', flat=True)
@@ -471,7 +472,7 @@ class UserInfo(views.APIView):
             languages_qs = LanguageProficiency.objects.all()
         else:
             languages_qs = LanguageProficiency.objects.filter(
-                user_profile__organization=self.request.user.profile.organization_id
+                user_profile__organization=get_request_user_org_id(self.request)
             )
         all_languages = [{'code': lang[0], 'value': lang[1]} for lang in settings.ALL_LANGUAGES]
         languages = [{'code': lang.code, 'value': lang.get_code_display()} for lang in languages_qs]

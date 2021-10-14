@@ -228,7 +228,7 @@ def is_courses_enroll_able(course_keys):
     return courses_qs.filter(get_enroll_able_course_qs()).count() == len(course_keys)
 
 
-def is_courses_user_have_same_org(course_keys, user):
+def is_user_and_courses_have_same_org(course_keys, user):
     """
     Check if all courses have same org as the user
     :param course_keys: list of course keys
@@ -238,6 +238,15 @@ def is_courses_user_have_same_org(course_keys, user):
     courses_qs = CourseOverview.objects.filter(id__in=course_keys)
     user_org_courses_count = courses_qs.filter(get_course_overview_same_org_filter(user)).count()
     return user_org_courses_count == len(course_keys)
+
+
+def get_request_user_org_id(request):
+    """
+    return organization ID of request user
+    :param request: request obj
+    :return: (int) user's organization ID
+    """
+    return request.user.profile.organization_id
 
 
 def send_registration_email(user, password, protocol, is_public_registration=False):
