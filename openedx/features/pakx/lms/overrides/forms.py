@@ -18,6 +18,7 @@ class AboutUsForm(ModelForm):
             },
         }
         help_texts = {
+            'full_name': _('Full Name'),
             'email': _('user@website.com'),
             'phone': _('04235608000 or 03317758391'),
             'message': _('Maximum words (4000)'),
@@ -56,5 +57,5 @@ class MarketingForm(AboutUsForm):
         org = super().clean_organization()
 
         if org is None or org.strip() == '':
-            raise ValidationError("Organization is required")
+            raise ValidationError("This field is required.")
         return org
