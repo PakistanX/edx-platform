@@ -3,6 +3,7 @@ Constants for the need of Admin Panel
 """
 GROUP_TRAINING_MANAGERS = 'Training Manager'
 GROUP_ORGANIZATION_ADMIN = 'Organization Admins'
+BULK_REGISTRATION_TASK_SUCCESS_MSG = 'Task has been started successfully. You will receive the stats email shortly'
 SELF_ACTIVE_STATUS_CHANGE_ERROR_MSG = "User can't change their own activation status."
 ENROLLMENT_COURSE_EXPIRED_MSG = 'Enrollment date is passed for selected courses. ' \
                                 'Refresh the page to get the updated course list.'

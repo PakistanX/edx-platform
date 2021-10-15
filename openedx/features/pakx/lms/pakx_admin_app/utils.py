@@ -2,6 +2,7 @@
 helpers functions for Admin Panel API
 """
 from datetime import datetime
+from uuid import uuid4
 
 import pytz
 from django.conf import settings
@@ -96,6 +97,46 @@ def specify_user_role(user, role):
         user.groups.remove(g_admin, g_tm)
 
 
+def get_user_data_from_bulk_registration_file(file_reader, default_org_id):
+    def clean(str_to_clean):
+        return str_to_clean.strip() if isinstance(str_to_clean, str) else str_to_clean
+
+    users = []
+    for user_map in file_reader:
+        user = {
+            'role': clean(user_map.get('role', '')),
+            'email': clean(user_map.get('email', '')),
+            'username': clean(user_map.get('username', '')),
+            'profile': {
+                'name': clean(user_map.get('name', '').title()),
+                'employee_id': clean(user_map.get('employee_id')),
+                'language_code': {'code': clean(user_map.get('language', ''))},
+                'organization': clean(user_map.get('organization_id')) or default_org_id,
+            }
+        }
+        users.append(user)
+    return users
+
+
+def create_user(user_data, request_url_scheme):
+    """
+    util function
+    :param user_data: user data for registration
+    :param request_url_scheme: variable containing http or https
+    :return: error if validation failed else None
+    """
+    user_data['password'] = uuid4().hex[:8]
+    from .serializers import UserSerializer
+    user_serializer = UserSerializer(data=user_data)
+
+    if not user_serializer.is_valid():
+        return False, {**user_serializer.errors}
+
+    user = user_serializer.save()
+    send_registration_email(user, user_data['password'], request_url_scheme)
+    return True, user
+
+
 def get_registration_email_message_context(user, password, protocol, is_public_registration):
     """
     return context for registration notification email body
@@ -187,7 +228,7 @@ def is_courses_enroll_able(course_keys):
     return courses_qs.filter(get_enroll_able_course_qs()).count() == len(course_keys)
 
 
-def is_courses_user_have_same_org(course_keys, user):
+def do_user_and_courses_have_same_org(course_keys, user):
     """
     Check if all courses have same org as the user
     :param course_keys: list of course keys
@@ -197,6 +238,15 @@ def is_courses_user_have_same_org(course_keys, user):
     courses_qs = CourseOverview.objects.filter(id__in=course_keys)
     user_org_courses_count = courses_qs.filter(get_course_overview_same_org_filter(user)).count()
     return user_org_courses_count == len(course_keys)
+
+
+def get_request_user_org_id(request):
+    """
+    return organization ID of request user
+    :param request: request obj
+    :return: (int) user's organization ID
+    """
+    return request.user.profile.organization_id
 
 
 def send_registration_email(user, password, protocol, is_public_registration=False):
