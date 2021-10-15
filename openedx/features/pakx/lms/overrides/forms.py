@@ -1,3 +1,5 @@
+from django import forms
+from django.core.validators import ValidationError
 from django.forms import ModelForm
 from django.utils.translation import ugettext as _
 
@@ -35,9 +37,24 @@ class AboutUsForm(ModelForm):
 
 
 class MarketingForm(AboutUsForm):
+    phone = forms.CharField(required=False, label='Phone')
+    organization = forms.CharField(required=False, label='Organization')
+
+    class Meta(AboutUsForm.Meta):
+        fields = ('full_name', 'organization', 'email', 'phone', 'message')
 
     def __init__(self, *args, **kwargs):
         super(MarketingForm, self).__init__(*args, **kwargs)
+        self.fields['organization'].help_text = _('Organization')
+        self.fields['phone'].label = _('04235608000 or 03317758391')
         for key, field in self.fields.items():
-            self.fields[key].widget.attrs.update({'class': 'form-control',
-                                                  'placeholder': field.help_text or field.label})
+            attr = {'class': 'form-control',
+                    'placeholder': "{}*".format(field.help_text) if field.help_text else field.label}
+            self.fields[key].widget.attrs.update(attr)
+
+    def clean_organization(self):
+        org = super().clean_organization()
+
+        if org is None or org.strip() == '':
+            raise ValidationError("Organization is required")
+        return org
