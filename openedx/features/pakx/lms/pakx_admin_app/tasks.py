@@ -96,9 +96,10 @@ def bulk_user_registration(users_data, recipient, request_url_scheme):
     error_map = {}
     created_emails = []
     site = Site.objects.get_current()
+    req_user = User.objects.get(email=recipient)
 
     for idx, user in enumerate(users_data):
-        with emulate_http_request(site, user):
+        with emulate_http_request(site, req_user):
             is_created, user_data = create_user(user, request_url_scheme)
         if is_created:
             created_emails.append(user_data.email)
