@@ -14,7 +14,4 @@ class CourseProgress(BaseMessageType):
 
 
 class ContactUs(BaseMessageType):
-    def __init__(self, *args, **kwargs):
-        super(ContactUs, self).__init__(*args, **kwargs)
-
-        self.options['transactional'] = True
+    pass

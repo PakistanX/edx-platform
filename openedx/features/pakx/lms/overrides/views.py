@@ -387,6 +387,7 @@ class AboutUsView(TemplateView):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.email_subject = 'Contact Us Form Data'
         self.initial_data = {}
 
     def populate_form_initial_data(self, user=None):
@@ -427,6 +428,7 @@ class AboutUsView(TemplateView):
             email_data = model_to_dict(
                 instance, fields=['full_name', 'email', 'organization', 'phone', 'message']
             )
+            email_data['subject'] = self.email_subject
             email_data['form_message'] = email_data.pop('message')
             send_contact_us_email(email_data)
 
@@ -446,6 +448,10 @@ class PartnerWithUsView(AboutUsView):
     View for partner-with-us page.
     """
 
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.email_subject = 'Partner with Us Form Data'
+
     success_redirect = '/partner-with-us/'
     template_name = "overrides/partner_with_us.html"
 
@@ -457,6 +463,10 @@ class BusinessView(AboutUsView):
     template_name = 'overrides/business.html'
     success_redirect = '/business/#get-started'
 
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.email_subject = 'PakistanX for Business Form Data'
+
     def populate_form_initial_data(self, user=None):
         super().populate_form_initial_data(user)
         self.initial_data.update({'message': 'Not Available. Submitted from Business Page'})
@@ -466,6 +476,10 @@ class MarketingCampaignPage(AboutUsView):
     """
     View for business page.
     """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.email_subject = 'Pakistan Against Workplace Harassment Form Data'
 
     form_class = MarketingForm
     template_name = 'overrides/marketing_campaign.html'
