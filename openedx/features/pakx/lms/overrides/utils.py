@@ -70,6 +70,7 @@ def get_course_card_data(course, org_prefetched=False):
         org_logo_url = course.custom_settings.course_set.publisher_org.logo
         org_description = course.custom_settings.course_set.publisher_org.description
 
+    org_logo_url = org_logo_url.url if org_logo_url else org_logo_url
     return {
         'key': course.id,
         'org_name': org_name,
