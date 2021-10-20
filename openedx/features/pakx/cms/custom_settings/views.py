@@ -65,8 +65,9 @@ class CourseCustomSettingsView(LoginRequiredMixin, View):
         course_set = request.POST['course-set']
         course_overview = request.POST['course-overview']
         card_description = request.POST['card-description']
-        publisher_logo_url = request.POST['publisher-logo-url']
         course_experience = request.POST.get('course_experience', 0)
+        publisher_logo_url = request.POST['publisher-logo-url']
+        publisher_logo_url = publisher_logo_url if publisher_logo_url.startswith('http') else '/' + publisher_logo_url
 
         if course_overview is not None:
             CourseOverviewContent.objects.update_or_create(

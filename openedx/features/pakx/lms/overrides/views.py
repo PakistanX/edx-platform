@@ -262,9 +262,6 @@ def _get_course_about_context(request, course_id, category=None):  # pylint: dis
         # Used to provide context to message to student if enrollment not allowed
         can_enroll = bool(request.user.has_perm(ENROLL_IN_COURSE, course))
         can_enroll = can_enroll and is_course_enroll_able(course)
-        current_date = datetime.now(utc)
-        days_in_course_start = (course.start - current_date).days if (
-            course.start and course.start > current_date) else None
 
         invitation_only = course.invitation_only
         is_enrolled = CourseEnrollment.is_enrolled(request.user, course.id)
@@ -291,6 +288,9 @@ def _get_course_about_context(request, course_id, category=None):  # pylint: dis
 
         # Overview
         overview = CourseOverview.get_from_id(course.id)
+
+        starts_in = bool(overview.start_date and overview.start_date > datetime.now(utc))
+        starts_in = starts_in and overview.start_date.strftime('%B %m, %Y')
 
         sidebar_html_enabled = course_experience_waffle().is_enabled(ENABLE_COURSE_ABOUT_SIDEBAR_HTML)
 
@@ -339,7 +339,7 @@ def _get_course_about_context(request, course_id, category=None):  # pylint: dis
             'user_progress': user_progress,
             'org_name': course_map['org_name'],
             'org_short_logo': course_map['org_logo_url'],
-            'days_in_course_start': days_in_course_start,
+            'starts_in': starts_in,
             'org_description': course_map['org_description'],
             'publisher_logo': course_map['publisher_logo_url'],
             'course_rating': get_rating_classes_for_course(course_id)

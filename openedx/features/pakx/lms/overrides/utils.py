@@ -8,6 +8,7 @@ from re import findall
 from completion.models import BlockCompletion
 from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.core.validators import MinLengthValidator, RegexValidator
 from django.db.models import Avg, Case, Count, IntegerField, Sum, When
 from django.db.models.functions import Coalesce
 from django.urls import reverse
@@ -24,10 +25,9 @@ from openedx.core.djangoapps.content.block_structure.transformers import BlockSt
 from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
 from openedx.core.djangoapps.site_configuration import helpers as configuration_helpers
 from openedx.core.lib.request_utils import get_request_or_stub
-# pylint: disable=too-many-statements
 from openedx.features.course_experience.utils import get_course_outline_block_tree, get_resume_block
 from openedx.features.pakx.cms.custom_settings.models import CourseOverviewContent
-from pakx_feedback.feedback_app.models import UserFeedbackModel   # pylint: disable=import-error
+from pakx_feedback.feedback_app.models import UserFeedbackModel  # pylint: disable=import-error
 from student.models import CourseEnrollment
 from util.organizations_helpers import get_organization_by_short_name
 from xmodule import course_metadata_utils
@@ -57,7 +57,7 @@ def get_course_card_data(course, org_prefetched=False):
     if not isinstance(course, CourseOverview):
         course = CourseOverview.objects.filter(id=course.id).first()
 
-    pakx_short_logo = '/static/pakx/images/mooc/pX.png'
+    pakx_short_logo = '/static/pakx/images/mooc/pakx-logo-circled.png'
     course_custom_setting = get_or_create_course_overview_content(course.id)
 
     if not org_prefetched:
@@ -441,6 +441,13 @@ def is_course_enroll_able(course):
     is_enrollment_ended = course_metadata_utils.has_course_ended(course.enrollment_end)
     is_enrollment_not_started = datetime.now(utc) < course.enrollment_start if course.enrollment_start else False
     return not is_course_ended and not is_enrollment_ended and not is_enrollment_not_started
+
+
+def get_phone_validators():
+    return [
+        MinLengthValidator(limit_value=11, message=_('Phone number should be of minimum 11 chars.')),
+        RegexValidator(message=_('Phone number can only contain numbers.'), regex='^\\+?1?\\d*$')
+    ]
 
 
 def validate_text_for_emoji(text):

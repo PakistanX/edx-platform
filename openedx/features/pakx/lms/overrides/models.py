@@ -5,7 +5,7 @@ from django.core.validators import MaxLengthValidator, MinLengthValidator, Regex
 from django.db import models
 from django.utils.translation import ugettext as _
 
-from openedx.features.pakx.lms.overrides.utils import validate_text_for_emoji
+from openedx.features.pakx.lms.overrides.utils import get_phone_validators, validate_text_for_emoji
 from student.models import CourseEnrollment
 
 
@@ -47,16 +47,12 @@ class ContactUs(models.Model):
     )
     email = models.EmailField()
     organization = models.CharField(max_length=40, null=True, blank=True, validators=[validate_text_for_emoji])
-    phone = models.CharField(
-        max_length=16,
-        validators=[
-            MinLengthValidator(limit_value=11, message=_('Phone number should be of minimum 11 chars.')),
-            RegexValidator(message=_('Phone number can only contain numbers.'), regex='^\\+?1?\\d*$')
-        ]
-    )
+    phone = models.CharField(max_length=16, validators=get_phone_validators())
     message = models.TextField(
         verbose_name=_('How can we help you?'),
-        validators=[MaxLengthValidator(4000, message=_('Message should be of maximum 4000 chars.')), validate_text_for_emoji]
+        validators=[
+            MaxLengthValidator(4000, message=_('Message should be of maximum 4000 chars.')), validate_text_for_emoji
+        ]
     )
     created_by = models.ForeignKey(User, blank=True, null=True, on_delete=models.DO_NOTHING)
     created_at = models.DateTimeField(auto_now_add=True)
