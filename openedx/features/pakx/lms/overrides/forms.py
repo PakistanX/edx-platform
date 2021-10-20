@@ -6,9 +6,12 @@ from django.utils.translation import ugettext as _
 from openedx.features.pakx.lms.overrides.utils import validate_text_for_emoji
 
 from .models import ContactUs
+from .utils import get_phone_validators
 
 
 class AboutUsForm(ModelForm):
+    phone = forms.CharField(validators=get_phone_validators(), label='Phone', help_text=_('04235608000 or 03317758391'))
+
     class Meta:
         model = ContactUs
         fields = ('full_name', 'email', 'organization', 'phone', 'message')
@@ -18,14 +21,13 @@ class AboutUsForm(ModelForm):
             },
         }
         help_texts = {
-            'full_name': _('Full Name'),
             'email': _('user@website.com'),
-            'phone': _('04235608000 or 03317758391'),
             'message': _('Maximum words (4000)'),
         }
 
     def __init__(self, *args, **kwargs):
         super(AboutUsForm, self).__init__(*args, **kwargs)
+        self.fields['full_name'].label = _('Full Name')
         for key, field in self.fields.items():
             if field.required:
                 field.label = field.label + '*'
@@ -38,20 +40,8 @@ class AboutUsForm(ModelForm):
 
 
 class MarketingForm(AboutUsForm):
-    phone = forms.CharField(required=False, label='Phone')
-    organization = forms.CharField(required=False, label='Organization')
-
-    class Meta(AboutUsForm.Meta):
-        fields = ('full_name', 'organization', 'email', 'phone', 'message')
-
-    def __init__(self, *args, **kwargs):
-        super(MarketingForm, self).__init__(*args, **kwargs)
-        self.fields['organization'].help_text = _('Organization')
-        self.fields['phone'].label = _('04235608000 or 03317758391')
-        for key, field in self.fields.items():
-            attr = {'class': 'form-control',
-                    'placeholder': "{}*".format(field.help_text) if field.help_text else field.label}
-            self.fields[key].widget.attrs.update(attr)
+    phone = forms.CharField(required=False, validators=get_phone_validators(), label='Phone')
+    organization = forms.CharField(required=True, label='Organization')
 
     def clean_organization(self):
         org = super().clean_organization()

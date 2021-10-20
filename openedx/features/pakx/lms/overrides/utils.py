@@ -8,6 +8,7 @@ from re import findall
 from completion.models import BlockCompletion
 from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.core.validators import MinLengthValidator, RegexValidator
 from django.db.models import Avg, Case, Count, IntegerField, Sum, When
 from django.db.models.functions import Coalesce
 from django.urls import reverse
@@ -440,6 +441,13 @@ def is_course_enroll_able(course):
     is_enrollment_ended = course_metadata_utils.has_course_ended(course.enrollment_end)
     is_enrollment_not_started = datetime.now(utc) < course.enrollment_start if course.enrollment_start else False
     return not is_course_ended and not is_enrollment_ended and not is_enrollment_not_started
+
+
+def get_phone_validators():
+    return [
+        MinLengthValidator(limit_value=11, message=_('Phone number should be of minimum 11 chars.')),
+        RegexValidator(message=_('Phone number can only contain numbers.'), regex='^\\+?1?\\d*$')
+    ]
 
 
 def validate_text_for_emoji(text):
