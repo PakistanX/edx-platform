@@ -30,6 +30,6 @@ class IsSameOrganization(BasePermission):
 
     def has_permission(self, request, view):
         return request.user.is_superuser or User.objects.filter(
-            profile__organization_id=get_request_user_org_id(request.user),
+            profile__organization_id=get_request_user_org_id(request),
             id=view.kwargs.get('user_id')
         ).exists()
