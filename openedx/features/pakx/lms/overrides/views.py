@@ -290,7 +290,7 @@ def _get_course_about_context(request, course_id, category=None):  # pylint: dis
         overview = CourseOverview.get_from_id(course.id)
 
         starts_in = bool(overview.start_date and overview.start_date > datetime.now(utc))
-        starts_in = starts_in and overview.start_date.strftime('%B %m, %Y')
+        starts_in = starts_in and overview.start_date.strftime('%B %d, %Y')
 
         sidebar_html_enabled = course_experience_waffle().is_enabled(ENABLE_COURSE_ABOUT_SIDEBAR_HTML)
 
