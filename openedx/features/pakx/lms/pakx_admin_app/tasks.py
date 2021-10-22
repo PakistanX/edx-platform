@@ -96,7 +96,7 @@ def bulk_user_registration(users_data, recipient, request_url_scheme):
         err_map.update(profile_err_map)
         req_data.update(profile_req_data)
 
-        return '\n'.join(['{}:({}) | {}'.format(field, req_data[field], '|'.join(err)) for field, err in err_map.items()])
+        return '\n'.join(['{}:({}) | {}'.format(f, req_data[f], '|'.join(err)) for f, err in err_map.items()])
 
     error_map = {}
     created_emails = []
