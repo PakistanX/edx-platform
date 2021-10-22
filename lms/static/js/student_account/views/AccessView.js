@@ -130,6 +130,7 @@
                 loadForm: function(type) {
                     var loadFunc;
                     if (type === 'reset') {
+                        this.subview.login.undelegateEvents()
                         loadFunc = _.bind(this.load.login, this);
                         loadFunc(this.formDescriptions.login);
                     }
