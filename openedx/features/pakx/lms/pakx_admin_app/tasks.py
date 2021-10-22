@@ -82,30 +82,35 @@ def send_bulk_registration_stats_email(email_msg, recipient):
 
 @task(name='bulk_user_registration')
 def bulk_user_registration(users_data, recipient, request_url_scheme):
-    def get_formatted_error_msg(err_map):
+    def get_formatted_error_msg(errors):
+        err_map = errors['response_errors']
+        req_data = errors['req_data']
+
         profile_err_map = err_map.pop('profile', {})
+        profile_req_data = req_data.pop('profile', {})
 
         lang_err = profile_err_map.pop('language_code', {})
         if lang_err:
             err_map.update({'language': [' |'.join(r) for r in lang_err.values()]})
 
         err_map.update(profile_err_map)
+        req_data.update(profile_req_data)
 
-        return '\n'.join(['{}: {}'.format(field, '|'.join(err)) for field, err in err_map.items()])
+        return '\n'.join(['{}:({}) | {}'.format(field, req_data[field], '|'.join(err)) for field, err in err_map.items()])
 
     error_map = {}
     created_emails = []
     site = Site.objects.get_current()
     req_user = User.objects.get(email=recipient)
 
-    for idx, user in enumerate(users_data):
+    for idx, user in enumerate(users_data, start=1):
         with emulate_http_request(site, req_user):
             is_created, user_data = create_user(user, request_url_scheme)
         if is_created:
             created_emails.append(user_data.email)
         else:
             user_key = user.get('email') or user.get('username') or user.get('name') or idx
-            error_map[user_key] = user_data
+            error_map[user_key] = {'response_errors': user_data, 'req_data': user}
 
     err_msg_t = "User's email/username/name or index in file: {}\n{}"
     errors_msg = [err_msg_t.format(user_key, get_formatted_error_msg(err)) for user_key, err in error_map.items()]
