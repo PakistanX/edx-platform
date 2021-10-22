@@ -567,6 +567,8 @@ def password_change_request_handler(request):
 
             request_password_change(email, request.is_secure())
             destroy_oauth_tokens(user)
+        except User.DoesNotExist:
+            return HttpResponse(_("User with this email does not exist."), status=404)
         except errors.UserNotFound:
             AUDIT_LOG.info("Invalid password reset attempt")
             # If enabled, send an email saying that a password reset was attempted, but that there is
