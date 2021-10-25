@@ -189,7 +189,6 @@
                             }
                         )
                 ];
-                debugger
                 this.renderErrorsOnForm(this.defaultFormErrorsTitle, this.errors);
                 this.scrollToFormFeedback();
                 this.toggleDisableButton(false);
