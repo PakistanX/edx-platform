@@ -189,7 +189,8 @@
                             }
                         )
                 ];
-                this.renderErrors(this.defaultFormErrorsTitle, this.errors);
+                debugger
+                this.renderErrorsOnForm(this.defaultFormErrorsTitle, this.errors);
                 this.scrollToFormFeedback();
                 this.toggleDisableButton(false);
             },
@@ -198,6 +199,10 @@
              * our calls to renderFormFeedback are for rendering error messages.
              */
             renderErrors: function(title, errorMessages) {
+                this.clearFormErrors();
+            },
+
+            renderErrorsOnForm: function(title, errorMessages) {
                 this.clearFormErrors();
                 this.renderFormFeedback(this.formErrorsTpl, {
                   jsHook: this.formErrorsJsHook,
