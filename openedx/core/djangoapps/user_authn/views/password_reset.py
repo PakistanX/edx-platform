@@ -349,36 +349,37 @@ class PasswordResetConfirmWrapper(PasswordResetConfirmView):
             return super(PasswordResetConfirmWrapper, self).dispatch(request, uidb64=self.uidb64, token=self.token,
                                                                      extra_context=self.platform_name)
 
-    def _handle_retired_user(self, request):
-        """
-        method responsible to stop password reset in case user is retired
-        """
-
+    def _send_template_response(self, request, err_msg):
+        """Renders the same password change form with error message."""
         context = {
             'validlink': True,
             'form': None,
             'title': _('Password reset unsuccessful'),
-            'err_msg': _('Error in resetting your password.'),
+            'err_msg': _(err_msg),
         }
         context.update(self.platform_name)
         return TemplateResponse(
             request, 'registration/password_reset_confirm.html', context
         )
 
+    def _handle_retired_user(self, request):
+        """
+        method responsible to stop password reset in case user is retired
+        """
+        return self._send_template_response(request, 'Error in resetting your password.')
+
     def _validate_password(self, password, request):
+        """Matches both passwords and then validates them."""
+        err_msg = ''
         try:
+            assert request.POST['new_password1'] == request.POST['new_password2']
             validate_password(password, user=self.user)
+        except AssertionError:
+            err_msg = 'Passwords did not match!'
         except ValidationError as err:
-            context = {
-                'validlink': True,
-                'form': None,
-                'title': _('Password reset unsuccessful'),
-                'err_msg': ' '.join(err.messages),
-            }
-            context.update(self.platform_name)
-            return TemplateResponse(
-                request, 'registration/password_reset_confirm.html', context
-            )
+            err_msg = ' '.join(err.messages)
+
+        return self._send_template_response(request, err_msg)
 
     def _handle_password_reset_failure(self, response):
         form_valid = response.context_data['form'].is_valid() if response.context_data['form'] else False
