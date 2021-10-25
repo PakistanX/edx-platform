@@ -49,14 +49,12 @@ from .utils import (
     do_user_and_courses_have_same_org,
     get_completed_course_count_filters,
     get_course_overview_same_org_filter,
-    get_learners_filter,
     get_org_users_qs,
     get_request_user_org_id,
     get_roles_q_filters,
     get_user_data_from_bulk_registration_file,
     get_user_org,
     get_user_org_filter,
-    get_user_same_org_filter,
     is_courses_enroll_able
 )
 
