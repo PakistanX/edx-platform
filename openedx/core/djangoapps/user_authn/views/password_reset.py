@@ -370,16 +370,13 @@ class PasswordResetConfirmWrapper(PasswordResetConfirmView):
 
     def _validate_password(self, password, request):
         """Matches both passwords and then validates them."""
-        err_msg = ''
         try:
             assert request.POST['new_password1'] == request.POST['new_password2']
             validate_password(password, user=self.user)
         except AssertionError:
-            err_msg = 'Passwords did not match!'
+            return self._send_template_response(request, 'Passwords did not match!')
         except ValidationError as err:
-            err_msg = ' '.join(err.messages)
-
-        return self._send_template_response(request, err_msg)
+            return self._send_template_response(request, ' '.join(err.messages))
 
     def _handle_password_reset_failure(self, response):
         form_valid = response.context_data['form'].is_valid() if response.context_data['form'] else False
