@@ -57,8 +57,11 @@ def get_learners_filter():
 
 def get_user_enrollment_same_org_filter(user):
     """get filter against enrollment record and user's course enrollment, enrollment->course->org"""
-
-    return Q(courseenrollment__user__profile__organization__short_name__iregex=get_user_org(user))
+    user_org = get_user_org(user)
+    return Q(
+        Q(courseenrollment__user__profile__organization__short_name__iregex=user_org) &
+        Q(courseenrollment__course__org__iregex=user_org)
+    )
 
 
 def get_roles_q_filters(roles):
@@ -163,7 +166,7 @@ def get_registration_email_message_context(user, password, protocol, is_public_r
     return message_context
 
 
-def get_completed_course_count_filters(exclude_staff_superuser=True, user=None):
+def get_completed_course_count_filters(exclude_staff_superuser=True, req_user=None):
     completed = Q(
         Q(courseenrollment__enrollment_stats__email_reminder_status=CourseProgressStats.COURSE_COMPLETED) &
         Q(courseenrollment__is_active=True)
@@ -176,8 +179,8 @@ def get_completed_course_count_filters(exclude_staff_superuser=True, user=None):
     is_exclude = not exclude_staff_superuser
     learners = Q(courseenrollment__user__is_staff=is_exclude) & Q(courseenrollment__user__is_superuser=is_exclude)
 
-    if user and not user.is_superuser:
-        learners = Q(learners & get_user_enrollment_same_org_filter(user))
+    if req_user and not req_user.is_superuser:
+        learners = Q(learners & get_user_enrollment_same_org_filter(req_user))
 
     completed_count = Count("courseenrollment", filter=Q(learners & completed))
     in_progress_count = Count("courseenrollment", filter=Q(learners & in_progress))
@@ -228,13 +231,17 @@ def is_courses_enroll_able(course_keys):
     return courses_qs.filter(get_enroll_able_course_qs()).count() == len(course_keys)
 
 
-def do_user_and_courses_have_same_org(course_keys, user):
+def do_user_and_courses_have_same_org(course_keys, user, exempt_super_user=True):
     """
     Check if all courses have same org as the user
     :param course_keys: list of course keys
     :param user: user object
+    :param exempt_super_user: bool flag to exempt super users from this check
     :return: (bool) boolean flag representing all courses have same org as the user
     """
+    if exempt_super_user and user.is_superuser:
+        return True
+
     courses_qs = CourseOverview.objects.filter(id__in=course_keys)
     user_org_courses_count = courses_qs.filter(get_course_overview_same_org_filter(user)).count()
     return user_org_courses_count == len(course_keys)
