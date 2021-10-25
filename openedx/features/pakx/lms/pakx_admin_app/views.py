@@ -49,14 +49,12 @@ from .utils import (
     do_user_and_courses_have_same_org,
     get_completed_course_count_filters,
     get_course_overview_same_org_filter,
-    get_learners_filter,
     get_org_users_qs,
     get_request_user_org_id,
     get_roles_q_filters,
     get_user_data_from_bulk_registration_file,
     get_user_org,
     get_user_org_filter,
-    get_user_same_org_filter,
     is_courses_enroll_able
 )
 
@@ -136,7 +134,7 @@ class UserProfileViewSet(viewsets.ModelViewSet):
         if not self.request.user.is_superuser:
             user_qs = user_qs.filter(**get_user_org_filter(self.request.user))
 
-        completed_count, in_progress_count = get_completed_course_count_filters(user=self.request.user)
+        completed_count, in_progress_count = get_completed_course_count_filters(req_user=self.request.user)
         user_obj = user_qs.filter(
             id=self.kwargs['pk']
         ).select_related(
@@ -339,7 +337,7 @@ class AnalyticsStats(views.APIView):
         user_ids = user_qs.values_list('id', flat=True)
 
         completed_count, in_progress_count = get_completed_course_count_filters(
-            exclude_staff_superuser=True, user=self.request.user
+            exclude_staff_superuser=True, req_user=self.request.user
         )
         course_stats = user_qs.annotate(
             passed=ExpressionWrapper(completed_count, output_field=IntegerField()),
@@ -395,7 +393,7 @@ class CourseStatsListAPI(generics.ListAPIView):
 
     def get_queryset(self):
         completed_count, in_progress_count = get_completed_course_count_filters(
-            exclude_staff_superuser=True, user=self.request.user
+            exclude_staff_superuser=True, req_user=self.request.user
         )
         overview_qs = CourseOverview.objects.all()
         if not self.request.user.is_superuser:
@@ -445,16 +443,13 @@ class LearnerListAPI(generics.ListAPIView):
     serializer_class = LearnersSerializer
 
     def get_queryset(self):
-        user_qs = User.objects.filter(get_learners_filter())
+        user_qs = get_org_users_qs(self.request.user)
         enrollment_qs = CourseEnrollment.objects.filter(is_active=True)
         if not self.request.user.is_superuser:
-            user_qs = user_qs.filter(get_user_same_org_filter(self.request.user))
             enrollment_qs = enrollment_qs.filter(course__org__iregex=get_user_org(self.request.user))
 
         enrollments = enrollment_qs.select_related('enrollment_stats')
-        return user_qs.select_related(
-            'profile'
-        ).prefetch_related(
+        return user_qs.prefetch_related(
             Prefetch('courseenrollment_set', to_attr='enrollment', queryset=enrollments)
         )
 
