@@ -12,7 +12,7 @@ from django.contrib.auth.tokens import default_token_generator
 from django.contrib.auth.views import INTERNAL_RESET_SESSION_TOKEN, PasswordResetConfirmView
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.validators import ValidationError
-from django.http import Http404, HttpResponse, HttpResponseBadRequest, HttpResponseForbidden, HttpResponseRedirect
+from django.http import Http404, HttpResponse, HttpResponseBadRequest, HttpResponseRedirect
 from django.template.response import TemplateResponse
 from django.urls import reverse
 from django.utils.decorators import method_decorator
@@ -77,7 +77,6 @@ def get_password_reset_form():
 
     # Translators: These instructions appear on the password reset form,
     # immediately below a field meant to hold the user's email address.
-    # pylint: disable=no-member
     email_instructions = _(u"The email address you used to register with {platform_name}").format(
         platform_name=configuration_helpers.get_value('PLATFORM_NAME', settings.PLATFORM_NAME)
     )
@@ -349,13 +348,13 @@ class PasswordResetConfirmWrapper(PasswordResetConfirmView):
             return super(PasswordResetConfirmWrapper, self).dispatch(request, uidb64=self.uidb64, token=self.token,
                                                                      extra_context=self.platform_name)
 
-    def _send_template_response(self, request, err_msg):
+    def _send_template_response(self, request, err_msg: str):
         """Renders the same password change form with error message."""
         context = {
             'validlink': True,
             'form': None,
             'title': _('Password reset unsuccessful'),
-            'err_msg': _(err_msg),
+            'err_msg': _("{}".format(err_msg)),
         }
         context.update(self.platform_name)
         return TemplateResponse(
