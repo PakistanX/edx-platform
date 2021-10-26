@@ -189,7 +189,7 @@
                             }
                         )
                 ];
-                this.renderErrors(this.defaultFormErrorsTitle, this.errors);
+                this.renderErrorsOnForm(this.defaultFormErrorsTitle, this.errors);
                 this.scrollToFormFeedback();
                 this.toggleDisableButton(false);
             },
@@ -199,12 +199,15 @@
              */
             renderErrors: function(title, errorMessages) {
                 this.clearFormErrors();
-//                PKX-463 Disabled error hooks
-//                this.renderFormFeedback(this.formErrorsTpl, {
-//                    jsHook: this.formErrorsJsHook,
-//                    title: title,
-//                    messagesHtml: HtmlUtils.HTML(errorMessages.join(''))
-//                });
+            },
+
+            renderErrorsOnForm: function(title, errorMessages) {
+                this.clearFormErrors();
+                this.renderFormFeedback(this.formErrorsTpl, {
+                  jsHook: this.formErrorsJsHook,
+                  title: title,
+                  messagesHtml: HtmlUtils.HTML(errorMessages.join(''))
+                });
             },
 
             renderFormFeedback: function(template, context) {
