@@ -354,7 +354,7 @@ class PasswordResetConfirmWrapper(PasswordResetConfirmView):
             'validlink': True,
             'form': None,
             'title': _('Password reset unsuccessful'),
-            'err_msg': _("{}".format(err_msg)),
+            'err_msg': _(err_msg),
         }
         context.update(self.platform_name)
         return TemplateResponse(
