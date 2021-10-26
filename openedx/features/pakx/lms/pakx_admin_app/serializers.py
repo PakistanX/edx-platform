@@ -186,7 +186,7 @@ class UserSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError('This field required!')
 
         if len(value) > 30:
-            raise serializers.ValidationError('Username should be less than 30 characters')
+            raise serializers.ValidationError('Username should not be greater than 30 characters')
 
     @transaction.atomic()
     def create(self, validated_data):
