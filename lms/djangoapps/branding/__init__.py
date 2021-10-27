@@ -41,7 +41,7 @@ def get_visible_courses(org=None, filter_=None):
         courses = CourseOverview.get_all_courses(orgs=current_site_orgs, filter_=filter_)
     else:
         courses = CourseOverview.get_all_courses(filter_=filter_)
-    courses = courses.order_by('id')
+    courses = courses.select_related('custom_settings').order_by('id')
 
     # Filtering can stop here.
     if current_site_orgs:

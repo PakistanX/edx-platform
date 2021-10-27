@@ -148,11 +148,15 @@ def courses(request, section='in-progress'):
     in_progress_courses = []
     upcoming_courses = []
     completed_courses = []
+    browse_courses = []
 
     add_course_progress_to_enrolled_courses(request, courses_list)
     show_only_enrolled_courses = switch_is_active('show_only_enrolled_courses')
 
     for course in courses_list:
+        if not course.enrolled and hasattr(course, 'custom_settings') and course.custom_settings.is_public:
+            browse_courses.append(course)
+            continue
         if show_only_enrolled_courses and not course.enrolled:
             continue
         if course.user_progress == '100':
@@ -164,12 +168,12 @@ def courses(request, section='in-progress'):
 
     # Add marketable programs to the context.
     programs_list = get_programs_with_type(request.site, include_hidden=False)
-
     return render_to_response(
         "courseware/courses.html",
         {
             'in_progress_courses': in_progress_courses,
             'upcoming_courses': upcoming_courses,
+            'browse_courses': browse_courses,
             'completed_courses': completed_courses,
             'course_discovery_meanings': course_discovery_meanings,
             'programs_list': programs_list,
@@ -398,7 +402,7 @@ class AboutUsView(TemplateView):
                 'organization': getattr(user.profile.organization, 'name', ''),
             })
 
-    def get_context_data(self, user=None, **kwargs):
+    def get_context_data(self, user=None, **kwargs):  # pylint: disable=arguments-differ
         context = super().get_context_data(**kwargs)
         context['tags'] = ['LMS']
         context['platform_name'] = configuration_helpers.get_value('platform_name', settings.PLATFORM_NAME)
@@ -409,9 +413,10 @@ class AboutUsView(TemplateView):
         context['form'] = self.form_class(initial=self.initial_data)
         return context
 
-    def get(self, request):
+    def get(self, request):  # pylint: disable=arguments-differ
         user = request.user if request.user.is_authenticated else None
         context = self.get_context_data(user=user)
+
         context['course_id'] = request.session.get('course_id', '')
 
         return render_to_response(self.template_name, context)
