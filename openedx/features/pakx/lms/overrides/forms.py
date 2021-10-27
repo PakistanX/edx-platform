@@ -1,5 +1,4 @@
 from django import forms
-from django.core.validators import ValidationError
 from django.forms import ModelForm
 from django.utils.translation import ugettext as _
 
@@ -37,15 +36,3 @@ class AboutUsForm(ModelForm):
         value = self.cleaned_data['organization']
         validate_text_for_emoji(value)
         return value
-
-
-class MarketingForm(AboutUsForm):
-    phone = forms.CharField(required=False, validators=get_phone_validators(), label='Phone')
-    organization = forms.CharField(required=True, label='Organization')
-
-    def clean_organization(self):
-        org = super().clean_organization()
-
-        if org is None or org.strip() == '':
-            raise ValidationError("This field is required.")
-        return org

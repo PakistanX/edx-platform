@@ -43,7 +43,7 @@ from openedx.features.course_experience.utils import get_course_outline_block_tr
 from openedx.features.course_experience.waffle import ENABLE_COURSE_ABOUT_SIDEBAR_HTML
 from openedx.features.course_experience.waffle import waffle as course_experience_waffle
 from openedx.features.pakx.cms.custom_settings.models import CourseOverviewContent
-from openedx.features.pakx.lms.overrides.forms import AboutUsForm, MarketingForm
+from openedx.features.pakx.lms.overrides.forms import AboutUsForm
 from openedx.features.pakx.lms.overrides.tasks import send_contact_us_email
 from openedx.features.pakx.lms.overrides.utils import (
     add_course_progress_to_enrolled_courses,
@@ -481,7 +481,6 @@ class MarketingCampaignPage(AboutUsView):
         super().__init__(**kwargs)
         self.email_subject = 'Pakistan Against Workplace Harassment Form Data'
 
-    form_class = MarketingForm
     template_name = 'overrides/marketing_campaign.html'
     success_redirect = '/workplace-harassment/#get-started'
 
