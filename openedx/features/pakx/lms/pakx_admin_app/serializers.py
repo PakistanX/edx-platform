@@ -188,6 +188,8 @@ class UserSerializer(serializers.ModelSerializer):
         if len(value) > 30:
             raise serializers.ValidationError('Username should not be greater than 30 characters.')
 
+        return value
+
     @transaction.atomic()
     def create(self, validated_data):
         profile_data = validated_data.pop('profile')
