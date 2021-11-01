@@ -56,19 +56,6 @@ class CourseCustomSettingsView(LoginRequiredMixin, View):
         }
         return render(request, self.template_name, context=context)
 
-    @staticmethod
-    def _get_url_from_request(request, key):
-        """
-        get url value for given key from the request
-
-        :return: (str) URL
-        """
-
-        url_value = request.POST[key]
-        if url_value.strip() == '':
-            return url_value
-        return url_value if url_value.startswith('http') else '/' + url_value
-
     def post(self, request, course_key_string):
         """
         Save course overview content in model and display updated version of custom settings page
@@ -81,8 +68,8 @@ class CourseCustomSettingsView(LoginRequiredMixin, View):
         card_description = request.POST['card-description']
         is_public = request.POST.get('is_public', 'off') == 'on'
         course_experience = request.POST.get('course_experience', 0)
-        publisher_logo_url = self._get_url_from_request(request, 'publisher-logo-url')
-        publisher_card_logo_url = self._get_url_from_request(request, 'publisher_card_logo_url')
+        publisher_logo_url = request.POST['publisher-logo-url']
+        publisher_card_logo_url = request.POST['publisher_card_logo_url']
 
         if course_overview is not None:
             CourseOverviewContent.objects.update_or_create(
