@@ -52,6 +52,8 @@ from openedx.core.djangoapps.site_configuration import helpers as configuration_
 from openedx.core.djangoapps.user_authn.views.login import redirect_to_lms_login
 from openedx.core.djangoapps.verified_track_content import views as verified_track_content_views
 from openedx.features.enterprise_support.api import enterprise_enabled
+from openedx.features.pakx.lms.urls import pakx_url_patterns
+
 from common.djangoapps.student import views as student_views
 from common.djangoapps.util import views as util_views
 
@@ -207,6 +209,10 @@ urlpatterns = [
     path('429', handler429),
     path('500', handler500),
 ]
+
+# include all pakx lms urls at the start of the url patterns list
+pakx_url_patterns.extend(urlpatterns)
+urlpatterns = pakx_url_patterns
 
 if settings.FEATURES.get('ENABLE_MOBILE_REST_API'):
     urlpatterns += [

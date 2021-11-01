@@ -23,6 +23,7 @@ from common.djangoapps.util.cache import cache_if_anonymous
 from common.djangoapps.util.json_request import JsonResponse
 from openedx.core.djangoapps.lang_pref.api import released_languages
 from openedx.core.djangoapps.site_configuration import helpers as configuration_helpers
+from openedx.features.pakx.lms.overrides import views as pakx_views
 
 log = logging.getLogger(__name__)
 
@@ -67,14 +68,14 @@ def index(request):
     #  marketing and edge are enabled
 
     try:
-        return student_views.index(request, user=request.user)
+        return pakx_views.index(request, user=request.user)
     except NoReverseMatch:
         log.error(
-            f'https is not a registered namespace Request from {domain}',
-            f'request_site= {request.site.__dict__}',
-            f'enable_mktg_site= {enable_mktg_site}',
-            f'Auth Status= {request.user.is_authenticated}',
-            f'Request Meta= {request.META}'
+            'https is not a registered namespace Request from {}'.format(domain),
+            'request_site= {}'.format(request.site.__dict__),
+            'enable_mktg_site= {}'.format(enable_mktg_site),
+            'Auth Status= {}'.format(request.user.is_authenticated),
+            'Request Meta= {}'.format(request.META)
         )
         raise
 
@@ -100,7 +101,7 @@ def courses(request):
 
     #  we do not expect this case to be reached in cases where
     #  marketing is enabled or the courses are not browsable
-    return courseware_views.courses(request)
+    return pakx_views.courses(request)
 
 
 def _footer_static_url(request, name):

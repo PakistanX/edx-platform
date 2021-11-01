@@ -1612,6 +1612,14 @@ INSTALLED_APPS = [
     'organizations',
 ]
 
+######################### PAKX APPS #####################################
+
+PAKX_INSTALLED_APPS = [
+    # custom settings app
+    'openedx.features.pakx.cms.custom_settings',
+]
+
+INSTALLED_APPS.extend(PAKX_INSTALLED_APPS)
 
 ################# EDX MARKETING SITE ##################################
 

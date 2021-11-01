@@ -125,7 +125,7 @@ FEATURES = {
     #   attempting to expand those components will cause errors. So, this should only be set to False with an LMS that
     #   is running courses that do not contain discussion components.
     #   For consistency in user-experience, keep the value in sync with the setting of the same name in the CMS.
-    'ENABLE_DISCUSSION_SERVICE': True,
+    'ENABLE_DISCUSSION_SERVICE': False,
 
     # .. toggle_name: FEATURES['ENABLE_TEXTBOOK']
     # .. toggle_implementation: DjangoSetting
@@ -509,7 +509,7 @@ FEATURES = {
     # .. toggle_use_cases: open_edx
     # .. toggle_creation_date: 2016-06-24
     # .. toggle_tickets: https://openedx.atlassian.net/browse/OSPR-1320
-    'ENABLE_COMBINED_LOGIN_REGISTRATION_FOOTER': False,
+    'ENABLE_COMBINED_LOGIN_REGISTRATION_FOOTER': True,
 
     # Enable organizational email opt-in
     'ENABLE_MKTG_EMAIL_OPT_IN': False,
@@ -582,6 +582,9 @@ FEATURES = {
     #   value does not matter in that case. This flag is enabled in devstack by default.
     # .. toggle_tickets: https://openedx.atlassian.net/browse/TNL-6931
     'ENABLE_COURSEWARE_SEARCH_FOR_COURSE_STAFF': False,
+
+    # Courseware navigation
+    'HIDE_COURSEWARE_NAVIGATION': False,
 
     # Dashboard search feature
     # .. toggle_name: FEATURES['ENABLE_DASHBOARD_SEARCH']
@@ -740,7 +743,7 @@ FEATURES = {
     # .. toggle_use_cases: open_edx
     # .. toggle_creation_date: 2017-04-12
     # .. toggle_tickets: https://openedx.atlassian.net/browse/YONK-513
-    'ALLOW_PUBLIC_ACCOUNT_CREATION': True,
+    'ALLOW_PUBLIC_ACCOUNT_CREATION': False,
 
     # .. toggle_name: FEATURES['ENABLE_COOKIE_CONSENT']
     # .. toggle_implementation: DjangoSetting
@@ -1290,7 +1293,7 @@ ENABLE_MULTICOURSE = False  # set to False to disable multicourse display (see l
 #   modify content of course related materials.
 # .. toggle_use_cases: open_edx
 # .. toggle_creation_date: 2012-07-13
-WIKI_ENABLED = True
+WIKI_ENABLED = False
 
 ###
 
@@ -3113,6 +3116,21 @@ INSTALLED_APPS = [
     # permissions needs to be listed as an LMS app or the script will fail.
     'user_tasks',
 ]
+
+######################### PAKX APPS #####################################
+
+PAKX_INSTALLED_APPS = [
+    # overrides app
+    'openedx.features.pakx.lms.overrides',
+
+    # pakx admin app
+    'openedx.features.pakx.lms.pakx_admin_app',
+
+    # custom settings app
+    'openedx.features.pakx.cms.custom_settings',
+]
+
+INSTALLED_APPS.extend(PAKX_INSTALLED_APPS)
 
 ######################### CSRF #########################################
 

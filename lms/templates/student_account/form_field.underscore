@@ -133,7 +133,7 @@
     <% } %>
 
     <% if( form === 'login' && name === 'password' ) { %>
-        <button type="button" class="login-help field-link"><i class="fa fa-caret-right" /><%- gettext("Need help signing in?") %></button>
+        <button type="button" class="login-help field-link"><i class="fa fa-caret-right" /><%- gettext("Forgot password?") %></button>
         <div id="login-help" style="display:none">
             <button type="button" class="field-link form-toggle" data-type="password-reset"><%- gettext("Forgot my password") %></button>
             <% if ( loginIssueSupportLink ) { %>
