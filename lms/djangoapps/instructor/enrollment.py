@@ -69,7 +69,7 @@ class EmailEnrollmentState:
             mode, is_active = CourseEnrollment.enrollment_mode_for_user(user, course_id)
             # is_active is `None` if the user is not enrolled in the course
             exists_ce = is_active is not None and is_active
-            full_name = user.profile.name
+            full_name = (user.profile.name or user.username).title()
             ceas = CourseEnrollmentAllowed.for_user(user).filter(course_id=course_id).all()
         else:
             mode = None
@@ -439,6 +439,7 @@ def get_email_params(course, auto_enroll, secure=True, course_key=None, display_
         'site_name': stripped_site_name,
         'registration_url': registration_url,
         'course': course,
+        'date': datetime.today().strftime("%A, %B %d, %Y"),
         'display_name': display_name,
         'auto_enroll': auto_enroll,
         'course_url': course_url,

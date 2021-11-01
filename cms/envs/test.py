@@ -320,6 +320,11 @@ DEFAULT_MOBILE_AVAILABLE = True
 
 PROCTORING_SETTINGS = {}
 
+############### Theme settings for unit test #####################
+DEFAULT_SITE_THEME = 'pakx'
+COMPREHENSIVE_THEME_DIRS = ['/edx/src/pakx-theme/']
+ENABLE_COMPREHENSIVE_THEMING = True
+
 # Used in edx-proctoring for ID generation in lieu of SECRET_KEY - dummy value
 # (ref MST-637)
 PROCTORING_USER_OBFUSCATION_KEY = '85920908f28904ed733fe576320db18cabd7b6cd'

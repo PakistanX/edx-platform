@@ -641,7 +641,7 @@ def get_home_url():
     """
     Return Dashboard page url
     """
-    return reverse('dashboard')
+    return reverse('root')
 
 
 def get_logo_url_for_email():

@@ -133,6 +133,7 @@
                 loadForm: function(type) {
                     var loadFunc;
                     if (type === 'reset') {
+                        this.subview.login.undelegateEvents()
                         loadFunc = _.bind(this.load.login, this);
                         loadFunc(this.formDescriptions.login);
                     }
@@ -211,6 +212,7 @@
                             is_require_third_party_auth_enabled: this.is_require_third_party_auth_enabled
                         });
 
+                        this.nextUrl = '/login'
                     // Listen for 'auth-complete' event so we can enroll/redirect the user appropriately.
                         this.listenTo(this.subview.register, 'auth-complete', this.authComplete);
                     },

@@ -135,7 +135,7 @@ class AccountCreationForm(forms.Form):
     """
 
     _EMAIL_INVALID_MSG = _("A properly formatted e-mail is required")
-    _NAME_TOO_SHORT_MSG = _("Your legal name must be a minimum of one character long")
+    _NAME_TOO_SHORT_MSG = accounts.NAME_BAD_LENGTH_MSG
 
     # TODO: Resolve repetition
 
@@ -373,6 +373,7 @@ class RegistrationFormFactory:
             HttpResponse
         """
         form_desc = FormDescription("post", self._get_registration_submit_url(request))
+        form_desc.override_field_properties(field_name='country', default='PK')
         self._apply_third_party_auth_overrides(request, form_desc)
 
         # Custom form fields can be added via the form set in settings.REGISTRATION_EXTENSION_FORM
@@ -908,9 +909,8 @@ class RegistrationFormFactory:
             "country",
             label=country_label,
             instructions=country_instructions,
-            field_type="select",
+            field_type="hidden",
             options=list(countries),
-            include_default_option=True,
             required=required,
             error_messages={
                 "required": error_msg

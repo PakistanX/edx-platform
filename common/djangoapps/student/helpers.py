@@ -624,10 +624,18 @@ def do_create_account(form, custom_form=None):
         raise ValidationError(errors)
 
     proposed_username = form.cleaned_data["username"]
+
+    # PKX-463 (PR#111) Added User first & last name from profile name
+    name_map = {}
+    if form.cleaned_data.get('name'):
+        f_name, *l_names = form.cleaned_data.get('name').split()
+        name_map['first_name'], name_map['last_name'] = f_name, ' '.join(l_names)
+
     user = User(
         username=proposed_username,
         email=form.cleaned_data["email"],
-        is_active=False
+        is_active=False,
+        **name_map
     )
     password = normalize_password(form.cleaned_data["password"])
     user.set_password(password)
@@ -655,14 +663,13 @@ def do_create_account(form, custom_form=None):
                 field="username",
                 error_code='duplicate-username',
             )
-        elif email_exists_or_retired(user.email):
-            raise AccountValidationError(  # lint-amnesty, pylint: disable=raise-missing-from
+        if email_exists_or_retired(user.email):
+            raise AccountValidationError(
                 _("An account with the Email '{email}' already exists.").format(email=user.email),
                 field="email",
                 error_code='duplicate-email'
             )
-        else:
-            raise
+        raise
 
     registration.register(user)
 
