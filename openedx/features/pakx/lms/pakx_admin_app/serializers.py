@@ -181,6 +181,13 @@ class UserSerializer(serializers.ModelSerializer):
 
         return value.lower()
 
+    def validate_username(self, value):
+        if not self.instance and not value.strip():
+            raise serializers.ValidationError('This field required!')
+
+        if len(value) > 30:
+            raise serializers.ValidationError('Username should not be greater than 30 characters.')
+
     @transaction.atomic()
     def create(self, validated_data):
         profile_data = validated_data.pop('profile')
