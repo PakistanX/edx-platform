@@ -11,11 +11,11 @@ import re
 import urllib
 
 from django.conf import settings
+from django.contrib import admin
 from django.contrib.auth import authenticate
 from django.contrib.auth import login as django_login
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User  # lint-amnesty, pylint: disable=imported-auth-user
-from django.contrib import admin
 from django.http import HttpRequest, HttpResponse, HttpResponseForbidden
 from django.shortcuts import redirect
 from django.urls import reverse
@@ -28,26 +28,25 @@ from edx_django_utils.monitoring import set_custom_attribute
 from ratelimit.decorators import ratelimit
 from rest_framework.views import APIView
 
+from common.djangoapps import third_party_auth
 from common.djangoapps.edxmako.shortcuts import render_to_response
 from openedx.core.djangoapps.password_policy import compliance as password_policy_compliance
 from openedx.core.djangoapps.site_configuration import helpers as configuration_helpers
-from openedx.core.djangoapps.user_authn.views.login_form import get_login_session_form
+from openedx.core.djangoapps.user_authn.config.waffle import ENABLE_LOGIN_USING_THIRDPARTY_AUTH_ONLY
 from openedx.core.djangoapps.user_authn.cookies import get_response_with_refreshed_jwt_cookies, set_logged_in_cookies
 from openedx.core.djangoapps.user_authn.exceptions import AuthFailedError
 from openedx.core.djangoapps.user_authn.toggles import should_redirect_to_authn_microfrontend
-from openedx.core.djangoapps.util.user_messages import PageLevelMessages
+from openedx.core.djangoapps.user_authn.views.login_form import get_login_session_form
 from openedx.core.djangoapps.user_authn.views.password_reset import send_password_reset_email_for_user
 from openedx.core.djangoapps.user_authn.views.utils import ENTERPRISE_ENROLLMENT_URL_REGEX, UUID4_REGEX
 from openedx.core.djangoapps.user_authn.toggles import is_require_third_party_auth_enabled
-from openedx.core.djangoapps.user_authn.config.waffle import ENABLE_LOGIN_USING_THIRDPARTY_AUTH_ONLY
+from openedx.core.djangoapps.util.user_messages import PageLevelMessages
 from openedx.core.djangolib.markup import HTML, Text
 from openedx.core.lib.api.view_utils import require_post_params
 from openedx.features.enterprise_support.api import activate_learner_enterprise, get_enterprise_learner_data_from_api
 from common.djangoapps.student.helpers import get_next_url_for_login_page, get_redirect_url_with_host
-from common.djangoapps.student.models import LoginFailures, AllowedAuthUser, UserProfile
-from common.djangoapps.student.views import compose_and_send_activation_email
+from common.djangoapps.student.models import LoginFailures, AllowedAuthUser, UserProfile, Registration
 from common.djangoapps.third_party_auth import pipeline, provider
-from common.djangoapps import third_party_auth
 from common.djangoapps.track import segment
 from common.djangoapps.util.json_request import JsonResponse
 from common.djangoapps.util.password_policy_validators import normalize_password
@@ -165,6 +164,9 @@ def _log_and_raise_inactive_user_auth_error(unauthenticated_user):
     AUDIT_LOG.warning(
         f"Login failed - Account not active for user.id: {unauthenticated_user.id}, resending activation"
     )
+
+    if unauthenticated_user.last_login or not Registration.objects.filter(user=unauthenticated_user).exists():
+        raise AuthFailedError(_('This account has been deactivated.'))
 
     profile = UserProfile.objects.get(user=unauthenticated_user)
     compose_and_send_activation_email(unauthenticated_user, profile)

@@ -6,6 +6,7 @@ View for Courseware Index
 
 
 import logging
+import six
 
 import urllib
 from django.conf import settings
@@ -43,6 +44,8 @@ from openedx.features.course_experience import (
     default_course_url_name
 )
 from openedx.features.course_experience.views.course_sock import CourseSockFragmentView
+from openedx.features.pakx.lms.overrides.utils import get_rtl_class, get_course_mode_and_content_class
+from openedx.features.course_experience.utils import get_course_outline_block_tree
 from openedx.features.course_experience.url_helpers import make_learning_mfe_courseware_url
 from openedx.features.enterprise_support.api import data_sharing_consent_required
 from common.djangoapps.student.models import CourseEnrollment
@@ -420,7 +423,11 @@ class CoursewareIndex(View):
             settings.FEATURES.get('ENABLE_COURSEWARE_SEARCH') or
             (settings.FEATURES.get('ENABLE_COURSEWARE_SEARCH_FOR_COURSE_STAFF') and self.is_staff)
         )
+        hide_course_navigation = settings.FEATURES.get('HIDE_COURSEWARE_NAVIGATION')
         staff_access = self.is_staff
+        rtl_class = get_rtl_class(self.course.language)
+        course_overview = CourseOverview.get_from_id(self.course.id)
+        course_experience_mode, content_class = get_course_mode_and_content_class(course_overview)
 
         courseware_context = {
             'csrf': csrf(self.request)['csrf_token'],
@@ -429,6 +436,8 @@ class CoursewareIndex(View):
             'chapter': self.chapter,
             'section': self.section,
             'init': '',
+            'content_class': content_class,
+            'rtl_class': rtl_class,
             'fragment': Fragment(),
             'staff_access': staff_access,
             'can_masquerade': self.can_masquerade,
@@ -441,7 +450,7 @@ class CoursewareIndex(View):
             'disable_optimizely': not LegacyWaffleSwitchNamespace('RET').is_enabled('enable_optimizely_in_courseware'),
             'section_title': None,
             'sequence_title': None,
-            'disable_accordion': not DISABLE_COURSE_OUTLINE_PAGE_FLAG.is_enabled(self.course.id),
+            'disable_accordion': hide_course_navigation,
             'show_search': show_search,
         }
         courseware_context.update(
@@ -458,10 +467,18 @@ class CoursewareIndex(View):
             self.section_url_name,
             self.field_data_cache,
         )
+        is_enrolled = CourseEnrollment.is_enrolled(request.user, self.course_key)
+        course_block_tree = get_course_outline_block_tree(
+            request, six.text_type(self.course.id), request.user if is_enrolled else None
+        )
+
         courseware_context['accordion'] = render_accordion(
             self.request,
             self.course,
-            table_of_contents['chapters'],
+            course_block_tree,
+            self.chapter_url_name,
+            self.section_url_name,
+            course_experience_mode
         )
 
         courseware_context['course_sock_fragment'] = CourseSockFragmentView().render_to_fragment(
@@ -567,7 +584,8 @@ class CoursewareIndex(View):
         return section_context
 
 
-def render_accordion(request, course, table_of_contents):
+def render_accordion(request, course, table_of_contents, active_section, active_subsection,
+                     course_experience_mode='Normal'):
     """
     Returns the HTML that renders the navigation for the given course.
     Expects the table_of_contents to have data on each chapter and section,
@@ -575,10 +593,14 @@ def render_accordion(request, course, table_of_contents):
     """
     context = dict(
         [
-            ('toc', table_of_contents),
-            ('course_id', str(course.id)),
+            ('blocks', table_of_contents),
+            ('course_title', course.display_name),
+            ('course_id', six.text_type(course.id)),
             ('csrf', csrf(request)['csrf_token']),
+            ('action_section', active_section),
+            ('active_subsection', active_subsection),
             ('due_date_display_format', course.due_date_display_format),
+            ('course_experience_mode', course_experience_mode)
         ] + list(TEMPLATE_IMPORTS.items())
     )
     return render_to_string('courseware/accordion.html', context)

@@ -29,7 +29,7 @@ from milestones import api as milestones_api
 from opaque_keys import InvalidKeyError
 from opaque_keys.edx.keys import CourseKey
 from opaque_keys.edx.locator import BlockUsageLocator
-from organizations.api import add_organization_course, ensure_organization
+from organizations.api import add_organization_course, ensure_organization, get_organizations
 from organizations.exceptions import InvalidOrganizationException
 
 from cms.djangoapps.course_creators.views import add_user_with_status_unrequested, get_course_creator_status
@@ -562,6 +562,7 @@ def course_listing(request):
         'libraries': [_format_library_for_view(lib, request) for lib in libraries],
         'show_new_library_button': get_library_creator_status(user) and not should_redirect_to_library_authoring_mfe(),
         'user': user,
+        'organizations': get_organizations(),
         'request_course_creator_url': reverse('request_course_creator'),
         'course_creator_status': _get_course_creator_status(user),
         'rerun_creator_status': GlobalStaff().has_user(user),

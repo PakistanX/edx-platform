@@ -14,7 +14,8 @@ import re
 import string
 
 from django.conf import settings
-from django.contrib.auth.models import User  # lint-amnesty, pylint: disable=imported-auth-user
+from django.contrib.auth.models import User
+from django.contrib.sites.models import Site
 from django.core.exceptions import MultipleObjectsReturned, ObjectDoesNotExist, PermissionDenied, ValidationError
 from django.core.validators import validate_email
 from django.db import IntegrityError, transaction
@@ -100,6 +101,7 @@ from lms.djangoapps.instructor_analytics import distributions as instructor_anal
 from lms.djangoapps.instructor_task import api as task_api
 from lms.djangoapps.instructor_task.api_helper import AlreadyRunningError, QueueConnectionError
 from lms.djangoapps.instructor_task.models import ReportStore
+from openedx.core.djangoapps.ace_common.template_context import get_base_template_context
 from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
 from openedx.core.djangoapps.course_groups.cohorts import is_course_cohorted
 from openedx.core.djangoapps.django_comment_common.models import (
@@ -666,13 +668,21 @@ def students_update_enrollment(request, course_id):  # lint-amnesty, pylint: dis
         else:
             email = user.email
             language = get_user_email_language(user)
-
+        site = Site.objects.get_current()
+        email_params.update(get_base_template_context(site, user=user))
         try:
             # Use django.core.validators.validate_email to check email address
             # validity (obviously, cannot check if email actually /exists/,
             # simply that it is plausibly valid)
             validate_email(email)  # Raises ValidationError if invalid
             if action == 'enroll':
+                course_overview = CourseOverview.objects.get(id=course_id)
+                absolute_domain = 'https://' + Site.objects.get_current().domain
+                course_url_template = "{domain}/courses/{course_id}/overview"
+                email_params.update({
+                    'url': course_url_template.format(domain=absolute_domain, course_id=course_id),
+                    'image_url': absolute_domain + course_overview.course_image_url
+                })
                 before, after, enrollment_obj = enroll_email(
                     course_id, email, auto_enroll, email_students, email_params, language=language
                 )

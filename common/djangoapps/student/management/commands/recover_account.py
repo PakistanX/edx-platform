@@ -103,7 +103,7 @@ class Command(BaseCommand):
         :param user:
         :param site:
         """
-        message_context = get_base_template_context(site)
+        message_context = get_base_template_context(site, user=user)
         email = user.email
         if should_redirect_to_authn_microfrontend():
             site_url = settings.AUTHN_MICROFRONTEND_URL

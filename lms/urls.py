@@ -52,6 +52,9 @@ from openedx.core.djangoapps.site_configuration import helpers as configuration_
 from openedx.core.djangoapps.user_authn.views.login import redirect_to_lms_login
 from openedx.core.djangoapps.verified_track_content import views as verified_track_content_views
 from openedx.features.enterprise_support.api import enterprise_enabled
+from openedx.features.pakx.lms.urls import pakx_url_patterns
+from openedx.features.pakx.lms.overrides.views import course_about
+
 from common.djangoapps.student import views as student_views
 from common.djangoapps.util import views as util_views
 
@@ -208,6 +211,10 @@ urlpatterns = [
     path('500', handler500),
 ]
 
+# include all pakx lms urls at the start of the url patterns list
+pakx_url_patterns.extend(urlpatterns)
+urlpatterns = pakx_url_patterns
+
 if settings.FEATURES.get('ENABLE_MOBILE_REST_API'):
     urlpatterns += [
         url(r'^api/mobile/(?P<api_version>v(1|0.5))/', include('lms.djangoapps.mobile_api.urls')),
@@ -349,7 +356,7 @@ urlpatterns += [
         r'^courses/{}/about$'.format(
             settings.COURSE_ID_PATTERN,
         ),
-        courseware_views.course_about,
+        course_about,
         name='about_course',
     ),
     url(
@@ -943,6 +950,11 @@ if 'debug_toolbar' in settings.INSTALLED_APPS:
 
     urlpatterns += [
         url(r'^__debug__/', include(debug_toolbar.urls)),
+    ]
+
+if 'silk' in settings.INSTALLED_APPS:
+    urlpatterns += [
+        url(r'^silk/', include('silk.urls', namespace='silk'))
     ]
 
 if settings.FEATURES.get('ENABLE_FINANCIAL_ASSISTANCE_FORM'):

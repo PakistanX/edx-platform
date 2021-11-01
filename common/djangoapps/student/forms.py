@@ -28,7 +28,7 @@ def send_account_recovery_email_for_user(user, request, email=None):
         email (str): Send email to this address.
     """
     site = get_current_site()
-    message_context = get_base_template_context(site)
+    message_context = get_base_template_context(site, user=user)
     site_name = settings.AUTHN_MICROFRONTEND_DOMAIN if should_redirect_to_authn_microfrontend() \
         else configuration_helpers.get_value('SITE_NAME', settings.SITE_NAME)
     message_context.update({
