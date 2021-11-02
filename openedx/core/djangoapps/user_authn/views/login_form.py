@@ -26,6 +26,7 @@ from openedx.core.djangoapps.user_authn.cookies import are_logged_in_cookies_set
 from openedx.core.djangoapps.user_authn.views.password_reset import get_password_reset_form
 from openedx.core.djangoapps.user_authn.views.registration_form import RegistrationFormFactory
 from openedx.features.enterprise_support.api import enterprise_customer_for_request
+from openedx.features.pakx.common.utils import get_partner_space_meta
 from openedx.features.enterprise_support.utils import (
     handle_enterprise_cookies_for_logistration,
     update_logistration_context_for_enterprise
@@ -217,6 +218,7 @@ def login_and_registration_form(request, initial_mode="login"):
             settings.FEATURES['ENABLE_COMBINED_LOGIN_REGISTRATION_FOOTER']
         ),
     }
+    context.update(get_partner_space_meta(request))
 
     enterprise_customer = enterprise_customer_for_request(request)
     update_logistration_context_for_enterprise(request, context, enterprise_customer)
