@@ -44,6 +44,7 @@ from openedx.features.course_experience.waffle import ENABLE_COURSE_ABOUT_SIDEBA
 from openedx.features.course_experience.waffle import waffle as course_experience_waffle
 from openedx.features.pakx.cms.custom_settings.models import CourseOverviewContent
 from openedx.features.pakx.lms.overrides.forms import AboutUsForm
+from openedx.features.pakx.common.utils import get_partner_space_meta
 from openedx.features.pakx.lms.overrides.tasks import send_contact_us_email
 from openedx.features.pakx.lms.overrides.utils import (
     add_course_progress_to_enrolled_courses,
@@ -86,6 +87,7 @@ def index(request, extra_context=None, user=AnonymousUser()):
         'show_homepage_promo_video': configuration_helpers.get_value('show_homepage_promo_video', False),
         'homepage_course_max': configuration_helpers.get_value('HOMEPAGE_COURSE_MAX', settings.HOMEPAGE_COURSE_MAX)
     }
+    context.update(get_partner_space_meta(request))
 
     # This appears to be an unused context parameter, at least for the master templates...
 
@@ -108,7 +110,6 @@ def index(request, extra_context=None, user=AnonymousUser()):
 
     # Add marketable programs to the context.
     context['programs_list'] = get_programs_with_type(request.site, include_hidden=False)
-
     return render_to_response('index.html', context)
 
 
@@ -168,18 +169,20 @@ def courses(request, section='in-progress'):
 
     # Add marketable programs to the context.
     programs_list = get_programs_with_type(request.site, include_hidden=False)
+    context = {
+        'in_progress_courses': in_progress_courses,
+        'upcoming_courses': upcoming_courses,
+        'browse_courses': browse_courses,
+        'completed_courses': completed_courses,
+        'course_discovery_meanings': course_discovery_meanings,
+        'programs_list': programs_list,
+        'section': section,
+        'show_only_enrolled_courses': show_only_enrolled_courses
+    }
+    context.update(get_partner_space_meta(request))
     return render_to_response(
         "courseware/courses.html",
-        {
-            'in_progress_courses': in_progress_courses,
-            'upcoming_courses': upcoming_courses,
-            'browse_courses': browse_courses,
-            'completed_courses': completed_courses,
-            'course_discovery_meanings': course_discovery_meanings,
-            'programs_list': programs_list,
-            'section': section,
-            'show_only_enrolled_courses': show_only_enrolled_courses
-        }
+        context
     )
 
 
