@@ -185,8 +185,8 @@ class UserSerializer(serializers.ModelSerializer):
         if not self.instance and not value.strip():
             raise serializers.ValidationError('This field required!')
 
-        if len(value) > 30:
-            raise serializers.ValidationError('Username should not be greater than 30 characters.')
+        if len(value) < 2 or len(value) > 30:
+            raise serializers.ValidationError('Username must be between 2 and 30 characters long.')
 
         return value
 
