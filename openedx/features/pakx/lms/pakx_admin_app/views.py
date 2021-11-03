@@ -49,6 +49,7 @@ from .utils import (
     do_user_and_courses_have_same_org,
     get_completed_course_count_filters,
     get_course_overview_same_org_filter,
+    get_enroll_able_course_qs,
     get_org_users_qs,
     get_request_user_org_id,
     get_roles_q_filters,
@@ -512,7 +513,7 @@ class CourseListAPI(generics.ListAPIView):
         return context
 
     def get_queryset(self):
-        queryset = CourseOverview.objects.all()
+        queryset = CourseOverview.objects.filter(get_enroll_able_course_qs())
         if not self.request.user.is_superuser:
             queryset = queryset.filter(get_course_overview_same_org_filter(self.request.user))
 
@@ -539,3 +540,13 @@ class CourseListAPI(generics.ListAPIView):
             self.instructors[course_access_role.course_id] = course_instructors
 
         return queryset
+
+
+class UserSearchInputListAPI(views.APIView):
+    authentication_classes = [SessionAuthentication]
+    permission_classes = [CanAccessPakXAdminPanel]
+
+    def get(self, *args, **kwargs):  # pylint: disable=unused-argument
+        qs = get_org_users_qs(self.request.user).exclude(id=self.request.user.id)
+        users = {user.id: {'email': user.email} for user in qs}
+        return Response(status=status.HTTP_200_OK, data={'users': users})

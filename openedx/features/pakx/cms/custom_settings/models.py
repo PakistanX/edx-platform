@@ -40,5 +40,9 @@ class CourseOverviewContent(TimeStampedModel):
     course_experience = models.PositiveSmallIntegerField(default=NORMAL, choices=COURSE_EXPERIENCES)
     course = models.OneToOneField(CourseOverview, related_name='custom_settings', on_delete=models.CASCADE)
 
+    is_public = models.BooleanField('Course is public and should be available on publisher spaces', default=False)
+    publisher_name = models.CharField(max_length=128, blank=True, default='', null=True)
+    publisher_card_logo_url = models.CharField(max_length=256, blank=True, default='', null=True)
+
     def __str__(self):
         return 'CourseOverviewContent for course {id}'.format(id=self.course.id)

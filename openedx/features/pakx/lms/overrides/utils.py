@@ -48,6 +48,11 @@ def get_or_create_course_overview_content(course_key, custom_setting=None):
     return course_overview_content
 
 
+def _get_org_log(organization):
+    org_logo = organization.get('logo')
+    return org_logo.url if org_logo else org_logo
+
+
 def get_course_card_data(course, org_prefetched=False):
     """
     Get course data required for home page course card
@@ -56,21 +61,20 @@ def get_course_card_data(course, org_prefetched=False):
     """
     if not isinstance(course, CourseOverview):
         course = CourseOverview.objects.filter(id=course.id).first()
-
     pakx_short_logo = '/static/pakx/images/mooc/pakx-logo-circled.png'
     course_custom_setting = get_or_create_course_overview_content(course.id)
 
     if not org_prefetched:
         course_org = get_organization_by_short_name(course.org)
         org_description = course_org.get('description')
-        org_logo_url = course_org.get('logo')
-        org_name = course_org.get('name')
+        org_logo_url = course_custom_setting.publisher_card_logo_url or _get_org_log(course_org)
+        org_name = course_custom_setting.publisher_name or course_org.get('name')
     else:
-        org_name = course.custom_settings.course_set.publisher_org.name
-        org_logo_url = course.custom_settings.course_set.publisher_org.logo
-        org_description = course.custom_settings.course_set.publisher_org.description
+        org_name = course_custom_setting.publisher_name or course_custom_setting.course_set.publisher_org.name
+        org_logo_url = course_custom_setting.publisher_card_logo_url or course_custom_setting.\
+            course_set.publisher_org.logo
+        org_description = course_custom_setting.course_set.publisher_org.description
 
-    org_logo_url = org_logo_url.url if org_logo_url else org_logo_url
     return {
         'key': course.id,
         'org_name': org_name,
@@ -157,19 +161,6 @@ def get_rating_classes_for_course(course_id):
 
     rating_dict.update(class_dict)
     return rating_dict
-
-
-def get_featured_course():
-    """
-    Get featured course, if feature_course_key is set in Site Configurations
-
-    :returns (CourseOverview): course or None
-    """
-
-    feature_course_key = configuration_helpers.get_value('feature_course_key')
-    if feature_course_key:
-        course = CourseOverview.get_from_id(CourseKey.from_string(feature_course_key))
-        return get_course_card_data(course)
 
 
 def get_courses_for_user(user):
