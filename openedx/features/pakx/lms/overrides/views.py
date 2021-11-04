@@ -492,3 +492,13 @@ class MarketingCampaignPage(AboutUsView):
     def populate_form_initial_data(self, user=None):
         super().populate_form_initial_data(user)
         self.initial_data.update({'message': 'Not Available. Submitted from Marketing campaign Page'})
+
+
+class WEShowcaseView(TemplateView):
+    """
+    View for workplace essential showcase.
+    """
+    template_name = 'overrides/workplace_essential_showcase.html'
+
+    def get(self, request, *args, **kwargs):
+        return render_to_response(self.template_name)
