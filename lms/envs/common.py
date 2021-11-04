@@ -449,7 +449,7 @@ FEATURES = {
     #   backends with the AUTHENTICATION_BACKENDS setting.
     # .. toggle_use_cases: open_edx
     # .. toggle_creation_date: 2014-09-15
-    'ENABLE_THIRD_PARTY_AUTH': False,
+    'ENABLE_THIRD_PARTY_AUTH': True,
 
     # .. toggle_name: FEATURES['ENABLE_MKTG_SITE']
     # .. toggle_implementation: DjangoSetting
@@ -3496,7 +3496,7 @@ AUTH_PASSWORD_VALIDATORS = [
     {
         "NAME": "common.djangoapps.util.password_policy_validators.MinimumLengthValidator",
         "OPTIONS": {
-            "min_length": 2
+            "min_length": 8
         }
     },
     {

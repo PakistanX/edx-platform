@@ -83,8 +83,13 @@ CELERY_ALWAYS_EAGER = True
 ################################ DEBUG TOOLBAR ################################
 
 INSTALLED_APPS += ['debug_toolbar']
-
 MIDDLEWARE.append('debug_toolbar.middleware.DebugToolbarMiddleware')
+
+################################ DJANGO SILK ################################
+if DEBUG:
+    INSTALLED_APPS += ['silk']
+    MIDDLEWARE.append('silk.middleware.SilkyMiddleware')
+
 INTERNAL_IPS = ('127.0.0.1',)
 
 DEBUG_TOOLBAR_PANELS = (
@@ -143,7 +148,7 @@ FEATURES['ENABLE_CONTENT_LIBRARY_INDEX'] = False
 SEARCH_ENGINE = "search.elastic.ElasticSearchEngine"
 
 ################################ COURSE DISCUSSIONS ###########################
-FEATURES['ENABLE_DISCUSSION_SERVICE'] = False
+FEATURES['ENABLE_DISCUSSION_SERVICE'] = True
 
 ################################ CREDENTIALS ###########################
 CREDENTIALS_SERVICE_USERNAME = 'credentials_worker'

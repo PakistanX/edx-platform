@@ -435,6 +435,7 @@ class CoursewareIndex(View):
             'chapter': self.chapter,
             'section': self.section,
             'init': '',
+            'content_class': content_class,
             'rtl_class': rtl_class,
             'fragment': Fragment(),
             'staff_access': staff_access,

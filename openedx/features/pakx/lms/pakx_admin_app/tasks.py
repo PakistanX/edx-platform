@@ -91,12 +91,15 @@ def bulk_user_registration(users_data, recipient, request_url_scheme):
 
         lang_err = profile_err_map.pop('language_code', {})
         if lang_err:
-            err_map.update({'language': [' |'.join(r) for r in lang_err.values()]})
+            err_map.update({'language_code': [' |'.join(r) for r in lang_err.values()]})
 
         err_map.update(profile_err_map)
         req_data.update(profile_req_data)
 
-        return '\n'.join(['{}:({}) | {}'.format(f, req_data[f], '|'.join(err)) for f, err in err_map.items()])
+        lang_err_msg = err_map.pop('language_code', None)
+        formatted_errors = ['{}:({}) | {}'.format(f, req_data[f], '|'.join(err)) for f, err in err_map.items()]
+        formatted_errors += ['language: {}'.format('|'.join(lang_err_msg))] if lang_err_msg else []
+        return '\n'.join(formatted_errors)
 
     error_map = {}
     created_emails = []

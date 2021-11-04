@@ -2,6 +2,7 @@
 Context dictionary for templates that use the ace_common base template.
 """
 
+from datetime import datetime
 from django.conf import settings
 from django.urls import NoReverseMatch, reverse
 
@@ -10,7 +11,8 @@ from common.djangoapps.edxmako.shortcuts import marketing_link
 from openedx.core.djangoapps.theming.helpers import get_config_value_from_site_or_settings
 
 
-def get_base_template_context(site):
+# PKX-473 - Added user organization name in email header
+def get_base_template_context(site, user=None):
     """
     Dict with entries needed for all templates that use the base template.
     """
@@ -26,10 +28,11 @@ def get_base_template_context(site):
     else:
         site_configuration_values = {}
 
-    return {
+    context = {
         # Platform information
         'homepage_url': marketing_link('ROOT'),
         'dashboard_url': dashboard_url,
+        'date': datetime.today().strftime("%A, %B %d, %Y"),
         'template_revision': getattr(settings, 'EDX_PLATFORM_REVISION', None),
         'platform_name': get_config_value_from_site_or_settings(
             'PLATFORM_NAME',
@@ -45,3 +48,13 @@ def get_base_template_context(site):
         'logo_url': get_logo_url_for_email(),
         'site_configuration_values': site_configuration_values,
     }
+    if user:
+        context.update({
+            'username': user.profile.name or user.username,
+            'full_name': (user.profile.name or user.username).title(),
+            'email': user.email,
+            'user_org': user.profile.organization.name if user.profile.organization else None
+        })
+
+    return context
+

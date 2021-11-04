@@ -282,6 +282,11 @@ if 'debug_toolbar' in settings.INSTALLED_APPS:
     import debug_toolbar
     urlpatterns.append(url(r'^__debug__/', include(debug_toolbar.urls)))
 
+if 'silk' in settings.INSTALLED_APPS:
+    urlpatterns += [
+        url(r'^silk/', include('silk.urls', namespace='silk'))
+    ]
+
 # UX reference templates
 urlpatterns.append(url(r'^template/(?P<template>.+)$', openedx.core.djangoapps.debug.views.show_reference_template,
                        name='openedx.core.djangoapps.debug.views.show_reference_template'))

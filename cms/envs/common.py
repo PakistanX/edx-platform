@@ -1709,7 +1709,7 @@ AUTH_PASSWORD_VALIDATORS = [
     {
         "NAME": "common.djangoapps.util.password_policy_validators.MinimumLengthValidator",
         "OPTIONS": {
-            "min_length": 2
+            "min_length": 8
         }
     },
     {
@@ -1815,7 +1815,20 @@ ADVANCED_PROBLEM_TYPES = [
     {
         'component': 'staffgradedxblock',
         'boilerplate_name': None
-    }
+    },
+    {
+        'component': 'adventure',
+        'boilerplate_name': None
+    },
+    {
+        'component': 'image-explorer',
+        'boilerplate_name': None
+    },
+    {
+        'component': 'problem-builder',
+        'boilerplate_name': None
+    },
+
 ]
 
 ############### Settings for Retirement #####################

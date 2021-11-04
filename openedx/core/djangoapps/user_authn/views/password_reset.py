@@ -392,36 +392,34 @@ class PasswordResetConfirmWrapper(PasswordResetConfirmView):
             # password_reset_confirm function handle it.
             return super().dispatch(request, uidb64=self.uidb64, token=self.token, extra_context=self.platform_name)
 
-    def _handle_retired_user(self, request):
-        """
-        method responsible to stop password reset in case user is retired
-        """
-
+    def _send_template_response(self, request, err_msg: str):
+        """Renders the same password change form with error message."""
         context = {
             'validlink': True,
             'form': None,
             'title': _('Password reset unsuccessful'),
-            'err_msg': _('Error in resetting your password.'),
+            'err_msg': _(err_msg),
         }
         context.update(self.platform_name)
         return TemplateResponse(
             request, 'registration/password_reset_confirm.html', context
         )
 
-    def _validate_password(self, password, request):  # lint-amnesty, pylint: disable=missing-function-docstring
+    def _handle_retired_user(self, request):
+        """
+        method responsible to stop password reset in case user is retired
+        """
+        return self._send_template_response(request, 'Error in resetting your password.')
+
+    def _validate_password(self, password, request):
+        """Matches both passwords and then validates them."""
         try:
+            assert request.POST['new_password1'] == request.POST['new_password2']
             validate_password(password, user=self.user)
+        except AssertionError:
+            return self._send_template_response(request, 'Passwords did not match!')
         except ValidationError as err:
-            context = {
-                'validlink': True,
-                'form': None,
-                'title': _('Password reset unsuccessful'),
-                'err_msg': ' '.join(err.messages),
-            }
-            context.update(self.platform_name)
-            return TemplateResponse(
-                request, 'registration/password_reset_confirm.html', context
-            )
+            return self._send_template_response(request, ' '.join(err.messages))
 
     def _handle_password_reset_failure(self, response):  # lint-amnesty, pylint: disable=missing-function-docstring
         form_valid = response.context_data['form'].is_valid() if response.context_data['form'] else False
@@ -606,9 +604,15 @@ def password_change_request_handler(request):
 
     if email:
         try:
-            request_password_change(email, request.is_secure())
             user = user if user.is_authenticated else _get_user_from_email(email=email)
+            # pkx-449 - preventing disabled user from resetting password
+            if not user.is_active:
+                return HttpResponseBadRequest(_('This account has been deactivated.'))
+
+            request_password_change(email, request.is_secure())
             destroy_oauth_tokens(user)
+        except User.DoesNotExist:
+            return HttpResponse(_("User with this email does not exist."), status=404)
         except errors.UserNotFound:
             AUDIT_LOG.info("Invalid password reset attempt")
             # If enabled, send an email saying that a password reset was attempted, but that there is
@@ -616,7 +620,7 @@ def password_change_request_handler(request):
             if configuration_helpers.get_value('ENABLE_PASSWORD_RESET_FAILURE_EMAIL',
                                                settings.FEATURES['ENABLE_PASSWORD_RESET_FAILURE_EMAIL']):
                 site = get_current_site()
-                message_context = get_base_template_context(site)
+                message_context = get_base_template_context(site, user=user)
 
                 message_context.update({
                     'failed': True,

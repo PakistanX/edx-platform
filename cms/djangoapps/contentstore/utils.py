@@ -149,7 +149,7 @@ def get_lms_link_for_certificate_web_view(course_key, mode):
     if lms_base is None:
         return None
 
-    return "//{certificate_web_base}/certificates/course/{course_id}?preview={mode}".format(
+    return u"//{certificate_web_base}/certificates/course/{course_id}?preview={mode}".format(
         certificate_web_base=lms_base,
         course_id=str(course_key),
         mode=mode
