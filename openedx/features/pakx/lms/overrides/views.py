@@ -43,6 +43,7 @@ from openedx.features.course_experience.utils import get_course_outline_block_tr
 from openedx.features.course_experience.waffle import ENABLE_COURSE_ABOUT_SIDEBAR_HTML
 from openedx.features.course_experience.waffle import waffle as course_experience_waffle
 from openedx.features.pakx.cms.custom_settings.models import CourseOverviewContent
+from openedx.features.pakx.common.utils import get_active_partner_model
 from openedx.features.pakx.lms.overrides.forms import AboutUsForm
 from openedx.features.pakx.common.utils import get_partner_space_meta
 from openedx.features.pakx.lms.overrides.tasks import send_contact_us_email
@@ -113,6 +114,17 @@ def index(request, extra_context=None, user=AnonymousUser()):
     return render_to_response('index.html', context)
 
 
+def is_course_public_for_current_space(course, org_name):
+    """
+    check if course is public and course org matches
+    """
+
+    if not course.enrolled and hasattr(course, 'custom_settings'):
+        is_public_org = org_name == settings.DEFAULT_PUBLIC_PARTNER_SPACE
+        return course.custom_settings.is_public and (is_public_org or course.org == org_name)
+    return False
+
+
 @ensure_csrf_cookie
 @login_required
 def courses(request, section='in-progress'):
@@ -153,9 +165,11 @@ def courses(request, section='in-progress'):
 
     add_course_progress_to_enrolled_courses(request, courses_list)
     show_only_enrolled_courses = switch_is_active('show_only_enrolled_courses')
+    space_model = get_active_partner_model(request)
+    space_org_name = space_model.organization.short_name
 
     for course in courses_list:
-        if not course.enrolled and hasattr(course, 'custom_settings') and course.custom_settings.is_public:
+        if is_course_public_for_current_space(course, space_org_name):
             browse_courses.append(course)
             continue
         if show_only_enrolled_courses and not course.enrolled:

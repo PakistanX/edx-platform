@@ -6,7 +6,9 @@ from django.utils.lru_cache import lru_cache
 from collections import OrderedDict
 from logging import getLogger
 
+from django.conf import settings
 from django.db import models
+
 from jsonfield.fields import JSONField
 from model_utils.models import TimeStampedModel
 from organizations.models import Organization
@@ -65,6 +67,9 @@ class PartnerSpace(TimeStampedModel):
     footer_links = JSONField(null=False, blank=True, default=dict, load_kwargs={'object_pairs_hook': OrderedDict})
     partner_meta = JSONField(null=False, blank=True, default=dict, load_kwargs={'object_pairs_hook': OrderedDict})
 
+    def __str__(self):
+        return self.name
+
     @staticmethod
     def _get_value(dict_obj, name, default=None):
         """
@@ -100,9 +105,10 @@ class PartnerSpace(TimeStampedModel):
         :returns: (PartnerSpace) model object or None
         """
 
-        try:
-            logger.info("Fetching partner space for :{}".format(space_name))
-            return cls.objects.get(name=space_name)
-        except PartnerSpace.DoesNotExist as not_found:
-            logger.warning('Partner space against given space name not found:{}, {}'.format(space_name, not_found))
-            return cls.objects.get(name='pakx')
+        logger.info('Loading partner space for :"{}"'.format(space_name))
+        partner = cls.objects.filter(name=space_name).select_related('organization').first()
+        if not partner:
+            default_space = settings.DEFAULT_PUBLIC_PARTNER_SPACE
+            logger.warning('Partner space for:"{}" not found, Loading Default:"{}"'.format(space_name, default_space))
+            partner = cls.objects.filter(name=default_space).select_related('organization').first()
+        return partner
