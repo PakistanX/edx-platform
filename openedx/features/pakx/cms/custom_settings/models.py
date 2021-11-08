@@ -106,9 +106,9 @@ class PartnerSpace(TimeStampedModel):
         """
 
         logger.info('Loading partner space for :"{}"'.format(space_name))
-        partner = cls.objects.filter(name=space_name).select_related('organization').first()
+        partner = cls.objects.filter(name__iexact=space_name).select_related('organization').first()
         if not partner:
             default_space = settings.DEFAULT_PUBLIC_PARTNER_SPACE
             logger.warning('Partner space for:"{}" not found, Loading Default:"{}"'.format(space_name, default_space))
-            partner = cls.objects.filter(name=default_space).select_related('organization').first()
+            partner = cls.objects.filter(name__iexact=default_space).select_related('organization').first()
         return partner

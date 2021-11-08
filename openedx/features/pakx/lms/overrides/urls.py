@@ -1,9 +1,11 @@
 from django.conf import settings
 from django.conf.urls import url
 
-from .views import AboutUsView, BusinessView, MarketingCampaignPage, PartnerWithUsView, overview_tab_view
+from .views import (AboutUsView, BusinessView, MarketingCampaignPage, PartnerWithUsView, overview_tab_view,
+                    partner_space_login)
 
 urlpatterns = [
+    url(r'^(?P<partner>\w+)/login/$', partner_space_login, name="partner_space_login"),
     url(r'^about_us/?$', AboutUsView.as_view(), name="about_us"),
     url(
         r'^courses/{course_id}/overview/$'.format(course_id=settings.COURSE_ID_PATTERN),

@@ -58,6 +58,7 @@ from openedx.features.pakx.lms.overrides.utils import (
     get_resume_course_info,
     is_course_enroll_able
 )
+from openedx.features.pakx.common.utils import set_partner_space_in_session
 from student.models import CourseEnrollment
 from util.cache import cache_if_anonymous
 from util.milestones_helpers import get_prerequisite_courses_display
@@ -509,3 +510,13 @@ class MarketingCampaignPage(AboutUsView):
     def populate_form_initial_data(self, user=None):
         super().populate_form_initial_data(user)
         self.initial_data.update({'message': 'Not Available. Submitted from Marketing campaign Page'})
+
+
+def partner_space_login(request, partner):
+    """
+    View for Loading desired partner's login page, loads login page after setting
+    partner space in session
+    """
+
+    set_partner_space_in_session(request, partner)
+    return redirect(reverse('signin_user'))
