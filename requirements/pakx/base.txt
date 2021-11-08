@@ -1,1 +1,1 @@
-xblock-problem-builder==4.0.0
+xblock-problem-builder==4.1.11
