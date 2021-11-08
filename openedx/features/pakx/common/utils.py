@@ -21,12 +21,12 @@ def load_space_in_session(request):
     space_param = request.GET.get("space", None)
     active_space = get_active_partner_space(request)
     if active_space is None and space_param is None:
-        set_space_in_session(request, settings.DEFAULT_PUBLIC_PARTNER_SPACE)  # Set Default space
+        set_partner_space_in_session(request, settings.DEFAULT_PUBLIC_PARTNER_SPACE)  # Set Default space
     elif space_param:
-        set_space_in_session(request, space_param.lower())
+        set_partner_space_in_session(request, space_param)
 
 
-def set_space_in_session(request, space):
+def set_partner_space_in_session(request, space):
     """
     sets given space in given request session
     """
@@ -35,7 +35,7 @@ def set_space_in_session(request, space):
     if space is None:
         raise Exception("No Partner space found, add a space by visiting <lms>/admin/custom_settings/partnerspace/")
 
-    request.session["space"] = space.name
+    request.session["space"] = space.name.lower()
 
 
 def get_partner_space_meta(request):
