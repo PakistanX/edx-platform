@@ -73,6 +73,7 @@
                     };
                     this.platformName = options.platform_name;
                     this.supportURL = options.support_link;
+                    this.spaceName = options.space_name;
                     this.passwordResetSupportUrl = options.password_reset_support_link;
                     this.createAccountOption = options.account_creation_allowed;
                     this.hideAuthWarnings = options.hide_auth_warnings || false;
@@ -161,7 +162,8 @@
                             createAccountOption: this.createAccountOption,
                             hideAuthWarnings: this.hideAuthWarnings,
                             pipelineUserDetails: this.pipelineUserDetails,
-                            enterpriseName: this.enterpriseName
+                            enterpriseName: this.enterpriseName,
+                            spaceName: this.spaceName,
                         });
 
                     // Listen for 'password-help' event to toggle sub-views
@@ -202,6 +204,7 @@
                             model: model,
                             thirdPartyAuth: this.thirdPartyAuth,
                             platformName: this.platformName,
+                            spaceName: this.spaceName,
                             hideAuthWarnings: this.hideAuthWarnings
                         });
 
@@ -224,7 +227,7 @@
                         this.subview.hintedLogin = new HintedLoginView({
                             thirdPartyAuth: this.thirdPartyAuth,
                             hintedProvider: this.thirdPartyAuthHint,
-                            platformName: this.platformName
+                            platformName: this.platformName,
                         });
 
                         this.subview.hintedLogin.render();

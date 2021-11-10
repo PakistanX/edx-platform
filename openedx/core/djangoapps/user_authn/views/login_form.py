@@ -26,7 +26,7 @@ from openedx.core.djangoapps.user_authn.cookies import are_logged_in_cookies_set
 from openedx.core.djangoapps.user_authn.views.password_reset import get_password_reset_form
 from openedx.core.djangoapps.user_authn.views.registration_form import RegistrationFormFactory
 from openedx.features.enterprise_support.api import enterprise_customer_for_request
-from openedx.features.pakx.common.utils import get_partner_space_meta
+from openedx.features.pakx.common.utils import get_login_page_links
 from openedx.features.enterprise_support.utils import (
     handle_enterprise_cookies_for_logistration,
     update_logistration_context_for_enterprise
@@ -180,11 +180,14 @@ def login_and_registration_form(request, initial_mode="login"):
         } for message in messages.get_messages(request) if 'account-recovery' in message.tags
     ]
 
+    login_page_links = get_login_page_links(request)
+
     # Otherwise, render the combined login/registration page
     context = {
         'data': {
             'login_redirect_url': redirect_to,
             'initial_mode': initial_mode,
+            'space_name': login_page_links.get('organization', 'PakistanX'),
             'third_party_auth': _third_party_auth_context(request, redirect_to, third_party_auth_hint),
             'third_party_auth_hint': third_party_auth_hint or '',
             'platform_name': configuration_helpers.get_value('PLATFORM_NAME', settings.PLATFORM_NAME),
@@ -218,7 +221,7 @@ def login_and_registration_form(request, initial_mode="login"):
             settings.FEATURES['ENABLE_COMBINED_LOGIN_REGISTRATION_FOOTER']
         ),
     }
-    context.update(get_partner_space_meta(request))
+    context.update(login_page_links)
 
     enterprise_customer = enterprise_customer_for_request(request)
     update_logistration_context_for_enterprise(request, context, enterprise_customer)
