@@ -50,6 +50,23 @@ def get_partner_space_meta(request):
     }
 
 
+def get_login_page_links(request):
+    """
+    get login page links dict
+    """
+
+    active_space = get_active_partner_space(request)
+    space_model = PartnerSpace.get_partner_space(active_space)
+
+    links = {
+        'footer_links': space_model.footer_links,
+        'partner_meta': space_model.partner_meta,
+        'organization': space_model.organization.name
+    }
+    links.update(get_partner_space_meta(request))
+    return links
+
+
 def get_active_partner_model(request):
     """
     get active partner model
