@@ -268,12 +268,10 @@ def _get_course_about_context(request, course_id, category=None):  # pylint: dis
         can_enroll = can_enroll and is_course_enroll_able(course)
 
         invitation_only = course.invitation_only
-        is_enrolled = CourseEnrollment.is_enrolled(request.user, course.id)
-
         resume_course_url = None
         has_visited_course = None
         user_progress = 0
-        if is_enrolled:
+        if registered:
             has_visited_course, resume_course_url, _ = get_resume_course_info(request, course_id)
             user_progress = get_course_progress_percentage(request, course_id)
         is_course_full = CourseEnrollment.objects.is_course_full(course)
@@ -337,7 +335,6 @@ def _get_course_about_context(request, course_id, category=None):  # pylint: dis
             'sidebar_html_enabled': sidebar_html_enabled,
             'allow_anonymous': allow_anonymous,
             'category': category,
-            'is_enrolled': is_enrolled,
             'resume_course_url': resume_course_url,
             'has_visited_course': has_visited_course,
             'user_progress': user_progress,

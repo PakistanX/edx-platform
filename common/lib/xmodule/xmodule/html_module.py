@@ -124,7 +124,7 @@ class HtmlBlock(
         returns user first name
         """
         current_user = self.runtime.service(self, 'user').get_current_user()
-        return current_user.first_name
+        return getattr(current_user, 'first_name', 'Guest')
 
     def student_view_data(self, context=None):  # pylint: disable=unused-argument
         """

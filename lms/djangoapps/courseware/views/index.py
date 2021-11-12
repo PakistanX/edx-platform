@@ -431,7 +431,8 @@ class CoursewareIndex(View):
             settings.FEATURES.get('ENABLE_COURSEWARE_SEARCH') or
             (settings.FEATURES.get('ENABLE_COURSEWARE_SEARCH_FOR_COURSE_STAFF') and self.is_staff)
         )
-        hide_course_navigation = settings.FEATURES.get('HIDE_COURSEWARE_NAVIGATION')
+        hide_course_navigation = not request.user.is_authenticated or settings.FEATURES.get('HIDE_COURSEWARE_NAVIGATION')
+
         staff_access = self.is_staff
         rtl_class = get_rtl_class(self.course.language)
         course_overview = CourseOverview.get_from_id(self.course.id)
@@ -475,19 +476,18 @@ class CoursewareIndex(View):
             self.section_url_name,
             self.field_data_cache,
         )
-
-        course_block_tree = get_course_outline_block_tree(
-            request, six.text_type(self.course.id), request.user, allow_start_dates_in_future=True
-        )
-
-        courseware_context['accordion'] = render_accordion(
-            self.request,
-            self.course,
-            course_block_tree,
-            self.chapter_url_name,
-            self.section_url_name,
-            course_experience_mode
-        )
+        if not hide_course_navigation:
+            course_block_tree = get_course_outline_block_tree(
+                request, six.text_type(self.course.id), request.user, allow_start_dates_in_future=True
+            )
+            courseware_context['accordion'] = render_accordion(
+                self.request,
+                self.course,
+                course_block_tree,
+                self.chapter_url_name,
+                self.section_url_name,
+                course_experience_mode
+            )
 
         courseware_context['course_sock_fragment'] = CourseSockFragmentView().render_to_fragment(
             request, course=self.course)
