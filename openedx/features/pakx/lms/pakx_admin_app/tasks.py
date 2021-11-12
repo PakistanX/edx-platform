@@ -100,7 +100,7 @@ def bulk_user_registration(users_data, recipient, request_url_scheme):
         formatted_errors = ['{}:({}) | {}'.format(f, req_data[f], '|'.join(err)) for f, err in err_map.items()]
         formatted_errors += ['language: {}'.format('|'.join(lang_err_msg))] if lang_err_msg else []
 
-        user_key = users_data['email'] or users_data['username'] or users_data['profile']['name'] or index
+        user_key = req_data['email'] or req_data['username'] or req_data['profile']['name'] or index
         return {'msg': '\n'.join(formatted_errors), 'user_key': user_key}
 
     error_map = {}
