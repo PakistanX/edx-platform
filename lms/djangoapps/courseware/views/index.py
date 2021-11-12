@@ -6,6 +6,7 @@ View for Courseware Index
 
 
 import logging
+import six
 
 import urllib
 from django.conf import settings
@@ -470,6 +471,8 @@ class CoursewareIndex(View):
         course_block_tree = get_course_outline_block_tree(
             request, six.text_type(self.course.id), request.user, allow_start_dates_in_future=True
         )
+        import pdb;
+        pdb.set_trace()
 
         courseware_context['accordion'] = render_accordion(
             self.request,
