@@ -11,7 +11,7 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('course_overviews', '0024_overview_adds_has_highlights'),
+        ('course_overviews', '0022_courseoverviewtab_is_hidden'),
     ]
 
     operations = [

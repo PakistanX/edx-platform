@@ -467,12 +467,10 @@ class CoursewareIndex(View):
             self.section_url_name,
             self.field_data_cache,
         )
-
+        is_enrolled = CourseEnrollment.is_enrolled(request.user, self.course_key)
         course_block_tree = get_course_outline_block_tree(
-            request, six.text_type(self.course.id), request.user, allow_start_dates_in_future=True
+            request, six.text_type(self.course.id), request.user if is_enrolled else None
         )
-        import pdb;
-        pdb.set_trace()
 
         courseware_context['accordion'] = render_accordion(
             self.request,

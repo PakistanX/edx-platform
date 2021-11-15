@@ -139,8 +139,6 @@ def get_program_price_and_skus(courses):
     program_price = 0
     skus = []
 
-    import pdb
-    pdb.set_trace()
     for course in courses:
         course_price, course_sku = get_course_entitlement_price_and_sku(course)
         if course_price is not None and course_sku is not None:

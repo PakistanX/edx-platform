@@ -1828,7 +1828,30 @@ ADVANCED_PROBLEM_TYPES = [
         'component': 'problem-builder',
         'boilerplate_name': None
     },
-
+    {
+        'component': 'edly_kwl',
+        'boilerplate_name': None
+    },
+    {
+        'component': 'edly_carousel',
+        'boilerplate_name': None
+    },
+    {
+        'component': 'pakx_feedback',
+        'boilerplate_name': None
+    },
+    {
+        'component': 'pakx_video',
+        'boilerplate_name': None
+    },
+    {
+        'component': 'pakx_grid_dropdown',
+        'boilerplate_name': None
+    },
+    {
+        'component': 'edly_assessment',
+        'boilerplate_name': None
+    }
 ]
 
 ############### Settings for Retirement #####################
