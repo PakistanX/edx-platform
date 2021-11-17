@@ -1,7 +1,6 @@
 """Celery tasks for to update user progress and send reminder emails"""
 
 from logging import getLogger
-from six import text_type
 
 from celery import task
 from django.conf import settings
@@ -12,6 +11,7 @@ from django.urls import reverse
 from django.utils import timezone
 from edx_ace import ace
 from edx_ace.recipient import Recipient
+from six import text_type
 
 from grades.api import CourseGradeFactory
 from openedx.core.djangoapps.ace_common.template_context import get_base_template_context
@@ -23,10 +23,10 @@ from openedx.core.lib.celery.task_utils import emulate_http_request
 from openedx.features.pakx.lms.overrides.message_types import ContactUs, CourseProgress
 from openedx.features.pakx.lms.overrides.models import CourseProgressStats
 from openedx.features.pakx.lms.overrides.utils import (
+    check_and_unlock_user_milestone,
     create_dummy_request,
     get_course_progress_percentage,
-    get_date_diff_in_days,
-    check_and_unlock_user_milestone
+    get_date_diff_in_days
 )
 from student.models import CourseEnrollment
 

@@ -2,24 +2,25 @@
 
 from datetime import datetime, timedelta
 from logging import getLogger
-from re import compile as re_compile, findall
-from pytz import utc
-from six import text_type
+from re import compile as re_compile
+from re import findall
 
+from completion.models import BlockCompletion
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import MinLengthValidator, RegexValidator
 from django.db.models import Avg, Case, Count, IntegerField, Sum, When
-from django.forms.models import model_to_dict
 from django.db.models.functions import Coalesce
+from django.forms.models import model_to_dict
 from django.urls import reverse
-from django.utils.translation import ugettext as _
 from django.utils import timezone
+from django.utils.translation import ugettext as _
 from milestones import api as milestones_api
 from milestones.exceptions import InvalidMilestoneException
-
-from completion.models import BlockCompletion
 from opaque_keys.edx.keys import CourseKey
+from pytz import utc
+from six import text_type
+
 from lms.djangoapps.course_api.blocks.serializers import BlockDictSerializer
 from lms.djangoapps.course_api.blocks.transformers.blocks_api import BlocksAPITransformer
 from lms.djangoapps.courseware.courses import get_courses, sort_by_announcement, sort_by_start_date
@@ -27,15 +28,14 @@ from openedx.core.djangoapps.content.block_structure.api import get_course_in_ca
 from openedx.core.djangoapps.content.block_structure.transformers import BlockStructureTransformers
 from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
 from openedx.core.djangoapps.site_configuration import helpers as configuration_helpers
-from openedx.core.lib.request_utils import get_request_or_stub
 from openedx.core.lib.gating.api import get_prerequisites
+from openedx.core.lib.request_utils import get_request_or_stub
 from openedx.features.course_experience.utils import get_course_outline_block_tree, get_resume_block
 from openedx.features.pakx.cms.custom_settings.models import CourseOverviewContent
 from pakx_feedback.feedback_app.models import UserFeedbackModel  # pylint: disable=import-error
-from student.models import CourseEnrollment
+from student.models import CourseEnrollment, User
 from util.organizations_helpers import get_organization_by_short_name
 from xmodule import course_metadata_utils
-from student.models import User
 
 log = getLogger(__name__)
 

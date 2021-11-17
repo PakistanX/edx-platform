@@ -8,12 +8,12 @@ import json
 import logging
 from datetime import datetime
 from functools import reduce
-from pkg_resources import resource_string
-from six import text_type
-from pytz import UTC
 
 from lxml import etree
 from opaque_keys.edx.keys import UsageKey
+from pkg_resources import resource_string
+from pytz import UTC
+from six import text_type
 from web_fragments.fragment import Fragment
 from xblock.completable import XBlockCompletionMode
 from xblock.core import XBlock
