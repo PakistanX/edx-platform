@@ -21,7 +21,6 @@ from openedx.core.djangoapps.site_configuration import helpers as configuration_
 from openedx.core.lib.gating.api import remove_prerequisite
 from openedx.features.pakx.lms.overrides.utils import get_or_create_course_overview_content
 from util.views import ensure_valid_course_key
-
 from .models import CourseOverviewContent, CourseSet
 
 log = logging.getLogger(__name__)

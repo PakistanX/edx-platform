@@ -2,10 +2,10 @@
 
 from datetime import datetime, timedelta
 from logging import getLogger
-from re import compile as re_compile
-from re import findall
+from re import compile as re_compile, findall
+from pytz import utc
+from six import text_type
 
-from completion.models import BlockCompletion
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import MinLengthValidator, RegexValidator
@@ -15,12 +15,11 @@ from django.db.models.functions import Coalesce
 from django.urls import reverse
 from django.utils.translation import ugettext as _
 from django.utils import timezone
-from opaque_keys.edx.keys import CourseKey
-from pytz import utc
-from six import text_type
 from milestones import api as milestones_api
 from milestones.exceptions import InvalidMilestoneException
 
+from completion.models import BlockCompletion
+from opaque_keys.edx.keys import CourseKey
 from lms.djangoapps.course_api.blocks.serializers import BlockDictSerializer
 from lms.djangoapps.course_api.blocks.transformers.blocks_api import BlocksAPITransformer
 from lms.djangoapps.courseware.courses import get_courses, sort_by_announcement, sort_by_start_date

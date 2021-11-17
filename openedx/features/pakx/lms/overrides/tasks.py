@@ -1,6 +1,7 @@
 """Celery tasks for to update user progress and send reminder emails"""
 
 from logging import getLogger
+from six import text_type
 
 from celery import task
 from django.conf import settings
@@ -11,7 +12,6 @@ from django.urls import reverse
 from django.utils import timezone
 from edx_ace import ace
 from edx_ace.recipient import Recipient
-from six import text_type
 
 from grades.api import CourseGradeFactory
 from openedx.core.djangoapps.ace_common.template_context import get_base_template_context
