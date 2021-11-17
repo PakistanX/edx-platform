@@ -329,7 +329,6 @@ class TransformerData(FieldData):
     """
     Data structure to encapsulate collected data for a transformer.
     """
-    pass
 
 
 class TransformerDataMap(dict):
@@ -583,7 +582,7 @@ class BlockStructureBlockData(BlockStructure):
             value,
         )
 
-    def set_block_field(self, usage_key, transformer, key, value):
+    def set_block_field(self, usage_key, key, value):
         """
         Updates the given transformer's field dictionary with the given
         key and value for the block identified by the given usage_key.
@@ -591,9 +590,6 @@ class BlockStructureBlockData(BlockStructure):
         Arguments:
             usage_key (UsageKey) - Usage key of the block whose
                 transformer data is to be updated.
-
-            transformer (BlockStructureTransformer) - The transformer
-                whose data is to be updated.
 
             key (string) - A dictionary key to the transformer's data.
 

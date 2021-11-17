@@ -18,6 +18,8 @@ from django.utils import timezone
 from opaque_keys.edx.keys import CourseKey
 from pytz import utc
 from six import text_type
+from milestones import api as milestones_api
+from milestones.exceptions import InvalidMilestoneException
 
 from lms.djangoapps.course_api.blocks.serializers import BlockDictSerializer
 from lms.djangoapps.course_api.blocks.transformers.blocks_api import BlocksAPITransformer
@@ -34,8 +36,6 @@ from pakx_feedback.feedback_app.models import UserFeedbackModel  # pylint: disab
 from student.models import CourseEnrollment
 from util.organizations_helpers import get_organization_by_short_name
 from xmodule import course_metadata_utils
-from milestones import api as milestones_api
-from milestones.exceptions import InvalidMilestoneException
 from student.models import User
 
 log = getLogger(__name__)
@@ -435,7 +435,7 @@ def _unlock_or_add_unlock_date(user, course_key, final_milestone):
     if not course_progress.unlock_subsection_on:
         course_progress.unlock_subsection_on = date_to_unlock
         course_progress.save()
-    elif date_to_unlock >= datetime.now():
+    elif date_to_unlock >= timezone.now():
         milestones_api.add_user_milestone(model_to_dict(user), final_milestone)
 
 

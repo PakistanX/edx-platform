@@ -2,7 +2,6 @@
 All views for custom settings app
 """
 import logging
-from datetime import datetime, timedelta
 
 from django.conf import settings
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -13,17 +12,17 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.generic import View
 from django.utils.translation import ugettext as _
 from opaque_keys.edx.keys import CourseKey
+from milestones import api as milestones_api
 
 from xmodule.modulestore.django import modulestore
 from cms.djangoapps.contentstore.views.course import get_course_and_check_access
+from lms.djangoapps.course_api.blocks.api import get_blocks
 from openedx.core.djangoapps.site_configuration import helpers as configuration_helpers
 from openedx.core.lib.gating.api import remove_prerequisite
 from openedx.features.pakx.lms.overrides.utils import get_or_create_course_overview_content
 from util.views import ensure_valid_course_key
 
 from .models import CourseOverviewContent, CourseSet
-from lms.djangoapps.course_api.blocks.api import get_blocks
-from milestones import api as milestones_api
 
 log = logging.getLogger(__name__)
 
