@@ -81,6 +81,8 @@ class MilestonesAndSpecialExamsTransformer(BlockStructureTransformer):
         for block_key in block_structure.topological_traversal():
             if user_gated_from_block(block_key):
                 block_structure.remove_block(block_key, False)
+            elif self.include_gated_sections and self.has_pending_milestones_for_user(block_key, usage_info):
+                block_structure.set_block_field(block_key, self, 'gated', True)
             elif self.is_special_exam(block_key, block_structure):
                 self.add_special_exam_info(block_key, block_structure, usage_info)
 

@@ -25,7 +25,8 @@ from openedx.features.pakx.lms.overrides.models import CourseProgressStats
 from openedx.features.pakx.lms.overrides.utils import (
     create_dummy_request,
     get_course_progress_percentage,
-    get_date_diff_in_days
+    get_date_diff_in_days,
+    check_and_unlock_user_milestone
 )
 from student.models import CourseEnrollment
 
@@ -188,3 +189,18 @@ def update_course_progress_stats():
                 item.email_reminder_status = CourseProgressStats.REMINDER_SENT
                 fields_list.append('email_reminder_status')
         item.save(update_fields=fields_list)
+
+
+@task(name='check_and_unlock_subsections')
+def check_and_unlock_subsections():
+    """Checks Course Progress Stats for users with uncompleted courses and updates milestones."""
+
+    progress_models = CourseProgressStats.objects.filter(progress__lt=100).select_related(
+        'enrollment',
+        'enrollment__user'
+    )
+    log.info("Fetching records, found {} active models".format(len(progress_models)))
+    for item in progress_models:
+        user = item.enrollment.user
+        course_id = item.enrollment.course_id
+        check_and_unlock_user_milestone(user, text_type(course_id))

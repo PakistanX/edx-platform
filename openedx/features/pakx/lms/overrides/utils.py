@@ -1,6 +1,6 @@
 """ Overrides app util functions """
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from logging import getLogger
 from re import compile as re_compile
 from re import findall
@@ -10,9 +10,11 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import MinLengthValidator, RegexValidator
 from django.db.models import Avg, Case, Count, IntegerField, Sum, When
+from django.forms.models import model_to_dict
 from django.db.models.functions import Coalesce
 from django.urls import reverse
 from django.utils.translation import ugettext as _
+from django.utils import timezone
 from opaque_keys.edx.keys import CourseKey
 from pytz import utc
 from six import text_type
@@ -25,12 +27,16 @@ from openedx.core.djangoapps.content.block_structure.transformers import BlockSt
 from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
 from openedx.core.djangoapps.site_configuration import helpers as configuration_helpers
 from openedx.core.lib.request_utils import get_request_or_stub
+from openedx.core.lib.gating.api import get_prerequisites
 from openedx.features.course_experience.utils import get_course_outline_block_tree, get_resume_block
 from openedx.features.pakx.cms.custom_settings.models import CourseOverviewContent
 from pakx_feedback.feedback_app.models import UserFeedbackModel  # pylint: disable=import-error
 from student.models import CourseEnrollment
 from util.organizations_helpers import get_organization_by_short_name
 from xmodule import course_metadata_utils
+from milestones import api as milestones_api
+from milestones.exceptions import InvalidMilestoneException
+from student.models import User
 
 log = getLogger(__name__)
 
@@ -390,6 +396,88 @@ def get_course_progress_percentage(request, course_key):
         if total_completed_block_types and total_completed_block_types.values() else 0
 
     return format((total_completed_blocks / total_blocks) * 100, '.0f') if total_blocks > 0 else total_blocks
+
+
+def check_and_unlock_user_milestone(user, course_key):
+    """Checks if pre req for locked subsection have been completed."""
+
+    course_key = CourseKey.from_string(course_key)
+    milestones = get_prerequisites(course_key)
+    final_milestone, prereq_for_final = _get_milestones(milestones)
+
+    if not final_milestone:
+        log.info('No final milestone found for course:{}'.format(course_key))
+        return
+
+    try:
+        if milestones_api.user_has_milestone(model_to_dict(user), prereq_for_final):
+            _unlock_or_add_unlock_date(user, course_key, final_milestone)
+    except InvalidMilestoneException:
+        log.info('User:{} for course:{} have milestone:{}'.format(user.email, course_key, prereq_for_final))
+
+
+def _unlock_or_add_unlock_date(user, course_key, final_milestone):
+    """Check and unlock subsection if unlock date has been specified and fulfilled."""
+
+    from .models import CourseProgressStats
+
+    try:
+        date_to_unlock, course_progress = _get_course_progress(user, course_key, CourseProgressStats)
+    except (CourseOverviewContent.DoesNotExist, CourseProgressStats.DoesNotExist):
+        log.info(
+            'Course Progress stats or Course Overview does not exist for user:{} and course:{}'.format(
+                user.email,
+                course_key
+            )
+        )
+        return
+
+    if not course_progress.unlock_subsection_on:
+        course_progress.unlock_subsection_on = date_to_unlock
+        course_progress.save()
+    elif date_to_unlock >= datetime.now():
+        milestones_api.add_user_milestone(model_to_dict(user), final_milestone)
+
+
+def _get_course_progress(user, course_key, progress_model):
+    """Get date to unlock and course progress stats."""
+
+    course_overview_content = CourseOverviewContent.objects.get(course_id=course_key)
+    date_to_unlock = timezone.now() + timedelta(days=course_overview_content.days_to_unlock)
+
+    enrollment = CourseEnrollment.objects.filter(user_id=user.id, course_id=course_key).first()
+    course_progress = progress_model.objects.get(enrollment=enrollment)
+
+    return date_to_unlock, course_progress
+
+
+def get_unlock_date(user_id, course_id):
+    from .models import CourseProgressStats
+
+    user = User.objects.get(id=user_id)
+    _, course_progress = _get_course_progress(
+        user, course_id, CourseProgressStats
+    )
+    return course_progress.unlock_subsection_on.strftime('%B %d, %Y')
+
+
+def _get_milestones(milestones):
+    final_milestone = _get_final_milestone(milestones)
+
+    if final_milestone:
+        for milestone in milestones:
+            if milestone['content_id'] == final_milestone['content_id']:
+                return final_milestone, milestone
+
+    return final_milestone, None
+
+
+def _get_final_milestone(milestones):
+    for milestone in milestones:
+        if milestone['content_id'] == milestone['namespace'].split('.gating')[0]:
+            return milestone
+
+    return None
 
 
 def get_rtl_class(course_language):

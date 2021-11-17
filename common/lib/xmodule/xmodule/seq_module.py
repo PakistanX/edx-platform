@@ -416,8 +416,13 @@ class SequenceModule(SequenceFields, ProctoringFields, XModule):
             'prereq_section_name': None,
             'gated': False,
             'gated_section_name': self.display_name,
+            'unlock_on': None,
         }
         if not prereq_met:
+            if self.display_name == prereq_meta_info['display_name']:
+                from openedx.features.pakx.lms.overrides.utils import get_unlock_date
+                gated_content['unlock_on'] = get_unlock_date(self.runtime.user_id, self.course_id)
+
             gated_content['gated'] = True
             gated_content['prereq_url'] = prereq_meta_info['url']
             gated_content['prereq_section_name'] = prereq_meta_info['display_name']
