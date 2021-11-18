@@ -23,7 +23,6 @@ from openedx.core.lib.celery.task_utils import emulate_http_request
 from openedx.features.pakx.lms.overrides.message_types import ContactUs, CourseProgress
 from openedx.features.pakx.lms.overrides.models import CourseProgressStats
 from openedx.features.pakx.lms.overrides.utils import (
-    check_and_unlock_user_milestone,
     create_dummy_request,
     get_course_progress_percentage,
     get_date_diff_in_days
@@ -189,12 +188,3 @@ def update_course_progress_stats():
                 item.email_reminder_status = CourseProgressStats.REMINDER_SENT
                 fields_list.append('email_reminder_status')
         item.save(update_fields=fields_list)
-
-
-def check_and_unlock_subsections():
-    """Checks Course Progress Stats for users with uncompleted courses and updates milestones."""
-
-    progress_models = CourseProgressStats.objects.filter(progress__lt=100).select_related('enrollment')
-    log.info("Fetching records, found {} active models".format(len(progress_models)))
-    for item in progress_models:
-        check_and_unlock_user_milestone(item.enrollment.user, text_type(item.enrollment.course_id))
