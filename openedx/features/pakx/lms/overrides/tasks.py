@@ -191,16 +191,10 @@ def update_course_progress_stats():
         item.save(update_fields=fields_list)
 
 
-@task(name='check_and_unlock_subsections')
 def check_and_unlock_subsections():
     """Checks Course Progress Stats for users with uncompleted courses and updates milestones."""
 
-    progress_models = CourseProgressStats.objects.filter(progress__lt=100).select_related(
-        'enrollment',
-        'enrollment__user'
-    )
+    progress_models = CourseProgressStats.objects.filter(progress__lt=100).select_related('enrollment')
     log.info("Fetching records, found {} active models".format(len(progress_models)))
     for item in progress_models:
-        user = item.enrollment.user
-        course_id = item.enrollment.course_id
-        check_and_unlock_user_milestone(user, text_type(course_id))
+        check_and_unlock_user_milestone(item.enrollment.user, text_type(item.enrollment.course_id))

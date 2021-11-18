@@ -279,7 +279,9 @@ class SequenceModule(SequenceFields, ProctoringFields, XModule):
 
         if self._required_prereq():
             if self.runtime.user_is_staff:
-                banner_text = _('This subsection is unlocked for learners when they meet the prerequisite requirements.')
+                banner_text = _(
+                    'This subsection is unlocked for learners when they meet the prerequisite requirements.'
+                )
             else:
                 # check if prerequisite has been met
                 prereq_met, prereq_meta_info = self._compute_is_prereq_met(True)
@@ -424,7 +426,8 @@ class SequenceModule(SequenceFields, ProctoringFields, XModule):
         if not prereq_met:
             if self.display_name == prereq_meta_info['display_name']:
                 from openedx.features.pakx.lms.overrides.utils import get_unlock_date
-                gated_content['unlock_on'] = get_unlock_date(self.runtime.user_id, self.course_id)
+                gated_content['unlock_on'] = (get_unlock_date(self.runtime.user_id, self.course_id)
+                                              or 'Date not yet finalized.')
 
             gated_content['gated'] = True
             gated_content['prereq_url'] = prereq_meta_info['url']

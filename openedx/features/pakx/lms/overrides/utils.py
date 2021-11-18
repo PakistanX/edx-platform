@@ -401,8 +401,7 @@ def check_and_unlock_user_milestone(user, course_key):
     """Checks if pre req for locked subsection have been completed."""
 
     course_key = CourseKey.from_string(course_key)
-    milestones = get_prerequisites(course_key)
-    final_milestone, prereq_for_final = _get_milestones(milestones)
+    final_milestone, prereq_for_final = _get_milestones(get_prerequisites(course_key))
 
     if not final_milestone:
         log.info('No final milestone found for course:{}'.format(course_key))
@@ -421,7 +420,7 @@ def _unlock_or_add_unlock_date(user, course_key, final_milestone):
     from .models import CourseProgressStats
 
     try:
-        date_to_unlock, course_progress = _get_course_progress(user, course_key, CourseProgressStats)
+        date_to_unlock, course_progress = _get_course_progress(user.id, course_key, CourseProgressStats)
     except (CourseOverviewContent.DoesNotExist, CourseProgressStats.DoesNotExist):
         log.info(
             'Course Progress stats or Course Overview does not exist for user:{} and course:{}'.format(
@@ -433,31 +432,34 @@ def _unlock_or_add_unlock_date(user, course_key, final_milestone):
 
     if not course_progress.unlock_subsection_on:
         course_progress.unlock_subsection_on = date_to_unlock
-        course_progress.save()
+        course_progress.save(update_fields=['unlock_subsection_on'])
     elif date_to_unlock >= timezone.now():
         milestones_api.add_user_milestone(model_to_dict(user), final_milestone)
 
 
-def _get_course_progress(user, course_key, progress_model):
+def _get_course_progress(user_id, course_key, progress_model):
     """Get date to unlock and course progress stats."""
 
     course_overview_content = CourseOverviewContent.objects.get(course_id=course_key)
     date_to_unlock = timezone.now() + timedelta(days=course_overview_content.days_to_unlock)
 
-    enrollment = CourseEnrollment.objects.filter(user_id=user.id, course_id=course_key).first()
-    course_progress = progress_model.objects.get(enrollment=enrollment)
+    course_stats = progress_model.objects.filter(enrollment__user_id=user_id, enrollment__course_id=course_key).first()
 
-    return date_to_unlock, course_progress
+    return date_to_unlock, course_stats
 
 
 def get_unlock_date(user_id, course_id):
     from .models import CourseProgressStats
 
-    user = User.objects.get(id=user_id)
-    _, course_progress = _get_course_progress(
-        user, course_id, CourseProgressStats
-    )
-    return course_progress.unlock_subsection_on.strftime('%B %d, %Y')
+    try:
+        _, course_progress_stats = _get_course_progress(user_id, course_id, CourseProgressStats)
+        return course_progress_stats.unlock_subsection_on.strftime('%B %d, %Y')
+    except CourseProgressStats.DoesNotExist:
+        log.info('Course progress stats not found for user:{} and course:{} when accessing course from LMS.'.format(
+            user_id,
+            course_id
+        ))
+        return None
 
 
 def _get_milestones(milestones):

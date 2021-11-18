@@ -81,7 +81,7 @@ class CourseCustomSettingsView(LoginRequiredMixin, View):
         course_experience = request.POST.get('course_experience', 0)
         publisher_logo_url = request.POST['publisher-logo-url']
         publisher_card_logo_url = request.POST['publisher_card_logo_url']
-        days_to_unlock = int(request.POST['days-duration'])
+        days_to_unlock = int(request.POST.get('days-duration') or 0)
         subsection_to_lock = request.POST['subsection']
 
         self.add_days_milestone(subsection_to_lock, course_key)
@@ -115,12 +115,7 @@ class CourseCustomSettingsView(LoginRequiredMixin, View):
             course_usage_key,
             user=request.user,
             nav_depth=3,
-            requested_fields=[
-                'children',
-                'display_name',
-                'show_gated_sections',
-                'gated',
-            ],
+            requested_fields=['children', 'display_name', 'show_gated_sections', 'gated'],
             block_types_filter=block_types_filter,
             allow_start_dates_in_future=False,
         )
