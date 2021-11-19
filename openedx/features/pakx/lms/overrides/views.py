@@ -48,6 +48,7 @@ from openedx.features.pakx.lms.overrides.tasks import send_contact_us_email
 from openedx.features.pakx.lms.overrides.utils import (
     add_course_progress_to_enrolled_courses,
     get_course_card_data,
+    get_course_first_unit_lms_url,
     get_course_progress_percentage,
     get_courses_for_user,
     get_featured_course_data,
@@ -233,6 +234,11 @@ def _get_course_about_context(request, course_id, category=None):  # pylint: dis
         staff_access = bool(has_access(request.user, 'staff', course))
         studio_url = get_studio_url(course, 'settings/details')
 
+        preview_course_url = None
+        if not request.user.is_authenticated:
+            course_block_tree = get_course_outline_block_tree(request, course_id, None)
+            preview_course_url = get_course_first_unit_lms_url(course_block_tree)
+
         if request.user.has_perm(VIEW_COURSE_HOME, course):
             course_target = reverse(course_home_url_name(course.id), args=[text_type(course.id)])
         else:
@@ -309,6 +315,7 @@ def _get_course_about_context(request, course_id, category=None):  # pylint: dis
         context = {
             'course': course,
             'language': language,
+            'preview_course_url': preview_course_url,
             'course_details': course_details,
             'staff_access': staff_access,
             'studio_url': studio_url,
@@ -489,3 +496,35 @@ class MarketingCampaignPage(AboutUsView):
     def populate_form_initial_data(self, user=None):
         super().populate_form_initial_data(user)
         self.initial_data.update({'message': 'Not Available. Submitted from Marketing campaign Page'})
+
+
+class WEShowcaseView(AboutUsView):
+    """
+    View for business page.
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.email_subject = 'Workplace Essential Demo Page Form Data'
+
+    template_name = 'overrides/workplace_essential_showcase.html'
+    success_redirect = '/workplace-essentials-showcase/#get-started'
+
+    def get_context_data(self, user=None, **kwargs):  # pylint: disable=arguments-differ
+        course_keys = configuration_helpers.get_value('we_demo_course_keys') or []
+        context = super().get_context_data(user=None, **kwargs)
+        course_url_map = {}
+
+        for idx, course_key in enumerate(course_keys, 1):
+            course_block_tree = get_course_outline_block_tree(self.request, course_key, None)
+            course_url_map[str(idx)] = {
+                'about_url': '/courses/{}/about'.format(course_key),
+                'preview_url': get_course_first_unit_lms_url(course_block_tree)
+            }
+
+        context['course_url_map'] = course_url_map
+        return context
+
+    def populate_form_initial_data(self, user=None):
+        super().populate_form_initial_data(user)
+        self.initial_data.update({'message': 'Not Available. Submitted from WE Demo Page'})
