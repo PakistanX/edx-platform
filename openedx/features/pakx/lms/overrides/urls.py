@@ -2,7 +2,12 @@ from django.conf import settings
 from django.conf.urls import url
 
 from .views import (
-    AboutUsView, BusinessView, MarketingCampaignPage, PartnerWithUsView, WEShowcaseView, overview_tab_view
+    AboutUsView,
+    BusinessView,
+    MarketingCampaignPage,
+    PartnerWithUsView,
+    WEShowcaseView,
+    overview_tab_view
 )
 
 urlpatterns = [

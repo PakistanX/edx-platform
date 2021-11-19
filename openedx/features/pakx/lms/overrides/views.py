@@ -515,9 +515,9 @@ class WEShowcaseView(AboutUsView):
         context = super().get_context_data(user=None, **kwargs)
         course_url_map = {}
 
-        for idx, course_key in enumerate(course_keys):
+        for idx, course_key in enumerate(course_keys, 1):
             course_block_tree = get_course_outline_block_tree(self.request, course_key, None)
-            course_url_map[str(idx + 1)] = {
+            course_url_map[str(idx)] = {
                 'about_url': '/courses/{}/about'.format(course_key),
                 'preview_url': get_course_first_unit_lms_url(course_block_tree)
             }
