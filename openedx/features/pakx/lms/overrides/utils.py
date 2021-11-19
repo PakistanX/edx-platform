@@ -411,6 +411,14 @@ def is_rtl_language(language_code):
     return language_code in rtl_languages
 
 
+def get_course_first_unit_lms_url(course_tree):
+    children = course_tree.get('children')
+    if not children:
+        return course_tree.get('lms_web_url')
+
+    return get_course_first_unit_lms_url(children[0])
+
+
 def get_date_diff_in_days(future_date):
     """
     get date diff in days with ref to current date
