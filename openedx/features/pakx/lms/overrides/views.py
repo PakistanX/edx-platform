@@ -474,7 +474,7 @@ class BusinessView(AboutUsView):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.email_subject = 'PakistanX for Business Form Data'
+        self.email_subject = 'ilmX for Business Form Data'
 
     def populate_form_initial_data(self, user=None):
         super().populate_form_initial_data(user)
