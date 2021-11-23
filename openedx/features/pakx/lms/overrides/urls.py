@@ -1,13 +1,7 @@
 from django.conf import settings
 from django.conf.urls import url
 
-from .views import (
-    AboutUsView,
-    MarketingCampaignPage,
-    PartnerWithUsView,
-    WEShowcaseView,
-    overview_tab_view
-)
+from .views import AboutUsView, MarketingCampaignPage, PartnerWithUsView, WEShowcaseView, overview_tab_view
 
 urlpatterns = [
     url(r'^about_us/?$', AboutUsView.as_view(), name="about_us"),
