@@ -3,7 +3,6 @@ from django.conf.urls import url
 
 from .views import (
     AboutUsView,
-    BusinessView,
     MarketingCampaignPage,
     PartnerWithUsView,
     WEShowcaseView,
@@ -17,7 +16,7 @@ urlpatterns = [
         overview_tab_view,
         name='overview_tab_view'
     ),
-    url(r'^business/$', BusinessView.as_view(), name='home-business'),
+    url(r'^business/$', WEShowcaseView.as_view(), name='home-business'),
     url(r'^workplace-essentials-showcase/$', WEShowcaseView.as_view(), name='we-showcase'),
     url(r'^partner-with-us/$', PartnerWithUsView.as_view(), name='partner-with-us'),
     url(r'^workplace-harassment/$', MarketingCampaignPage.as_view(), name='workplace-harassment'),
