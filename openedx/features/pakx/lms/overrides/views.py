@@ -234,10 +234,8 @@ def _get_course_about_context(request, course_id, category=None):  # pylint: dis
         staff_access = bool(has_access(request.user, 'staff', course))
         studio_url = get_studio_url(course, 'settings/details')
 
-        preview_course_url = None
-        if not request.user.is_authenticated:
-            course_block_tree = get_course_outline_block_tree(request, course_id, None)
-            preview_course_url = get_course_first_unit_lms_url(course_block_tree)
+        course_block_tree = get_course_outline_block_tree(request, course_id, None)
+        preview_course_url = get_course_first_unit_lms_url(course_block_tree)
 
         if request.user.has_perm(VIEW_COURSE_HOME, course):
             course_target = reverse(course_home_url_name(course.id), args=[text_type(course.id)])
@@ -384,18 +382,38 @@ def course_about_category(request, category, course_id):
     return render_to_response('courseware/course_about.html', _get_course_about_context(request, course_id, category))
 
 
-class AboutUsView(TemplateView):
+class BaseTemplateView(TemplateView):
     """
-    View for viewing and submitting contact us form.
+    Base template view
+    """
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['tags'] = ['LMS']
+        context['platform_name'] = configuration_helpers.get_value('platform_name', settings.PLATFORM_NAME)
+        context['support_email'] = configuration_helpers.get_value('CONTACT_EMAIL', settings.CONTACT_EMAIL)
+        context['custom_fields'] = settings.ZENDESK_CUSTOM_FIELDS
+        request = kwargs.get('request')
+        if request and request.user.is_authenticated:
+            context['course_id'] = request.session.get('course_id', '')
+        return context
+
+    def get(self, request, *args, **kwargs):  # pylint: disable=unused-argument
+        context = self.get_context_data(request=request)
+        return render_to_response(self.template_name, context)
+
+
+class AboutUsView(BaseTemplateView):
+    """
+    View for viewing and submitting about us form.
     """
 
     form_class = AboutUsForm
-    success_redirect = '/about_us/'
     template_name = 'overrides/about_us.html'
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.email_subject = 'Contact Us Form Data'
+        self.email_subject = 'About Us Form Data'
         self.initial_data = {}
 
     def populate_form_initial_data(self, user=None):
@@ -406,28 +424,19 @@ class AboutUsView(TemplateView):
                 'organization': getattr(user.profile.organization, 'name', ''),
             })
 
-    def get_context_data(self, user=None, **kwargs):  # pylint: disable=arguments-differ
+    def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['tags'] = ['LMS']
-        context['platform_name'] = configuration_helpers.get_value('platform_name', settings.PLATFORM_NAME)
-        context['support_email'] = configuration_helpers.get_value('CONTACT_EMAIL', settings.CONTACT_EMAIL)
-        context['custom_fields'] = settings.ZENDESK_CUSTOM_FIELDS
+        request = kwargs.get('request')
+        if request and request.user.is_authenticated:
+            self.populate_form_initial_data(request.user)
 
-        self.populate_form_initial_data(user)
         context['form'] = self.form_class(initial=self.initial_data)
         return context
-
-    def get(self, request):  # pylint: disable=arguments-differ
-        user = request.user if request.user.is_authenticated else None
-        context = self.get_context_data(user=user)
-
-        context['course_id'] = request.session.get('course_id', '')
-
-        return render_to_response(self.template_name, context)
 
     def post(self, request):
         form_data = request.POST.copy()
         form = self.form_class(form_data)
+
         if form.is_valid():
             instance = form.save(commit=False)
             if request.user.is_authenticated:
@@ -445,74 +454,73 @@ class AboutUsView(TemplateView):
                 self.request,
                 _(u'Thank you for contacting us! Our team will get in touch with you soon')
             )
-            return HttpResponseRedirect(self.success_redirect)
+            context = self.get_context_data(request=request)
+            return render_to_response(self.template_name, context)
 
-        context = self.get_context_data()
+        context = self.get_context_data(request=request)
         context['form'] = form
         return render_to_response(self.template_name, context)
 
 
 class PartnerWithUsView(AboutUsView):
     """
-    View for partner-with-us page.
+    View for partner with us page.
     """
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.email_subject = 'Partner with Us Form Data'
 
-    success_redirect = '/partner-with-us/'
     template_name = "overrides/partner_with_us.html"
+
+
+# class BusinessView(AboutUsView):
+#     """
+#     View for business page.
+#     """
+#     template_name = 'overrides/business.html'
+#     success_redirect = '/business/#get-started'
+#
+#     def __init__(self, **kwargs):
+#         super().__init__(**kwargs)
+#         self.email_subject = 'ilmX for Business Form Data'
+#
+#     def populate_form_initial_data(self, user=None):
+#         super().populate_form_initial_data(user)
+#         self.initial_data.update({'message': 'Not Available. Submitted from Business Page'})
+
+
+class MarketingCampaignPage(AboutUsView):
+    """
+    View for marketing campaign page.
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.email_subject = 'Pakistan Against Workplace Harassment Form Data'
+        self.initial_data = {'message': 'Not Available. Submitted from Marketing campaign Page'}
+
+    template_name = 'overrides/marketing_campaign.html'
+
+    def populate_form_initial_data(self, user=None):
+        super().populate_form_initial_data(user)
 
 
 class BusinessView(AboutUsView):
     """
     View for business page.
     """
-    template_name = 'overrides/business.html'
-    success_redirect = '/business/#get-started'
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.email_subject = 'ilmX for Business Form Data'
-
-    def populate_form_initial_data(self, user=None):
-        super().populate_form_initial_data(user)
-        self.initial_data.update({'message': 'Not Available. Submitted from Business Page'})
-
-
-class MarketingCampaignPage(AboutUsView):
-    """
-    View for business page.
-    """
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.email_subject = 'Pakistan Against Workplace Harassment Form Data'
-
-    template_name = 'overrides/marketing_campaign.html'
-    success_redirect = '/workplace-harassment/#get-started'
-
-    def populate_form_initial_data(self, user=None):
-        super().populate_form_initial_data(user)
-        self.initial_data.update({'message': 'Not Available. Submitted from Marketing campaign Page'})
-
-
-class WEShowcaseView(AboutUsView):
-    """
-    View for business page.
-    """
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.email_subject = 'Workplace Essential Demo Page Form Data'
+        self.email_subject = 'Business Page Form Data'
+        self.initial_data = {'message': 'Not Available. Submitted from business Page'}
 
     template_name = 'overrides/workplace_essential_showcase.html'
-    success_redirect = '/workplace-essentials-showcase/#get-started'
 
-    def get_context_data(self, user=None, **kwargs):  # pylint: disable=arguments-differ
+    def get_context_data(self, **kwargs):
         course_keys = configuration_helpers.get_value('we_demo_course_keys') or []
-        context = super().get_context_data(user=None, **kwargs)
+        context = super().get_context_data(**kwargs)
         course_url_map = {}
 
         for idx, course_key in enumerate(course_keys, 1):
@@ -525,6 +533,16 @@ class WEShowcaseView(AboutUsView):
         context['course_url_map'] = course_url_map
         return context
 
-    def populate_form_initial_data(self, user=None):
-        super().populate_form_initial_data(user)
-        self.initial_data.update({'message': 'Not Available. Submitted from WE Demo Page'})
+
+class TermsOfUseView(BaseTemplateView):
+    """
+    View for terms of use
+    """
+    template_name = 'overrides/terms_of_use.html'
+
+
+class PrivacyPolicyView(BaseTemplateView):
+    """
+    View for terms of use
+    """
+    template_name = 'overrides/privacy_policy.html'
