@@ -1,7 +1,15 @@
 from django.conf import settings
 from django.conf.urls import url
 
-from .views import AboutUsView, MarketingCampaignPage, PartnerWithUsView, WEShowcaseView, overview_tab_view
+from .views import (
+    AboutUsView,
+    BusinessView,
+    MarketingCampaignPage,
+    PartnerWithUsView,
+    PrivacyPolicyView,
+    TermsOfUseView,
+    overview_tab_view
+)
 
 urlpatterns = [
     url(r'^about_us/?$', AboutUsView.as_view(), name="about_us"),
@@ -10,8 +18,10 @@ urlpatterns = [
         overview_tab_view,
         name='overview_tab_view'
     ),
-    url(r'^business/$', WEShowcaseView.as_view(), name='home-business'),
-    url(r'^workplace-essentials-showcase/$', WEShowcaseView.as_view(), name='we-showcase'),
+    url(r'^business/$', BusinessView.as_view(), name='home-business'),
+    url(r'^terms-of-use/$', TermsOfUseView.as_view(), name='terms-of-use'),
+    url(r'^privacy-policy/$', PrivacyPolicyView.as_view(), name='privacy-policy'),
     url(r'^partner-with-us/$', PartnerWithUsView.as_view(), name='partner-with-us'),
+    url(r'^workplace-essentials-showcase/$', BusinessView.as_view(), name='we-showcase'),
     url(r'^workplace-harassment/$', MarketingCampaignPage.as_view(), name='workplace-harassment'),
 ]

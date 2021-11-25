@@ -61,7 +61,7 @@ def get_course_card_data(course, org_prefetched=False):
     """
     if not isinstance(course, CourseOverview):
         course = CourseOverview.objects.filter(id=course.id).first()
-    pakx_short_logo = '/static/pakx/images/mooc/pakx-logo-circled.png'
+    pakx_short_logo = '/static/pakx/images/mooc/pakx-logo.png'
     course_custom_setting = get_or_create_course_overview_content(course.id)
 
     if not org_prefetched:
