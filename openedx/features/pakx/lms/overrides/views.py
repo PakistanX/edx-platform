@@ -409,7 +409,6 @@ class AboutUsView(BaseTemplateView):
     """
 
     form_class = AboutUsForm
-    success_redirect = '/about_us/#get-started'
     template_name = 'overrides/about_us.html'
 
     def __init__(self, **kwargs):
@@ -437,6 +436,7 @@ class AboutUsView(BaseTemplateView):
     def post(self, request):
         form_data = request.POST.copy()
         form = self.form_class(form_data)
+
         if form.is_valid():
             instance = form.save(commit=False)
             if request.user.is_authenticated:
@@ -454,7 +454,8 @@ class AboutUsView(BaseTemplateView):
                 self.request,
                 _(u'Thank you for contacting us! Our team will get in touch with you soon')
             )
-            return HttpResponseRedirect(self.success_redirect)
+            context = self.get_context_data(request=request)
+            return render_to_response(self.template_name, context)
 
         context = self.get_context_data(request=request)
         context['form'] = form
@@ -470,7 +471,6 @@ class PartnerWithUsView(AboutUsView):
         super().__init__(**kwargs)
         self.email_subject = 'Partner with Us Form Data'
 
-    success_redirect = '/partner-with-us/#get-started'
     template_name = "overrides/partner_with_us.html"
 
 
@@ -498,13 +498,12 @@ class MarketingCampaignPage(AboutUsView):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.email_subject = 'Pakistan Against Workplace Harassment Form Data'
+        self.initial_data = {'message': 'Not Available. Submitted from Marketing campaign Page'}
 
     template_name = 'overrides/marketing_campaign.html'
-    success_redirect = '/workplace-harassment/#get-started'
 
     def populate_form_initial_data(self, user=None):
         super().populate_form_initial_data(user)
-        self.initial_data.update({'message': 'Not Available. Submitted from Marketing campaign Page'})
 
 
 class BusinessView(AboutUsView):
@@ -515,9 +514,9 @@ class BusinessView(AboutUsView):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.email_subject = 'Business Page Form Data'
+        self.initial_data = {'message': 'Not Available. Submitted from business Page'}
 
     template_name = 'overrides/workplace_essential_showcase.html'
-    success_redirect = '/business/#get-started'
 
     def get_context_data(self, **kwargs):
         course_keys = configuration_helpers.get_value('we_demo_course_keys') or []
@@ -533,10 +532,6 @@ class BusinessView(AboutUsView):
 
         context['course_url_map'] = course_url_map
         return context
-
-    def populate_form_initial_data(self, user=None):
-        super().populate_form_initial_data(user)
-        self.initial_data.update({'message': 'Not Available. Submitted from business Page'})
 
 
 class TermsOfUseView(BaseTemplateView):
