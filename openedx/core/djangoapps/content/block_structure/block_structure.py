@@ -329,6 +329,7 @@ class TransformerData(FieldData):
     """
     Data structure to encapsulate collected data for a transformer.
     """
+    pass
 
 
 class TransformerDataMap(dict):

@@ -21,8 +21,7 @@ class MilestonesAndSpecialExamsTransformer(BlockStructureTransformer):
     """
     A transformer that handles both milestones and special (timed) exams.
 
-    It includes or excludes all unfulfilled milestones from the student view based on the value of
-    `include_gated_sections`.
+    It includes or excludes all unfulfilled milestones from the student view based on the value of `include_gated_sections`.
 
     An entrance exam is considered a milestone, and is not considered a "special exam".
 
@@ -158,9 +157,7 @@ class MilestonesAndSpecialExamsTransformer(BlockStructureTransformer):
 
         if user_can_skip_entrance_exam:
             # remove the entrance exam from required content
-            entrance_exam_id = block_structure.get_xblock_field(
-                block_structure.root_block_usage_key, 'entrance_exam_id'
-            )
+            entrance_exam_id = block_structure.get_xblock_field(block_structure.root_block_usage_key, 'entrance_exam_id')
             required_content = [content for content in required_content if not content == entrance_exam_id]
 
         return required_content

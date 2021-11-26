@@ -3,15 +3,18 @@ xModule implementation of a learning sequence
 """
 
 # pylint: disable=abstract-method
+
 import collections
 import json
 import logging
 from datetime import datetime
 from functools import reduce
 
+from pkg_resources import resource_string
+
+import six
 from lxml import etree
 from opaque_keys.edx.keys import UsageKey
-from pkg_resources import resource_string
 from pytz import UTC
 from six import text_type
 from web_fragments.fragment import Fragment
@@ -243,15 +246,11 @@ class SequenceModule(SequenceFields, ProctoringFields, XModule):
 
             if self._required_prereq():
                 if self.runtime.user_is_staff:
-                    banner_text = _(
-                        'This subsection is unlocked for learners when they meet the prerequisite requirements.'
-                    )
+                    banner_text = _('This subsection is unlocked for learners when they meet the prerequisite requirements.')
                 else:
                     # check if prerequisite has been met
                     prereq_met, prereq_meta_info = self._compute_is_prereq_met(True)
-            meta = self._get_render_metadata(
-                context, display_items, prereq_met, prereq_meta_info, banner_text, STUDENT_VIEW
-            )
+            meta = self._get_render_metadata(context, display_items, prereq_met, prereq_meta_info, banner_text, STUDENT_VIEW)
             meta['display_name'] = self.display_name_with_default
             return json.dumps(meta)
         raise NotFoundError('Unexpected dispatch type')
@@ -279,9 +278,7 @@ class SequenceModule(SequenceFields, ProctoringFields, XModule):
 
         if self._required_prereq():
             if self.runtime.user_is_staff:
-                banner_text = _(
-                    'This subsection is unlocked for learners when they meet the prerequisite requirements.'
-                )
+                banner_text = _('This subsection is unlocked for learners when they meet the prerequisite requirements.')
             else:
                 # check if prerequisite has been met
                 prereq_met, prereq_meta_info = self._compute_is_prereq_met(True)
@@ -364,8 +361,7 @@ class SequenceModule(SequenceFields, ProctoringFields, XModule):
         # NOTE (CCB): We default to true to maintain the behavior in place prior to allowing anonymous access access.
         return context.get('user_authenticated', True)
 
-    def _get_render_metadata(self, context, display_items, prereq_met, prereq_meta_info, banner_text=None,
-                             view=STUDENT_VIEW, fragment=None):
+    def _get_render_metadata(self, context, display_items, prereq_met, prereq_meta_info, banner_text=None, view=STUDENT_VIEW, fragment=None):
         if prereq_met and not self._is_gate_fulfilled():
             banner_text = _(
                 'This section is a prerequisite. You must complete this section in order to unlock additional content.'
@@ -401,9 +397,7 @@ class SequenceModule(SequenceFields, ProctoringFields, XModule):
         self._update_position(context, len(display_items))
 
         fragment = Fragment()
-        params = self._get_render_metadata(
-            context, display_items, prereq_met, prereq_meta_info, banner_text, view, fragment
-        )
+        params = self._get_render_metadata(context, display_items, prereq_met, prereq_meta_info, banner_text, view, fragment)
         fragment.add_content(self.system.render_template("seq_module.html", params))
 
         self._capture_full_seq_item_metrics(display_items)
@@ -597,7 +591,7 @@ class SequenceModule(SequenceFields, ProctoringFields, XModule):
         """
         if not newrelic:
             return
-        newrelic.agent.add_custom_parameter('seq.block_id', text_type(self.location))
+        newrelic.agent.add_custom_parameter('seq.block_id', six.text_type(self.location))
         newrelic.agent.add_custom_parameter('seq.display_name', self.display_name or '')
         newrelic.agent.add_custom_parameter('seq.position', self.position)
         newrelic.agent.add_custom_parameter('seq.is_time_limited', self.is_time_limited)
@@ -636,7 +630,7 @@ class SequenceModule(SequenceFields, ProctoringFields, XModule):
         if 1 <= self.position <= len(display_items):
             # Basic info about the Unit...
             current = display_items[self.position - 1]
-            newrelic.agent.add_custom_parameter('seq.current.block_id', text_type(current.location))
+            newrelic.agent.add_custom_parameter('seq.current.block_id', six.text_type(current.location))
             newrelic.agent.add_custom_parameter('seq.current.display_name', current.display_name or '')
 
             # Examining all items inside the Unit (or split_test, conditional, etc.)
