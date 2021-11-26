@@ -4,6 +4,7 @@ xModule implementation of a learning sequence
 
 # pylint: disable=abstract-method
 
+
 import collections
 import json
 import logging
