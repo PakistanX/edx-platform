@@ -70,7 +70,7 @@ class Command(BaseCommand):
         if not course_progress.unlock_subsection_on:
             course_progress.unlock_subsection_on = date_to_unlock
             course_progress.save(update_fields=['unlock_subsection_on'])
-        elif timezone.now() >= date_to_unlock:
+        elif timezone.now() >= course_progress.unlock_subsection_on:
             log.info('Added Milestone for user:{} and course:{} where dates were:'.format(user.email, course_key))
             log.info('date_to_unlock: {}\tdate_now: {}'.format(date_to_unlock, timezone.now()))
             milestones_api.add_user_milestone(model_to_dict(user), final_milestone)
