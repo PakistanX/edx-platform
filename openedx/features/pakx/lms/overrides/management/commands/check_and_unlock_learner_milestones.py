@@ -23,7 +23,7 @@ class Command(BaseCommand):
     help = "Check and unlock subsections based on prereqs and unlock days"
 
     def handle(self, *args, **options):
-        log.info("Staring command to check and unlock subsections based on days defined")
+        log.info("Starting command to check and unlock subsections based on days defined")
 
         progress_models = CourseProgressStats.objects.filter(progress__lt=100).select_related('enrollment')
         log.info("Fetching records, found {} active models".format(len(progress_models)))
@@ -71,9 +71,9 @@ class Command(BaseCommand):
             course_progress.unlock_subsection_on = date_to_unlock
             course_progress.save(update_fields=['unlock_subsection_on'])
         elif timezone.now() >= course_progress.unlock_subsection_on:
+            milestones_api.add_user_milestone(model_to_dict(user), final_milestone)
             log.info('Added Milestone for user:{} and course:{} where dates were:'.format(user.email, course_key))
             log.info('date_to_unlock: {}\tdate_now: {}'.format(date_to_unlock, timezone.now()))
-            milestones_api.add_user_milestone(model_to_dict(user), final_milestone)
 
     @staticmethod
     def _get_final_subsection(milestones):
