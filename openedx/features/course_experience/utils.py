@@ -231,6 +231,7 @@ def get_course_outline_block_tree(request, course_id, user=None, allow_start_dat
             'video_title',
             'thumbnail_url',
             'video_duration',
+            'gated',
         ],
         block_types_filter=block_types_filter,
         allow_start_dates_in_future=allow_start_dates_in_future,

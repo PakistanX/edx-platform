@@ -39,6 +39,8 @@ class CourseOverviewContent(TimeStampedModel):
     course_set = models.ForeignKey(CourseSet, on_delete=models.DO_NOTHING, default=None, null=True, blank=True)
     course_experience = models.PositiveSmallIntegerField(default=NORMAL, choices=COURSE_EXPERIENCES)
     course = models.OneToOneField(CourseOverview, related_name='custom_settings', on_delete=models.CASCADE)
+    subsection_to_lock = models.CharField(max_length=256, blank=True, null=True)
+    days_to_unlock = models.PositiveSmallIntegerField(default=0)
 
     is_public = models.BooleanField('Course is public and should be available on publisher spaces', default=False)
     publisher_name = models.CharField(max_length=128, blank=True, default='', null=True)

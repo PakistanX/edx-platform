@@ -1,6 +1,6 @@
 """ Overrides app util functions """
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from logging import getLogger
 from re import compile as re_compile
 from re import findall
@@ -12,6 +12,7 @@ from django.core.validators import MinLengthValidator, RegexValidator
 from django.db.models import Avg, Case, Count, IntegerField, Sum, When
 from django.db.models.functions import Coalesce
 from django.urls import reverse
+from django.utils import timezone
 from django.utils.translation import ugettext as _
 from opaque_keys.edx.keys import CourseKey
 from pytz import utc
@@ -390,6 +391,31 @@ def get_course_progress_percentage(request, course_key):
         if total_completed_block_types and total_completed_block_types.values() else 0
 
     return format((total_completed_blocks / total_blocks) * 100, '.0f') if total_blocks > 0 else total_blocks
+
+
+def get_course_progress_and_unlock_date(user_id, course_key):
+    """Get date to unlock and course progress stats."""
+
+    from .models import CourseProgressStats
+
+    try:
+        course_overview_content = CourseOverviewContent.objects.get(course_id=course_key)
+        date_to_unlock = timezone.now() + timedelta(days=course_overview_content.days_to_unlock)
+        course_stats = CourseProgressStats.objects.filter(
+            enrollment__user_id=user_id,
+            enrollment__course_id=course_key
+        ).first()
+
+        return date_to_unlock, course_stats
+
+    except (CourseOverviewContent.DoesNotExist, CourseProgressStats.DoesNotExist):
+        log.info(
+            'Course Progress stats or Course Overview does not exist for user:{} and course:{}'.format(
+                user_id,
+                course_key
+            )
+        )
+        return None, None
 
 
 def get_rtl_class(course_language):
