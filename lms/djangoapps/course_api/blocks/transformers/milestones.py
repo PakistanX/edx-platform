@@ -67,22 +67,28 @@ class MilestonesAndSpecialExamsTransformer(BlockStructureTransformer):
             """
 
             if usage_info.has_staff_access:
+                log.info("user staff")
                 return False
             elif self.gated_by_required_content(block_key, block_structure, required_content):
+                log.info("gated by required content rquired content:{}".format(required_content))
                 return True
             elif not self.include_gated_sections and self.has_pending_milestones_for_user(block_key, usage_info):
+                log.info("pending milestones for user")
                 return True
             elif (settings.FEATURES.get('ENABLE_SPECIAL_EXAMS', False) and
                   (self.is_special_exam(block_key, block_structure) and
                    not self.include_special_exams)):
+                log.info("special exams")
                 return True
             return False
 
         for block_key in block_structure.topological_traversal():
+            log.info("\n\nChecking for {} include gated:{}".format(block_key, self.include_gated_sections))
             if user_gated_from_block(block_key):
+                log.info("user gated from block")
                 block_structure.remove_block(block_key, False)
             elif self.include_gated_sections and self.has_pending_milestones_for_user(block_key, usage_info):
-                log.info("Adding gated for {}".format(block_key))
+                log.info("add gated flag")
                 block_structure.set_block_field(block_key, 'gated', True)
             elif self.is_special_exam(block_key, block_structure):
                 self.add_special_exam_info(block_key, block_structure, usage_info)
