@@ -355,11 +355,16 @@ def get_course_content_milestones(course_id, content_id=None, relationship='requ
     Returns all content blocks in a course if content_id is None, otherwise it just returns that
     specific content block.
     """
+    import logging
+    log = logging.getLogger(__name__)
     if not settings.FEATURES.get('MILESTONES_APP'):
+        log.info("Milestone app not found")
         return []
 
     if user_id is None:
-        return milestones_api.get_course_content_milestones(course_id, content_id, relationship)
+        r = milestones_api.get_course_content_milestones(course_id, content_id, relationship)
+        log.info("user id none, returning: {}".format(r))
+        return r
 
     request_cache_dict = get_cache(REQUEST_CACHE_NAME)
     if user_id not in request_cache_dict:
@@ -373,9 +378,12 @@ def get_course_content_milestones(course_id, content_id=None, relationship='requ
         )
 
     if content_id is None:
+        log.info("content id none returning:{}".format(request_cache_dict[user_id][relationship]))
         return request_cache_dict[user_id][relationship]
 
-    return [m for m in request_cache_dict[user_id][relationship] if m['content_id'] == six.text_type(content_id)]
+    l = [m for m in request_cache_dict[user_id][relationship] if m['content_id'] == six.text_type(content_id)]
+    log.info("returning {}".format(l))
+    return l
 
 
 def remove_course_content_user_milestones(course_key, content_key, user, relationship):

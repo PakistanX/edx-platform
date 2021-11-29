@@ -110,12 +110,15 @@ class MilestonesAndSpecialExamsTransformer(BlockStructureTransformer):
         Test whether the current user has any unfulfilled milestones preventing
         them from accessing this block.
         """
-        return bool(milestones_helpers.get_course_content_milestones(
+        log.info("Checking milestones")
+        r = bool(milestones_helpers.get_course_content_milestones(
             six.text_type(block_key.course_key),
             six.text_type(block_key),
             'requires',
             usage_info.user.id
         ))
+        log.info("returning {} from parent".format(r))
+        return r
 
     # TODO: As part of a cleanup effort, this transformer should be split into
     # MilestonesTransformer and SpecialExamsTransformer, which are completely independent.
