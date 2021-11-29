@@ -207,8 +207,8 @@
                             spaceName: this.spaceName,
                             hideAuthWarnings: this.hideAuthWarnings
                         });
-
-                        this.nextUrl = '/login'
+                        const nextParams = Backbone.history.location.search;
+                        this.nextUrl = nextParams ? '/login' + nextParams : '/login'
                     // Listen for 'auth-complete' event so we can enroll/redirect the user appropriately.
                         this.listenTo(this.subview.register, 'auth-complete', this.authComplete);
                     },

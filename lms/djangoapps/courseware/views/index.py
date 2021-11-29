@@ -433,6 +433,7 @@ class CoursewareIndex(View):
             (settings.FEATURES.get('ENABLE_COURSEWARE_SEARCH_FOR_COURSE_STAFF') and self.is_staff)
         )
         hide_course_navigation = settings.FEATURES.get('HIDE_COURSEWARE_NAVIGATION')
+
         staff_access = self.is_staff
         rtl_class = get_rtl_class(self.course.language)
         course_overview = CourseOverview.get_from_id(self.course.id)
@@ -460,6 +461,7 @@ class CoursewareIndex(View):
             'section_title': None,
             'sequence_title': None,
             'disable_accordion': hide_course_navigation,
+            'disable_footer': True,
             'show_search': show_search,
         }
 
@@ -479,18 +481,22 @@ class CoursewareIndex(View):
             self.field_data_cache,
         )
 
-        course_block_tree = get_course_outline_block_tree(
-            request, six.text_type(self.course.id), request.user, allow_start_dates_in_future=True
-        )
+        if not hide_course_navigation:
+            if not self.request.user.is_authenticated:
+                course_block_tree = table_of_contents
+            else:
+                course_block_tree = get_course_outline_block_tree(
+                    request, six.text_type(self.course.id), request.user, allow_start_dates_in_future=True
+                )
 
-        courseware_context['accordion'] = render_accordion(
-            self.request,
-            self.course,
-            course_block_tree,
-            self.chapter_url_name,
-            self.section_url_name,
-            course_experience_mode
-        )
+            courseware_context['accordion'] = render_accordion(
+                self.request,
+                self.course,
+                course_block_tree,
+                self.chapter_url_name,
+                self.section_url_name,
+                course_experience_mode
+            )
 
         courseware_context['course_sock_fragment'] = CourseSockFragmentView().render_to_fragment(
             request, course=self.course)
@@ -610,7 +616,8 @@ def render_accordion(request, course, table_of_contents, active_section, active_
             ('course_experience_mode', course_experience_mode)
         ] + list(TEMPLATE_IMPORTS.items())
     )
-    return render_to_string('courseware/accordion.html', context)
+    template = 'courseware/{}accordion.html'.format('unauth-' if not request.user.is_authenticated else '')
+    return render_to_string(template, context)
 
 
 def save_child_position(seq_module, child_name):
