@@ -54,6 +54,10 @@ class CourseCustomSettingsView(LoginRequiredMixin, View):
         course_overview_content = get_or_create_course_overview_content(course_key)
 
         chapters = self.get_chapters_and_subsections(course_key, request)
+        log.info("Got the following chapters:\n{}".format(chapters))
+        log.info("with the following keys:")
+        for chapter in chapters.values():
+            log.info(chapter.keys())
 
         context = {
             'course_sets': course_sets,
