@@ -55,7 +55,7 @@
                 this.hideAuthWarnings = data.hideAuthWarnings;
                 this.pipelineUserDetails = data.pipelineUserDetails;
                 this.enterpriseName = data.enterpriseName;
-
+                this.spaceName = data.spaceName;
                 this.listenTo(this.model, 'sync', this.saveSuccess);
                 this.listenTo(this.resetModel, 'sync', this.resetEmail);
                 this.listenTo(this.accountRecoveryModel, 'sync', this.resetEmail);
@@ -80,7 +80,8 @@
                                 platformName: this.platformName,
                                 createAccountOption: this.createAccountOption,
                                 pipelineUserDetails: this.pipelineUserDetails,
-                                enterpriseName: this.enterpriseName
+                                enterpriseName: this.enterpriseName,
+                                spaceName: this.spaceName
                             }
                         })
                     )

@@ -76,6 +76,7 @@ from django.utils.encoding import python_2_unicode_compatible
 from six import text_type  # pylint: disable=ungrouped-imports
 
 from openedx.core.lib.mobile_utils import is_request_from_mobile_app
+from openedx.features.pakx.common.utils import load_space_in_session
 
 log = getLogger(__name__)
 
@@ -287,6 +288,8 @@ class SafeSessionMiddleware(SessionMiddleware, MiddlewareMixin):
             # The process_request pipeline has been short circuited so
             # return the response.
             return process_request_response
+
+        load_space_in_session(request)
 
         if cookie_data_string and request.session.get(SESSION_KEY):
 

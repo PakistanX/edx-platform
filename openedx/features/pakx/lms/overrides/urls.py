@@ -8,10 +8,12 @@ from .views import (
     PartnerWithUsView,
     PrivacyPolicyView,
     TermsOfUseView,
-    overview_tab_view
+    overview_tab_view,
+    partner_space_login
 )
 
 urlpatterns = [
+    url(r'^(?P<partner>\w+)/login/$', partner_space_login, name="partner_space_login"),
     url(r'^about_us/?$', AboutUsView.as_view(), name="about_us"),
     url(
         r'^courses/{course_id}/overview/$'.format(course_id=settings.COURSE_ID_PATTERN),

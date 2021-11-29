@@ -45,6 +45,7 @@ from openedx.features.course_experience import (
     RELATIVE_DATES_FLAG,
 )
 from openedx.features.course_experience.views.course_sock import CourseSockFragmentView
+from openedx.features.pakx.common.utils import get_partner_space_meta
 from openedx.features.pakx.lms.overrides.utils import get_rtl_class, get_course_mode_and_content_class
 from openedx.features.course_experience.utils import get_course_outline_block_tree
 from openedx.features.enterprise_support.api import data_sharing_consent_required
@@ -463,6 +464,8 @@ class CoursewareIndex(View):
             'disable_footer': True,
             'show_search': show_search,
         }
+
+        courseware_context.update(get_partner_space_meta(request))
         courseware_context.update(
             get_experiment_user_metadata_context(
                 self.course,

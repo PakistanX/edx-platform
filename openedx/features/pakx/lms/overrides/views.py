@@ -43,7 +43,9 @@ from openedx.features.course_experience.utils import get_course_outline_block_tr
 from openedx.features.course_experience.waffle import ENABLE_COURSE_ABOUT_SIDEBAR_HTML
 from openedx.features.course_experience.waffle import waffle as course_experience_waffle
 from openedx.features.pakx.cms.custom_settings.models import CourseOverviewContent
+from openedx.features.pakx.common.utils import get_active_partner_model
 from openedx.features.pakx.lms.overrides.forms import AboutUsForm
+from openedx.features.pakx.common.utils import get_partner_space_meta
 from openedx.features.pakx.lms.overrides.tasks import send_contact_us_email
 from openedx.features.pakx.lms.overrides.utils import (
     add_course_progress_to_enrolled_courses,
@@ -57,6 +59,7 @@ from openedx.features.pakx.lms.overrides.utils import (
     get_resume_course_info,
     is_course_enroll_able
 )
+from openedx.features.pakx.common.utils import set_partner_space_in_session
 from student.models import CourseEnrollment
 from util.cache import cache_if_anonymous
 from util.milestones_helpers import get_prerequisite_courses_display
@@ -87,6 +90,7 @@ def index(request, extra_context=None, user=AnonymousUser()):
         'show_homepage_promo_video': configuration_helpers.get_value('show_homepage_promo_video', False),
         'homepage_course_max': configuration_helpers.get_value('HOMEPAGE_COURSE_MAX', settings.HOMEPAGE_COURSE_MAX)
     }
+    context.update(get_partner_space_meta(request))
 
     # This appears to be an unused context parameter, at least for the master templates...
 
@@ -109,8 +113,18 @@ def index(request, extra_context=None, user=AnonymousUser()):
 
     # Add marketable programs to the context.
     context['programs_list'] = get_programs_with_type(request.site, include_hidden=False)
-
     return render_to_response('index.html', context)
+
+
+def is_course_public_for_current_space(course, org_name):
+    """
+    check if course is public and course org matches
+    """
+
+    if not course.enrolled and hasattr(course, 'custom_settings'):
+        is_public_org = org_name == settings.DEFAULT_PUBLIC_PARTNER_SPACE
+        return course.custom_settings.is_public and (is_public_org or course.org == org_name)
+    return False
 
 
 @ensure_csrf_cookie
@@ -153,9 +167,11 @@ def courses(request, section='in-progress'):
 
     add_course_progress_to_enrolled_courses(request, courses_list)
     show_only_enrolled_courses = switch_is_active('show_only_enrolled_courses')
+    space_model = get_active_partner_model(request)
+    space_org_name = space_model.organization.short_name
 
     for course in courses_list:
-        if not course.enrolled and hasattr(course, 'custom_settings') and course.custom_settings.is_public:
+        if is_course_public_for_current_space(course, space_org_name):
             browse_courses.append(course)
             continue
         if show_only_enrolled_courses and not course.enrolled:
@@ -169,18 +185,20 @@ def courses(request, section='in-progress'):
 
     # Add marketable programs to the context.
     programs_list = get_programs_with_type(request.site, include_hidden=False)
+    context = {
+        'in_progress_courses': in_progress_courses,
+        'upcoming_courses': upcoming_courses,
+        'browse_courses': browse_courses,
+        'completed_courses': completed_courses,
+        'course_discovery_meanings': course_discovery_meanings,
+        'programs_list': programs_list,
+        'section': section,
+        'show_only_enrolled_courses': show_only_enrolled_courses
+    }
+    context.update(get_partner_space_meta(request))
     return render_to_response(
         "courseware/courses.html",
-        {
-            'in_progress_courses': in_progress_courses,
-            'upcoming_courses': upcoming_courses,
-            'browse_courses': browse_courses,
-            'completed_courses': completed_courses,
-            'course_discovery_meanings': course_discovery_meanings,
-            'programs_list': programs_list,
-            'section': section,
-            'show_only_enrolled_courses': show_only_enrolled_courses
-        }
+        context
     )
 
 
@@ -546,3 +564,13 @@ class PrivacyPolicyView(BaseTemplateView):
     View for terms of use
     """
     template_name = 'overrides/privacy_policy.html'
+
+
+def partner_space_login(request, partner):
+    """
+    View for Loading desired partner's login page, loads login page after setting
+    partner space in session
+    """
+
+    set_partner_space_in_session(request, partner)
+    return redirect(reverse('signin_user'))
