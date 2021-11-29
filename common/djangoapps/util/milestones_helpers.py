@@ -362,9 +362,7 @@ def get_course_content_milestones(course_id, content_id=None, relationship='requ
         return []
 
     if user_id is None:
-        r = milestones_api.get_course_content_milestones(course_id, content_id, relationship)
-        log.info("user id none, returning: {}".format(r))
-        return r
+        return milestones_api.get_course_content_milestones(course_id, content_id, relationship)
 
     request_cache_dict = get_cache(REQUEST_CACHE_NAME)
     if user_id not in request_cache_dict:
@@ -381,9 +379,8 @@ def get_course_content_milestones(course_id, content_id=None, relationship='requ
         log.info("content id none returning:{}".format(request_cache_dict[user_id][relationship]))
         return request_cache_dict[user_id][relationship]
 
-    l = [m for m in request_cache_dict[user_id][relationship] if m['content_id'] == six.text_type(content_id)]
-    log.info("returning {}".format(l))
-    return l
+    log.info("returning")
+    return [m for m in request_cache_dict[user_id][relationship] if m['content_id'] == six.text_type(content_id)]
 
 
 def remove_course_content_user_milestones(course_key, content_key, user, relationship):
