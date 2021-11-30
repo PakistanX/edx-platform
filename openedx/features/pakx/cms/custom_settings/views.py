@@ -40,7 +40,7 @@ class CourseCustomSettingsView(LoginRequiredMixin, View):
         Show course custom settings page with course overview content editor
         """
         course_key = CourseKey.from_string(course_key_string)
-        context_course = get_course_and_check_access(course_key, request.user, depth=2)
+        context_course = get_course_and_check_access(course_key, request.user)
         course_sets = CourseSet.objects.filter(
             publisher_org__organizationcourse__course_id=course_key, is_active=True
         ).only(
@@ -53,8 +53,8 @@ class CourseCustomSettingsView(LoginRequiredMixin, View):
         )
         course_overview_content = get_or_create_course_overview_content(course_key)
 
-        chapters = self.get_chapters_and_subsections(course_key, request)
-        log.info("Got the following chapters:\n{}".format(chapters))
+        subsections = self._get_chapters_and_subsections(course_key, request)
+        log.info("\n\npre-reqs after filtering:{}".format(subsections))
 
         context = {
             'course_sets': course_sets,
@@ -62,9 +62,9 @@ class CourseCustomSettingsView(LoginRequiredMixin, View):
             'overview_content': course_overview_content,
             'course_overview_url': course_overview_url,
             'custom_settings_url': reverse('custom_settings', kwargs={'course_key_string': course_key}),
-            'chapters': [chapter for chapter in chapters.values() if 'gated' in chapter.keys()],
+            'subsections': subsections,
             'days': course_overview_content.days_to_unlock,
-            'selected_chapter': course_overview_content.subsection_to_lock
+            'selected_subsection': course_overview_content.subsection_to_lock
         }
         return render(request, self.template_name, context=context)
 
@@ -83,9 +83,9 @@ class CourseCustomSettingsView(LoginRequiredMixin, View):
         publisher_logo_url = request.POST['publisher-logo-url']
         publisher_card_logo_url = request.POST['publisher_card_logo_url']
         days_to_unlock = int(request.POST.get('days-duration') or 0)
-        subsection_to_lock = request.POST['subsection']
+        subsection_to_lock = request.POST.get('subsection')
 
-        self.add_days_milestone(subsection_to_lock, course_key)
+        self._add_days_milestone(subsection_to_lock, course_key)
 
         if course_overview is not None:
             CourseOverviewContent.objects.update_or_create(
@@ -106,10 +106,10 @@ class CourseCustomSettingsView(LoginRequiredMixin, View):
 
         return redirect(reverse('custom_settings', kwargs={'course_key_string': course_key}))
 
-    def get_chapters_and_subsections(self, course, request):
+    def _get_chapters_and_subsections(self, course_key: str, request):
         """Get all chapters and subsections for a course."""
 
-        course_usage_key = modulestore().make_course_usage_key(course)
+        course_usage_key = modulestore().make_course_usage_key(course_key)
         block_types_filter = ['sequential']
         all_blocks = get_blocks(
             request,
@@ -120,25 +120,45 @@ class CourseCustomSettingsView(LoginRequiredMixin, View):
             block_types_filter=block_types_filter,
             allow_start_dates_in_future=False,
         )
-        return all_blocks['blocks']
+        pre_reqs = self._get_formatted_pre_reqs(course_key)
+        return [x for x in all_blocks['blocks'].values() if 'gated' in x.keys() and x['id'] not in pre_reqs]
 
-    def add_days_milestone(self, subsection, course_key):
+    @staticmethod
+    def _get_formatted_pre_reqs(course_key: str):
+        """Return list of ids of pre requisite subsections that are not pre req of other subsections."""
+
+        pre_reqs = milestones_api.get_course_content_milestones(course_key=course_key, relationship='requires')
+
+        log.info("\n\npre-reqs before format:{}".format(pre_reqs))
+
+        formatted_pre_reqs = []
+        for pre_req in pre_reqs:
+            namespace = pre_req['namespace'].split('.')[0]
+            if pre_req['content_id'] != namespace:
+                formatted_pre_reqs.append(namespace)
+
+        log.info("\n\npre-reqs after format:{}".format(formatted_pre_reqs))
+
+        return formatted_pre_reqs
+
+    def _add_days_milestone(self, subsection: str, course_key: str):
         """Update course milestones if subsection to lock has been changed."""
 
         course_overview_content = CourseOverviewContent.objects.get(course_id=course_key)
 
         if subsection and course_overview_content.subsection_to_lock != subsection:
-            self.update_course_milestone(course_overview_content.subsection_to_lock, subsection, course_key)
+            self._update_course_milestone(course_overview_content.subsection_to_lock, subsection, course_key)
 
-    def update_course_milestone(self, old_subsection, new_subsection, course_key):
+    def _update_course_milestone(self, old_subsection: str, new_subsection: str, course_key: str):
         """Remove old milestone and add new milestone to lock specified subsection."""
 
         if old_subsection:
             remove_prerequisite(old_subsection)
 
-        self.create_milestone(new_subsection, course_key)
+        self._create_milestone(new_subsection, course_key)
 
-    def create_milestone(self, subsection, course_key):
+    @staticmethod
+    def _create_milestone(subsection: str, course_key: str):
         """Create a new milestone of a subsection that locks itself."""
 
         milestone = milestones_api.add_milestone(
