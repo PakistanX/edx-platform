@@ -1,5 +1,7 @@
 from logging import getLogger
+
 from django.conf import settings
+
 from openedx.features.pakx.cms.custom_settings.models import PartnerSpace
 
 log = getLogger(__name__)
@@ -59,6 +61,7 @@ def get_login_page_links(request):
     space_model = PartnerSpace.get_partner_space(active_space)
 
     links = {
+        'active_space': active_space,
         'footer_links': space_model.footer_links,
         'partner_meta': space_model.partner_meta,
         'organization': space_model.organization.name
