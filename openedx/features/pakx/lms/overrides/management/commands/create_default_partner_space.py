@@ -18,11 +18,11 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
 
-        default_space = 'pakx'
+        default_space = 'ilmx'
         from organizations.models import Organization
-        pakx_org, created = Organization.objects.get_or_create(name="PakistanX", short_name=default_space, defaults={
+        pakx_org, created = Organization.objects.get_or_create(name="ilmX", short_name=default_space, defaults={
             'active': True
         })
 
         PartnerSpace.objects.get_or_create(name=default_space, organization=pakx_org)
-        log.info("Created a public space named `pakx` linked with PakistanX org")
+        log.info("Created a public space named `ilmx` linked with PakistanX org")

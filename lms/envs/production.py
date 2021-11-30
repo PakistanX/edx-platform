@@ -937,7 +937,7 @@ DASHBOARD_COURSE_LIMIT = ENV_TOKENS.get('DASHBOARD_COURSE_LIMIT', None)
 
 ########################## Set Course Progress Reminder Email Days #######################
 
-DEFAULT_PUBLIC_PARTNER_SPACE = ENV_TOKENS.get('DEFAULT_PUBLIC_PARTNER_SPACE', 'pakx')
+DEFAULT_PUBLIC_PARTNER_SPACE = ENV_TOKENS.get('DEFAULT_PUBLIC_PARTNER_SPACE', 'ilmx')
 COURSE_PROGRESS_REMINDER_EMAIL_DAYS = ENV_TOKENS.get('COURSE_PROGRESS_REMINDER_EMAIL_DAYS', 5)
 
 ####################################### SENTRY ###########################################

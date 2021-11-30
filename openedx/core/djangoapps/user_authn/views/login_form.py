@@ -187,7 +187,7 @@ def login_and_registration_form(request, initial_mode="login"):
         'data': {
             'login_redirect_url': redirect_to,
             'initial_mode': initial_mode,
-            'space_name': login_page_links.get('organization', 'PakistanX'),
+            'space_name': login_page_links.get('organization', 'ilmX'),
             'third_party_auth': _third_party_auth_context(request, redirect_to, third_party_auth_hint),
             'third_party_auth_hint': third_party_auth_hint or '',
             'platform_name': configuration_helpers.get_value('PLATFORM_NAME', settings.PLATFORM_NAME),
