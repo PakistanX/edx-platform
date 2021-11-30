@@ -2,24 +2,24 @@
 
 from logging import getLogger
 
+from django.conf import settings
+from django.contrib.sites.models import Site
 from django.core.management.base import BaseCommand
 from django.forms.models import model_to_dict
-from django.contrib.sites.models import Site
-from django.conf import settings
 from django.utils import timezone
+from edx_ace import ace
+from edx_ace.recipient import Recipient
 from milestones import api as milestones_api
 from milestones.exceptions import InvalidMilestoneException
 from opaque_keys.edx.keys import CourseKey
 from six import text_type
-from edx_ace.recipient import Recipient
-from edx_ace import ace
 
 from openedx.core.djangoapps.ace_common.template_context import get_base_template_context
-from openedx.features.pakx.lms.overrides.message_types import PostAssessment
+from openedx.core.lib.celery.task_utils import emulate_http_request
 from openedx.core.lib.gating.api import find_gating_milestones
+from openedx.features.pakx.lms.overrides.message_types import PostAssessment
 from openedx.features.pakx.lms.overrides.models import CourseProgressStats
 from openedx.features.pakx.lms.overrides.utils import get_course_progress_and_unlock_date
-from openedx.core.lib.celery.task_utils import emulate_http_request
 
 log = getLogger(__name__)
 

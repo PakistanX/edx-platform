@@ -67,18 +67,14 @@ class MilestonesAndSpecialExamsTransformer(BlockStructureTransformer):
             """
 
             if usage_info.has_staff_access:
-                log.info("user staff")
                 return False
             elif self.gated_by_required_content(block_key, block_structure, required_content):
-                log.info("gated by required content rquired content:{}".format(required_content))
                 return True
             elif not self.include_gated_sections and self.has_pending_milestones_for_user(block_key, usage_info):
-                log.info("pending milestones for user")
                 return True
             elif (settings.FEATURES.get('ENABLE_SPECIAL_EXAMS', False) and
                   (self.is_special_exam(block_key, block_structure) and
                    not self.include_special_exams)):
-                log.info("special exams")
                 return True
             return False
 
@@ -111,7 +107,6 @@ class MilestonesAndSpecialExamsTransformer(BlockStructureTransformer):
         them from accessing this block.
         """
         log.info("Checking milestones")
-        log.info("returning from parent")
         return bool(milestones_helpers.get_course_content_milestones(
             six.text_type(block_key.course_key),
             six.text_type(block_key),
