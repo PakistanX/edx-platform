@@ -241,7 +241,7 @@
                             }
                         )
                 ];
-                this.renderErrors(this.defaultFormErrorsTitle, this.errors);
+                this.renderErrorsOnForm(this.defaultFormErrorsTitle, this.errors);
                 this.scrollToFormFeedback();
                 this.toggleDisableButton(false);
             },
@@ -251,10 +251,14 @@
              */
             renderErrors: function(title, errorMessages) {
                 this.clearFormErrors();
+            },
+
+            renderErrorsOnForm: function(title, errorMessages) {
+                this.clearFormErrors();
                 this.renderFormFeedback(this.formErrorsTpl, {
-                    jsHook: this.formErrorsJsHook,
-                    title: title,
-                    messagesHtml: HtmlUtils.HTML(errorMessages.join(''))
+                  jsHook: this.formErrorsJsHook,
+                  title: title,
+                  messagesHtml: HtmlUtils.HTML(errorMessages.join(''))
                 });
             },
 
@@ -305,6 +309,10 @@
             },
 
             clearFormErrors: function() {
+                var passwordErrorMsg = document.querySelector("#login-password-validation-error-msg");
+                if (passwordErrorMsg) {
+                    passwordErrorMsg.innerHTML = gettext("Incorrect Password")
+                }
                 var query = '.' + this.formErrorsJsHook;
                 this.clearFormFeedbackItems(query);
             },

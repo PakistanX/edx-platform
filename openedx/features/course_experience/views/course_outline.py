@@ -63,6 +63,7 @@ class CourseOutlineFragmentView(EdxFragmentView):
         course_block_tree = get_course_outline_block_tree(
             request, course_id, request.user if user_is_enrolled else None
         )
+
         if not course_block_tree:
             return None
 

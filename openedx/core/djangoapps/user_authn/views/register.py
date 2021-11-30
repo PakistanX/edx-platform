@@ -8,6 +8,7 @@ import json
 import logging
 
 from django.conf import settings
+from django.contrib import messages
 from django.contrib.auth import login as django_login
 from django.contrib.auth.models import User  # lint-amnesty, pylint: disable=imported-auth-user
 from django.core.exceptions import NON_FIELD_ERRORS, PermissionDenied
@@ -23,6 +24,7 @@ from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from django.views.decorators.debug import sensitive_post_parameters
 from edx_django_utils.monitoring import set_custom_attribute
 from edx_toggles.toggles import LegacyWaffleFlag, LegacyWaffleFlagNamespace
+from django.shortcuts import redirect
 from pytz import UTC
 from ratelimit.decorators import ratelimit
 from requests import HTTPError
@@ -213,9 +215,10 @@ def create_account_with_params(request, params):
             is_third_party_auth_enabled, third_party_auth_credentials_in_api, user, request, params,
         )
 
-        new_user = authenticate_new_user(request, user.username, form.cleaned_data['password'])
-        django_login(request, new_user)
-        request.session.set_expiry(0)
+        # PKX-463 - authentication after account activation
+        # new_user = authenticate_new_user(request, user.username, form.cleaned_data['password'])
+        # django_login(request, new_user)
+        # request.session.set_expiry(0)
 
     # Sites using multiple languages need to record the language used during registration.
     # If not, compose_and_send_activation_email will be sent in site's default language only.
@@ -234,6 +237,10 @@ def create_account_with_params(request, params):
         registration.activate()
     else:
         compose_and_send_activation_email(user, profile, registration)
+        # PKX-463 (PR#111) Updated registration activation link email
+        # compose_and_send_activation_email(user, profile, registration)
+        from openedx.features.pakx.lms.pakx_admin_app.utils import send_registration_email
+        send_registration_email(user, None, request.scheme, is_public_registration=True)
 
     if settings.FEATURES.get('ENABLE_DISCUSSION_EMAIL_DIGEST'):
         try:
@@ -249,17 +256,17 @@ def create_account_with_params(request, params):
     create_comments_service_user(user)
 
     try:
-        _record_registration_attributions(request, new_user)
+        _record_registration_attributions(request, user)
     # Don't prevent a user from registering due to attribution errors.
     except Exception:   # pylint: disable=broad-except
         log.exception('Error while attributing cookies to user registration.')
 
     # TODO: there is no error checking here to see that the user actually logged in successfully,
     # and is not yet an active user.
-    if new_user is not None:
-        AUDIT_LOG.info(f"Login success on new account creation - {new_user.username}")
+    # if new_user is not None:
+    #     AUDIT_LOG.info(u"Login success on new account creation - {0}".format(new_user.username))
 
-    return new_user
+    return user
 
 
 def _link_user_to_third_party_provider(
@@ -529,13 +536,19 @@ class RegistrationView(APIView):
         response, user = self._create_account(request, data)
         if response:
             return response
+        #TODO
+        # redirect_to, root_url = get_next_url_for_login_page(request, include_host=True)
+        # redirect_url = get_redirect_url_with_host(root_url, redirect_to)
+        # response = self._create_response(request, {}, status_code=200, redirect_url=redirect_url)
+        # set_logged_in_cookies(request, response, user)
+        # return response
 
-        redirect_to, root_url = get_next_url_for_login_page(request, include_host=True)
-        redirect_url = get_redirect_url_with_host(root_url, redirect_to)
-        response = self._create_response(request, {}, status_code=200, redirect_url=redirect_url)
-        set_logged_in_cookies(request, response, user)
-        return response
-
+        messages.success(
+            request,
+            _('In order to sign in, you need to activate your account. We have sent an activation link to your email.'),
+            extra_tags='account-activation'
+        )
+        return self._create_response(request, {}, status_code=200)
     def _handle_duplicate_email_username(self, request, data):
         # pylint: disable=no-member
         # TODO Verify whether this check is needed here - it may be duplicated in user_api.

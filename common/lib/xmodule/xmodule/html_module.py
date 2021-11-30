@@ -41,6 +41,7 @@ log = logging.getLogger("edx.courseware")
 _ = lambda text: text
 
 
+@XBlock.needs('user')
 @XBlock.needs("i18n")
 class HtmlBlockMixin(  # lint-amnesty, pylint: disable=abstract-method
     XmlMixin, EditingMixin,
@@ -89,10 +90,33 @@ class HtmlBlockMixin(  # lint-amnesty, pylint: disable=abstract-method
         """
         Return a fragment that contains the html for the student view
         """
-        fragment = Fragment(self.get_html())
+        html_data = self.get_html()
+        if "%%USERNAME%%" in html_data:
+            html_data = html_data.replace("%%USERNAME%%", self.user_full_name)
+
+        if "%%FIRSTNAME%%" in html_data:
+            html_data = html_data.replace("%%FIRSTNAME%%", self.user_first_name)
+
+        fragment = Fragment(html_data)
         add_webpack_to_fragment(fragment, 'HtmlBlockPreview')
         shim_xmodule_js(fragment, 'HTMLModule')
         return fragment
+
+    @property
+    def user_full_name(self):
+        """
+        returns user full name
+        """
+        current_user = self.runtime.service(self, 'user').get_current_user()
+        return current_user.full_name
+
+    @property
+    def user_first_name(self):
+        """
+        returns user first name
+        """
+        current_user = self.runtime.service(self, 'user').get_current_user()
+        return current_user.first_name
 
     @XBlock.supports("multi_device")
     def public_view(self, context):
