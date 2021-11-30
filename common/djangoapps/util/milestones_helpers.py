@@ -4,6 +4,8 @@ Utility library for working with the edx-milestones app
 
 
 import six
+import logging
+
 from django.conf import settings
 from django.utils.translation import ugettext as _
 from milestones import api as milestones_api
@@ -22,6 +24,8 @@ NAMESPACE_CHOICES = {
 }
 
 REQUEST_CACHE_NAME = "milestones"
+
+log = logging.getLogger(__name__)
 
 
 def get_namespace_choices():
@@ -355,7 +359,9 @@ def get_course_content_milestones(course_id, content_id=None, relationship='requ
     Returns all content blocks in a course if content_id is None, otherwise it just returns that
     specific content block.
     """
+
     if not settings.FEATURES.get('MILESTONES_APP'):
+        log.info("Milestone app not found")
         return []
 
     if user_id is None:

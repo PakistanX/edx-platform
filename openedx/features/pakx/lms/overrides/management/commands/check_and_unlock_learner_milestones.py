@@ -2,15 +2,22 @@
 
 from logging import getLogger
 
+from django.conf import settings
+from django.contrib.sites.models import Site
 from django.core.management.base import BaseCommand
 from django.forms.models import model_to_dict
 from django.utils import timezone
+from edx_ace import ace
+from edx_ace.recipient import Recipient
 from milestones import api as milestones_api
 from milestones.exceptions import InvalidMilestoneException
 from opaque_keys.edx.keys import CourseKey
 from six import text_type
 
-from openedx.core.lib.gating.api import get_prerequisites
+from openedx.core.djangoapps.ace_common.template_context import get_base_template_context
+from openedx.core.lib.celery.task_utils import emulate_http_request
+from openedx.core.lib.gating.api import find_gating_milestones
+from openedx.features.pakx.lms.overrides.message_types import PostAssessment
 from openedx.features.pakx.lms.overrides.models import CourseProgressStats
 from openedx.features.pakx.lms.overrides.utils import get_course_progress_and_unlock_date
 
@@ -34,15 +41,19 @@ class Command(BaseCommand):
         """Checks if pre req for locked subsection have been completed."""
 
         course_key = CourseKey.from_string(course_key)
-        final_subsection, pre_req_for_final = self._get_subsections(get_prerequisites(course_key))
+        final_subsection, pre_req_for_final = self._get_subsections(
+            find_gating_milestones(course_key, relationship='requires')
+        )
 
-        if not final_subsection:
+        if not final_subsection or not pre_req_for_final:
             log.info('No final milestone found for course:{}'.format(course_key))
             return
 
+        user_milestones = milestones_api.get_user_milestones(model_to_dict(user), final_subsection['namespace'])
+
         try:
-            if milestones_api.user_has_milestone(model_to_dict(user), pre_req_for_final):
-                self._unlock_or_add_unlock_date(user, course_key, final_subsection)
+            if self._user_has_milestone(user_milestones, pre_req_for_final):
+                self._unlock_or_add_unlock_date(user, course_key, user_milestones, final_subsection)
         except InvalidMilestoneException:
             log.info('User:{} for course:{} have milestone:{}'.format(user.email, course_key, pre_req_for_final))
 
@@ -58,8 +69,7 @@ class Command(BaseCommand):
 
         return final_subsection, None
 
-    @staticmethod
-    def _unlock_or_add_unlock_date(user, course_key, final_milestone):
+    def _unlock_or_add_unlock_date(self, user, course_key, milestones, final_milestone):
         """Check and unlock subsection if unlock date has been specified and fulfilled."""
 
         date_to_unlock, course_progress = get_course_progress_and_unlock_date(user.id, course_key)
@@ -70,10 +80,24 @@ class Command(BaseCommand):
         if not course_progress.unlock_subsection_on:
             course_progress.unlock_subsection_on = date_to_unlock
             course_progress.save(update_fields=['unlock_subsection_on'])
-        elif timezone.now() >= course_progress.unlock_subsection_on:
+        elif (timezone.now() >= course_progress.unlock_subsection_on
+              and not self._user_has_milestone(milestones, final_milestone)):
             milestones_api.add_user_milestone(model_to_dict(user), final_milestone)
-            log.info('Added Milestone for user:{} and course:{} where dates were:'.format(user.email, course_key))
+            self._send_post_assessment_email(user, course_progress.enrollment.course, final_milestone['content_id'])
+
+            log.info('Added Milestone for user:{} and course:{} and milestone:{} where dates were:'.format(
+                user.email, course_key, final_milestone['content_id']))
             log.info('date_to_unlock: {}\tdate_now: {}'.format(date_to_unlock, timezone.now()))
+
+    @staticmethod
+    def _user_has_milestone(milestones, milestone):
+        """Check if user has required milestone."""
+
+        for user_milestone in milestones:
+            if user_milestone['namespace'] == milestone['namespace']:
+                return True
+
+        return False
 
     @staticmethod
     def _get_final_subsection(milestones):
@@ -84,3 +108,28 @@ class Command(BaseCommand):
                 return milestone
 
         return None
+
+    @staticmethod
+    def _send_post_assessment_email(user, course, block_id):
+        """Send email to user for subsection unlock."""
+
+        log.info("Sending post assessment email to user:{}".format(user))
+        site = Site.objects.get_current()
+        message_context = get_base_template_context(site, user)
+        message_context.update({
+            'course_name': course.display_name,
+            'course_url': "https://{domain}/courses/{course_id}/jump_to/{block_id}".format(
+                domain=site.domain,
+                course_id=course.id,
+                block_id=block_id
+            ),
+        })
+
+        msg = PostAssessment().personalize(
+            recipient=Recipient(username=user.username, email_address=user.email),
+            language=settings.LANGUAGE_CODE,
+            user_context=message_context
+        )
+
+        with emulate_http_request(site=site, user=user):
+            ace.send(msg)
