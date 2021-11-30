@@ -379,7 +379,6 @@ def get_course_content_milestones(course_id, content_id=None, relationship='requ
         )
 
     if content_id is None:
-        log.info("content id none returning:{}".format(request_cache_dict[user_id][relationship]))
         return request_cache_dict[user_id][relationship]
 
     return [m for m in request_cache_dict[user_id][relationship] if m['content_id'] == six.text_type(content_id)]
