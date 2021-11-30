@@ -82,7 +82,7 @@ class CourseCustomSettingsView(LoginRequiredMixin, View):
         publisher_logo_url = request.POST['publisher-logo-url']
         publisher_card_logo_url = request.POST['publisher_card_logo_url']
         days_to_unlock = int(request.POST.get('days-duration') or 0)
-        subsection_to_lock = request.POST['subsection']
+        subsection_to_lock = request.POST.get('subsection')
 
         self.add_days_milestone(subsection_to_lock, course_key)
 

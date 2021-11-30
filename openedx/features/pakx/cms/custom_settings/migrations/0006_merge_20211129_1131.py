@@ -3,6 +3,17 @@
 from django.db import migrations
 
 
+def create_default_space_and_organization():
+    default_space = 'ilmx'
+    from ..models import PartnerSpace
+    from organizations.models import Organization
+    ilmx_org, created = Organization.objects.get_or_create(name="ilmX", short_name=default_space, defaults={
+        'active': True
+    })
+
+    PartnerSpace.objects.get_or_create(name=default_space, organization=ilmx_org)
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -11,4 +22,5 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        migrations.RunPython(create_default_space_and_organization)
     ]
