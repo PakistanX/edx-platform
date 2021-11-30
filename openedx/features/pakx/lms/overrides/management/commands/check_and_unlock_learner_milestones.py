@@ -37,7 +37,7 @@ class Command(BaseCommand):
         for item in progress_models:
             self._check_and_unlock_user_milestone(item.enrollment.user, text_type(item.enrollment.course_id))
 
-    def _check_and_unlock_user_milestone(self, user, course_key: str):
+    def _check_and_unlock_user_milestone(self, user, course_key):
         """Checks if pre req for locked subsection have been completed."""
 
         course_key = CourseKey.from_string(course_key)
@@ -57,7 +57,7 @@ class Command(BaseCommand):
         except InvalidMilestoneException:
             log.info('User:{} for course:{} have milestone:{}'.format(user.email, course_key, pre_req_for_final))
 
-    def _get_subsections(self, milestones: list):
+    def _get_subsections(self, milestones):
         """Get final subsection and its pre-req subsection"""
 
         final_subsection = self._get_final_subsection(milestones)
@@ -69,7 +69,7 @@ class Command(BaseCommand):
 
         return final_subsection, None
 
-    def _unlock_or_add_unlock_date(self, user, course_key: str, milestones: list, final_milestone: dict):
+    def _unlock_or_add_unlock_date(self, user, course_key, milestones, final_milestone):
         """Check and unlock subsection if unlock date has been specified and fulfilled."""
 
         date_to_unlock, course_progress = get_course_progress_and_unlock_date(user.id, course_key)
@@ -90,7 +90,7 @@ class Command(BaseCommand):
             log.info('date_to_unlock: {}\tdate_now: {}'.format(date_to_unlock, timezone.now()))
 
     @staticmethod
-    def _user_has_milestone(milestones: list, milestone: dict):
+    def _user_has_milestone(milestones, milestone):
         """Check if user has required milestone."""
 
         for user_milestone in milestones:
@@ -100,7 +100,7 @@ class Command(BaseCommand):
         return False
 
     @staticmethod
-    def _get_final_subsection(milestones: list):
+    def _get_final_subsection(milestones):
         """Get final subsection of course that is a pre-req of itself."""
 
         for milestone in milestones:
@@ -110,7 +110,7 @@ class Command(BaseCommand):
         return None
 
     @staticmethod
-    def _send_post_assessment_email(user, course, block_id: str):
+    def _send_post_assessment_email(user, course, block_id):
         """Send email to user for subsection unlock."""
 
         log.info("Sending post assessment email to user:{}".format(user))

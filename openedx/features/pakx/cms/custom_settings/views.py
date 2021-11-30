@@ -106,7 +106,7 @@ class CourseCustomSettingsView(LoginRequiredMixin, View):
 
         return redirect(reverse('custom_settings', kwargs={'course_key_string': course_key}))
 
-    def _get_chapters_and_subsections(self, course_key: str, request):
+    def _get_chapters_and_subsections(self, course_key, request):
         """Get all chapters and subsections for a course."""
 
         course_usage_key = modulestore().make_course_usage_key(course_key)
@@ -124,7 +124,7 @@ class CourseCustomSettingsView(LoginRequiredMixin, View):
         return [x for x in all_blocks['blocks'].values() if 'gated' in x.keys() and x['id'] not in pre_reqs]
 
     @staticmethod
-    def _get_formatted_pre_reqs(course_key: str):
+    def _get_formatted_pre_reqs(course_key):
         """Return list of ids of pre requisite subsections that are not pre req of other subsections."""
 
         pre_reqs = milestones_api.get_course_content_milestones(course_key=course_key, relationship='requires')
@@ -141,7 +141,7 @@ class CourseCustomSettingsView(LoginRequiredMixin, View):
 
         return formatted_pre_reqs
 
-    def _add_days_milestone(self, subsection: str, course_key: str):
+    def _add_days_milestone(self, subsection, course_key):
         """Update course milestones if subsection to lock has been changed."""
 
         course_overview_content = CourseOverviewContent.objects.get(course_id=course_key)
@@ -149,7 +149,7 @@ class CourseCustomSettingsView(LoginRequiredMixin, View):
         if subsection and course_overview_content.subsection_to_lock != subsection:
             self._update_course_milestone(course_overview_content.subsection_to_lock, subsection, course_key)
 
-    def _update_course_milestone(self, old_subsection: str, new_subsection: str, course_key: str):
+    def _update_course_milestone(self, old_subsection, new_subsection, course_key):
         """Remove old milestone and add new milestone to lock specified subsection."""
 
         if old_subsection:
@@ -158,7 +158,7 @@ class CourseCustomSettingsView(LoginRequiredMixin, View):
         self._create_milestone(new_subsection, course_key)
 
     @staticmethod
-    def _create_milestone(subsection: str, course_key: str):
+    def _create_milestone(subsection, course_key):
         """Create a new milestone of a subsection that locks itself."""
 
         milestone = milestones_api.add_milestone(
