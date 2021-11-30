@@ -3,7 +3,7 @@
 from django.db import migrations
 
 
-def create_default_space_and_organization():
+def create_default_space_and_organization(apps, schema_editor):
     default_space = 'ilmx'
     from ..models import PartnerSpace
     from organizations.models import Organization
