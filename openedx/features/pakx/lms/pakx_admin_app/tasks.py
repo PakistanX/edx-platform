@@ -23,51 +23,29 @@ from .utils import create_user, get_org_users_qs
 log = getLogger(__name__)
 
 
-def get_enrolment_email_message_context(site, user, course, url, image_url):
-    """
-    return context for course enrolment notification email body
-    """
-    dashboard_url = 'https://' + site.domain + '/dashboard'
-    message_context = {
-        'site_name': site.domain
-    }
-    message_context.update(get_base_template_context(site, user=user))
-    message_context.update({
-        'platform_name': configuration_helpers.get_value('PLATFORM_NAME', settings.PLATFORM_NAME),
-        'dashboard_url': dashboard_url,
-        'course': course,
-        'url': url,
-        'image_url': image_url
-    })
-    return message_context
-
-
 @task(name='send course enrolment email')
-def send_course_enrolment_email(request_user_id, user_ids, courses_map):
+def send_course_enrolment_email(request_user_id, email_context_map):
     """
     send a course enrolment notification via email
     :param request_user_id: (int) request user id
-    :param user_ids: (list<int>) user ids
-    :param courses_map: (list<dict>) contains dict with course_display_name, course_url, course_image_url
+    :param email_context_map: (list<dict>) contains dict with email context data
     """
     site = Site.objects.get_current()
     request_user = User.objects.filter(id=request_user_id).first()
-    if request_user:
-        for user in get_org_users_qs(request_user).filter(id__in=user_ids):
-            for course_map in courses_map:
-                with emulate_http_request(site, user):
-                    user_context = get_enrolment_email_message_context(
-                        site, user, course_map["display_name"], course_map["url"], course_map["image_url"]
-                    )
-                    message = EnrolmentNotification().personalize(
-                        recipient=Recipient(user.username, user.email),
-                        language='en',
-                        user_context=user_context,
-                    )
-                    ace.send(message)
+    for context in email_context_map:
+        with emulate_http_request(site, request_user):
+            context.update({
+                'site_name': site.domain,
+                'dashboard_url': 'https://' + site.domain + '/dashboard',
+                'platform_name': configuration_helpers.get_value('PLATFORM_NAME', settings.PLATFORM_NAME),
+            })
 
-    else:
-        log.info("Invalid request user id - Task terminated!")
+            message = EnrolmentNotification().personalize(
+                recipient=Recipient(context['username'], context['email']),
+                language='en',
+                user_context=context,
+            )
+            ace.send(message)
 
 
 def send_bulk_registration_stats_email(email_msg, recipient):
@@ -136,29 +114,28 @@ def enroll_users(request_user_id, user_ids, course_keys_string):
     """
     request_user = User.objects.filter(id=request_user_id).first()
     if request_user:
-        enrolled_users_id = []
-        courses_map = []
-        all_users = get_org_users_qs(request_user).filter(id__in=user_ids)
-        absolute_domain = 'https://' + Site.objects.get_current().domain
-        course_url_template = "{domain}/courses/{course_id}/overview"
+        enrolled_email_data = []
+        site = Site.objects.get_current()
+        users_to_enroll = get_org_users_qs(request_user).filter(id__in=user_ids)
         try:
             with transaction.atomic():
                 for course_key_string in course_keys_string:
                     course_key = CourseKey.from_string(course_key_string)
                     course_overview = CourseOverview.objects.get(id=CourseKey.from_string(course_key_string))
-                    courses_map.append({
-                        'display_name': course_overview.display_name,
-                        'url': course_url_template.format(domain=absolute_domain, course_id=course_key_string),
-                        'image_url': absolute_domain + course_overview.course_image_url
-                    })
-                    for user in all_users:
+                    email_context = {
+                        'course': course_overview.display_name,
+                        'image_url': 'https://' + site.domain + course_overview.course_image_url,
+                        'url': "https://{}/courses/{}/overview".format(site.domain, course_key_string),
+                    }
+                    for user in users_to_enroll:
                         try:
                             CourseEnrollment.enroll(user, course_key, check_access=True)
-                            enrolled_users_id.append(user.id)
+                            context = get_base_template_context(site, user=user)
+                            context.update(email_context)
+                            enrolled_email_data.append(context)
                         except Exception:  # pylint: disable=broad-except
                             pass
-            send_course_enrolment_email.delay(request_user_id, enrolled_users_id, courses_map)
-            log.info("Enrolled user(s): {}".format(enrolled_users_id))
+            send_course_enrolment_email.delay(request_user_id, enrolled_email_data)
         except DatabaseError:
             log.info("Task terminated!")
     else:
