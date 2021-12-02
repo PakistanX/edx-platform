@@ -483,22 +483,6 @@ class PartnerWithUsView(AboutUsView):
     template_name = "overrides/partner_with_us.html"
 
 
-# class BusinessView(AboutUsView):
-#     """
-#     View for business page.
-#     """
-#     template_name = 'overrides/business.html'
-#     success_redirect = '/business/#get-started'
-#
-#     def __init__(self, **kwargs):
-#         super().__init__(**kwargs)
-#         self.email_subject = 'ilmX for Business Form Data'
-#
-#     def populate_form_initial_data(self, user=None):
-#         super().populate_form_initial_data(user)
-#         self.initial_data.update({'message': 'Not Available. Submitted from Business Page'})
-
-
 class MarketingCampaignPage(AboutUsView):
     """
     View for marketing campaign page.
