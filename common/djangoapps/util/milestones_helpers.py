@@ -1,6 +1,8 @@
 """
 Utility library for working with the edx-milestones app
 """
+import logging
+
 from django.conf import settings
 from django.utils.translation import ugettext as _
 from edx_toggles.toggles import SettingDictToggle
@@ -357,6 +359,7 @@ def get_course_content_milestones(course_id, content_id=None, relationship='requ
     specific content block.
     """
     if not ENABLE_MILESTONES_APP.is_enabled():
+        log.info("Milestone app not found")
         return []
 
     if user_id is None:

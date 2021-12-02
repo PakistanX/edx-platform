@@ -73,6 +73,7 @@
                     };
                     this.platformName = options.platform_name;
                     this.supportURL = options.support_link;
+                    this.spaceName = options.space_name;
                     this.passwordResetSupportUrl = options.password_reset_support_link;
                     this.createAccountOption = options.account_creation_allowed;
                     this.hideAuthWarnings = options.hide_auth_warnings || false;
@@ -165,6 +166,7 @@
                             hideAuthWarnings: this.hideAuthWarnings,
                             pipelineUserDetails: this.pipelineUserDetails,
                             enterpriseName: this.enterpriseName,
+                            spaceName: this.spaceName,
                             enterpriseSlugLoginURL: this.enterpriseSlugLoginURL,
                             isEnterpriseEnable: this.isEnterpriseEnable,
                             is_require_third_party_auth_enabled: this.is_require_third_party_auth_enabled
@@ -208,11 +210,13 @@
                             model: model,
                             thirdPartyAuth: this.thirdPartyAuth,
                             platformName: this.platformName,
+                            spaceName: this.spaceName,
+
                             hideAuthWarnings: this.hideAuthWarnings,
                             is_require_third_party_auth_enabled: this.is_require_third_party_auth_enabled
                         });
-
-                        this.nextUrl = '/login'
+                        const nextParams = Backbone.history.location.search;
+                        this.nextUrl = nextParams ? '/login' + nextParams : '/login'
                     // Listen for 'auth-complete' event so we can enroll/redirect the user appropriately.
                         this.listenTo(this.subview.register, 'auth-complete', this.authComplete);
                     },
@@ -231,7 +235,7 @@
                         this.subview.hintedLogin = new HintedLoginView({
                             thirdPartyAuth: this.thirdPartyAuth,
                             hintedProvider: this.thirdPartyAuthHint,
-                            platformName: this.platformName
+                            platformName: this.platformName,
                         });
 
                         this.subview.hintedLogin.render();

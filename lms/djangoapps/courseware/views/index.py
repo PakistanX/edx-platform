@@ -44,6 +44,7 @@ from openedx.features.course_experience import (
     default_course_url_name
 )
 from openedx.features.course_experience.views.course_sock import CourseSockFragmentView
+from openedx.features.pakx.common.utils import get_partner_space_meta
 from openedx.features.pakx.lms.overrides.utils import get_rtl_class, get_course_mode_and_content_class
 from openedx.features.course_experience.utils import get_course_outline_block_tree
 from openedx.features.course_experience.url_helpers import make_learning_mfe_courseware_url
@@ -451,8 +452,11 @@ class CoursewareIndex(View):
             'section_title': None,
             'sequence_title': None,
             'disable_accordion': hide_course_navigation,
+            'disable_footer': True,
             'show_search': show_search,
         }
+
+        courseware_context.update(get_partner_space_meta(request))
         courseware_context.update(
             get_experiment_user_metadata_context(
                 self.course,
@@ -467,19 +471,23 @@ class CoursewareIndex(View):
             self.section_url_name,
             self.field_data_cache,
         )
-        is_enrolled = CourseEnrollment.is_enrolled(request.user, self.course_key)
-        course_block_tree = get_course_outline_block_tree(
-            request, six.text_type(self.course.id), request.user if is_enrolled else None
-        )
 
-        courseware_context['accordion'] = render_accordion(
-            self.request,
-            self.course,
-            course_block_tree,
-            self.chapter_url_name,
-            self.section_url_name,
-            course_experience_mode
-        )
+        if not hide_course_navigation:
+            if not self.request.user.is_authenticated:
+                course_block_tree = table_of_contents
+            else:
+                course_block_tree = get_course_outline_block_tree(
+                    request, six.text_type(self.course.id), request.user, allow_start_dates_in_future=True
+                )
+
+            courseware_context['accordion'] = render_accordion(
+                self.request,
+                self.course,
+                course_block_tree,
+                self.chapter_url_name,
+                self.section_url_name,
+                course_experience_mode
+            )
 
         courseware_context['course_sock_fragment'] = CourseSockFragmentView().render_to_fragment(
             request, course=self.course)

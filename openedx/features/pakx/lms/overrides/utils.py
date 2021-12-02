@@ -1,6 +1,6 @@
 """ Overrides app util functions """
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from logging import getLogger
 from re import compile as re_compile
 from re import findall
@@ -12,6 +12,7 @@ from django.core.validators import MinLengthValidator, RegexValidator
 from django.db.models import Avg, Case, Count, IntegerField, Sum, When
 from django.db.models.functions import Coalesce
 from django.urls import reverse
+from django.utils import timezone
 from django.utils.translation import ugettext as _
 from opaque_keys.edx.keys import CourseKey
 from pytz import utc
@@ -61,7 +62,7 @@ def get_course_card_data(course, org_prefetched=False):
     """
     if not isinstance(course, CourseOverview):
         course = CourseOverview.objects.filter(id=course.id).first()
-    pakx_short_logo = '/static/pakx/images/mooc/pakx-logo-circled.png'
+    pakx_short_logo = '/static/pakx/images/mooc/pakx-logo.png'
     course_custom_setting = get_or_create_course_overview_content(course.id)
 
     if not org_prefetched:
@@ -392,6 +393,31 @@ def get_course_progress_percentage(request, course_key):
     return format((total_completed_blocks / total_blocks) * 100, '.0f') if total_blocks > 0 else total_blocks
 
 
+def get_course_progress_and_unlock_date(user_id, course_key):
+    """Get date to unlock and course progress stats."""
+
+    from .models import CourseProgressStats
+
+    try:
+        course_overview_content = CourseOverviewContent.objects.get(course_id=course_key)
+        date_to_unlock = timezone.now() + timedelta(days=course_overview_content.days_to_unlock)
+        course_stats = CourseProgressStats.objects.filter(
+            enrollment__user_id=user_id,
+            enrollment__course_id=course_key
+        ).first()
+
+        return date_to_unlock, course_stats
+
+    except (CourseOverviewContent.DoesNotExist, CourseProgressStats.DoesNotExist):
+        log.info(
+            'Course Progress stats or Course Overview does not exist for user:{} and course:{}'.format(
+                user_id,
+                course_key
+            )
+        )
+        return None, None
+
+
 def get_rtl_class(course_language):
     """
     Figure out layout style class for course based on course name and its language
@@ -409,6 +435,14 @@ def is_rtl_language(language_code):
     language_code = "en" if language_code == "" or language_code is None else language_code
     rtl_languages = 'ur he fa ar sd pa ps'
     return language_code in rtl_languages
+
+
+def get_course_first_unit_lms_url(course_tree):
+    children = course_tree.get('children')
+    if not children:
+        return course_tree.get('lms_web_url')
+
+    return get_course_first_unit_lms_url(children[0])
 
 
 def get_date_diff_in_days(future_date):

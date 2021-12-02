@@ -15,3 +15,7 @@ class CourseProgress(BaseMessageType):
 
 class ContactUs(BaseMessageType):
     pass
+
+
+class PostAssessment(BaseMessageType):
+    pass
