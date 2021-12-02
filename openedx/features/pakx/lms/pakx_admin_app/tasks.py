@@ -135,7 +135,7 @@ def enroll_users(request_user_id, user_ids, course_keys_string):
                             enrolled_email_data.append(context)
                         except Exception:  # pylint: disable=broad-except
                             pass
-            send_course_enrolment_email(request_user_id, enrolled_email_data)
+            send_course_enrolment_email.delay(request_user_id, enrolled_email_data)
         except DatabaseError:
             log.info("Task terminated!")
     else:

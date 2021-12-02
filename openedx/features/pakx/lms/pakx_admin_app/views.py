@@ -307,8 +307,7 @@ class CourseEnrolmentViewSet(viewsets.ModelViewSet):
             err_msg = "You don't have the permission for {} requested users".format(len(other_org_users))
             return Response(data={'users': other_org_users, 'message': err_msg}, status=status.HTTP_409_CONFLICT)
 
-        # enroll_users.delay(self.request.user.id, request.data["user_ids"], request.data["course_keys"])
-        enroll_users(self.request.user.id, request.data["user_ids"], request.data["course_keys"])
+        enroll_users.delay(self.request.user.id, request.data["user_ids"], request.data["course_keys"])
         return Response(ENROLLMENT_SUCCESS_MESSAGE, status=status.HTTP_200_OK)
 
 
