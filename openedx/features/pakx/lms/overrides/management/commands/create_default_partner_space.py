@@ -20,9 +20,9 @@ class Command(BaseCommand):
 
         default_space = 'ilmx'
         from organizations.models import Organization
-        pakx_org, created = Organization.objects.get_or_create(name="ilmX", short_name=default_space, defaults={
+        ilmx_org, created = Organization.objects.get_or_create(name="ilmX", short_name=default_space, defaults={
             'active': True
         })
 
-        PartnerSpace.objects.get_or_create(name=default_space, organization=pakx_org)
-        log.info("Created a public space named `ilmx` linked with PakistanX org")
+        PartnerSpace.objects.get_or_create(name=default_space, organization=ilmx_org)
+        log.info("Created a public space named `ilmx` linked with ilmX org")
