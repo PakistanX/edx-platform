@@ -131,15 +131,12 @@ class UserProfileViewSet(viewsets.ModelViewSet):
 
     def get_object(self):
         group_qs = Group.objects.filter(name__in=[GROUP_TRAINING_MANAGERS, GROUP_ORGANIZATION_ADMIN]).order_by('name')
-        user_qs = User.objects.all()
-        if not self.request.user.is_superuser:
-            user_qs = user_qs.filter(**get_user_org_filter(self.request.user))
-
         completed_count, in_progress_count = get_completed_course_count_filters(req_user=self.request.user)
-        user_obj = user_qs.filter(
+
+        user_obj = get_org_users_qs(
+            self.request.user
+        ).filter(
             id=self.kwargs['pk']
-        ).select_related(
-            'profile'
         ).prefetch_related(
             'courseenrollment_set'
         ).prefetch_related(
@@ -310,7 +307,8 @@ class CourseEnrolmentViewSet(viewsets.ModelViewSet):
             err_msg = "You don't have the permission for {} requested users".format(len(other_org_users))
             return Response(data={'users': other_org_users, 'message': err_msg}, status=status.HTTP_409_CONFLICT)
 
-        enroll_users.delay(self.request.user.id, request.data["user_ids"], request.data["course_keys"])
+        # enroll_users.delay(self.request.user.id, request.data["user_ids"], request.data["course_keys"])
+        enroll_users(self.request.user.id, request.data["user_ids"], request.data["course_keys"])
         return Response(ENROLLMENT_SUCCESS_MESSAGE, status=status.HTTP_200_OK)
 
 
