@@ -16,7 +16,7 @@ class AboutUsForm(ModelForm):
         fields = ('full_name', 'email', 'organization', 'phone', 'message')
         error_messages = {
             'email': {
-                'invalid': _('Invalid email format. Email should be like joey@pakistanx.com'),
+                'invalid': _('Invalid email format. Email should be like joey@ilmx.com'),
             },
         }
         help_texts = {

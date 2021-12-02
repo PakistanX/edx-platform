@@ -68,7 +68,7 @@ class UserCourseEnrollmentSerializer(serializers.ModelSerializer):
 
     @staticmethod
     def get_enrollment_date(obj):
-        return obj.created.strftime('%Y-%m-%d')
+        return obj.created
 
     @staticmethod
     def get_progress(obj):

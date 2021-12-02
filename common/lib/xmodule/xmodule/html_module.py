@@ -116,7 +116,7 @@ class HtmlBlockMixin(  # lint-amnesty, pylint: disable=abstract-method
         returns user first name
         """
         current_user = self.runtime.service(self, 'user').get_current_user()
-        return current_user.first_name
+        return getattr(current_user, 'first_name', 'Guest')
 
     @XBlock.supports("multi_device")
     def public_view(self, context):

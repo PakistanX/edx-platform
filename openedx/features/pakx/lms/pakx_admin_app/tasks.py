@@ -82,7 +82,7 @@ def send_bulk_registration_stats_email(email_msg, recipient):
 
 @task(name='bulk_user_registration')
 def bulk_user_registration(users_data, recipient, request_url_scheme):
-    def get_formatted_error_msg(errors):
+    def get_formatted_error_msg(errors, index):
         err_map = errors['response_errors']
         req_data = errors['req_data']
 
@@ -99,7 +99,9 @@ def bulk_user_registration(users_data, recipient, request_url_scheme):
         lang_err_msg = err_map.pop('language_code', None)
         formatted_errors = ['{}:({}) | {}'.format(f, req_data[f], '|'.join(err)) for f, err in err_map.items()]
         formatted_errors += ['language: {}'.format('|'.join(lang_err_msg))] if lang_err_msg else []
-        return '\n'.join(formatted_errors)
+
+        user_key = req_data['email'] or req_data['username'] or profile_req_data.get('name') or index
+        return {'msg': '\n'.join(formatted_errors), 'user_key': user_key}
 
     error_map = {}
     created_emails = []
@@ -112,11 +114,10 @@ def bulk_user_registration(users_data, recipient, request_url_scheme):
         if is_created:
             created_emails.append(user_data.email)
         else:
-            user_key = user.get('email') or user.get('username') or user.get('name') or idx
-            error_map[user_key] = {'response_errors': user_data, 'req_data': user}
+            error_map[idx] = {'response_errors': user_data, 'req_data': user}
 
-    err_msg_t = "User's email/username/name or index in file: {}\n{}"
-    errors_msg = [err_msg_t.format(user_key, get_formatted_error_msg(err)) for user_key, err in error_map.items()]
+    err_msg_t = "User's email/username/name or index in file: {user_key}\n{msg}"
+    errors_msg = [err_msg_t.format(**get_formatted_error_msg(err, index)) for index, err in error_map.items()]
 
     success_msg_t = 'The following users have been created:\n{}'
     success_msg = success_msg_t.format('\n'.join(['email: {}'.format(email) for email in created_emails] or ['N/A']))

@@ -43,11 +43,14 @@ from openedx.features.course_experience.utils import get_course_outline_block_tr
 from openedx.features.course_experience.waffle import ENABLE_COURSE_ABOUT_SIDEBAR_HTML
 from openedx.features.course_experience.waffle import waffle as course_experience_waffle
 from openedx.features.pakx.cms.custom_settings.models import CourseOverviewContent
+from openedx.features.pakx.common.utils import get_active_partner_model
 from openedx.features.pakx.lms.overrides.forms import AboutUsForm
+from openedx.features.pakx.common.utils import get_partner_space_meta
 from openedx.features.pakx.lms.overrides.tasks import send_contact_us_email
 from openedx.features.pakx.lms.overrides.utils import (
     add_course_progress_to_enrolled_courses,
     get_course_card_data,
+    get_course_first_unit_lms_url,
     get_course_progress_percentage,
     get_courses_for_user,
     get_featured_course_data,
@@ -56,6 +59,7 @@ from openedx.features.pakx.lms.overrides.utils import (
     get_resume_course_info,
     is_course_enroll_able
 )
+from openedx.features.pakx.common.utils import set_partner_space_in_session
 from common.djangoapps.student.models import CourseEnrollment
 from common.djangoapps.util.cache import cache_if_anonymous
 from common.djangoapps.util.milestones_helpers import get_prerequisite_courses_display
@@ -86,6 +90,7 @@ def index(request, extra_context=None, user=AnonymousUser()):
         'show_homepage_promo_video': configuration_helpers.get_value('show_homepage_promo_video', False),
         'homepage_course_max': configuration_helpers.get_value('HOMEPAGE_COURSE_MAX', settings.HOMEPAGE_COURSE_MAX)
     }
+    context.update(get_partner_space_meta(request))
 
     # This appears to be an unused context parameter, at least for the master templates...
 
@@ -108,8 +113,18 @@ def index(request, extra_context=None, user=AnonymousUser()):
 
     # Add marketable programs to the context.
     context['programs_list'] = get_programs_with_type(request.site, include_hidden=False)
-
     return render_to_response('index.html', context)
+
+
+def is_course_public_for_current_space(course, org_name):
+    """
+    check if course is public and course org matches
+    """
+
+    if not course.enrolled and hasattr(course, 'custom_settings'):
+        is_public_org = org_name == settings.DEFAULT_PUBLIC_PARTNER_SPACE
+        return course.custom_settings.is_public and (is_public_org or course.org == org_name)
+    return False
 
 
 @ensure_csrf_cookie
@@ -152,9 +167,11 @@ def courses(request, section='in-progress'):
 
     add_course_progress_to_enrolled_courses(request, courses_list)
     show_only_enrolled_courses = switch_is_active('show_only_enrolled_courses')
+    space_model = get_active_partner_model(request)
+    space_org_name = space_model.organization.short_name
 
     for course in courses_list:
-        if not course.enrolled and hasattr(course, 'custom_settings') and course.custom_settings.is_public:
+        if is_course_public_for_current_space(course, space_org_name):
             browse_courses.append(course)
             continue
         if show_only_enrolled_courses and not course.enrolled:
@@ -168,18 +185,20 @@ def courses(request, section='in-progress'):
 
     # Add marketable programs to the context.
     programs_list = get_programs_with_type(request.site, include_hidden=False)
+    context = {
+        'in_progress_courses': in_progress_courses,
+        'upcoming_courses': upcoming_courses,
+        'browse_courses': browse_courses,
+        'completed_courses': completed_courses,
+        'course_discovery_meanings': course_discovery_meanings,
+        'programs_list': programs_list,
+        'section': section,
+        'show_only_enrolled_courses': show_only_enrolled_courses
+    }
+    context.update(get_partner_space_meta(request))
     return render_to_response(
         "courseware/courses.html",
-        {
-            'in_progress_courses': in_progress_courses,
-            'upcoming_courses': upcoming_courses,
-            'browse_courses': browse_courses,
-            'completed_courses': completed_courses,
-            'course_discovery_meanings': course_discovery_meanings,
-            'programs_list': programs_list,
-            'section': section,
-            'show_only_enrolled_courses': show_only_enrolled_courses
-        }
+        context
     )
 
 
@@ -233,6 +252,9 @@ def _get_course_about_context(request, course_id, category=None):  # pylint: dis
         staff_access = bool(has_access(request.user, 'staff', course))
         studio_url = get_studio_url(course, 'settings/details')
 
+        course_block_tree = get_course_outline_block_tree(request, course_id, None)
+        preview_course_url = get_course_first_unit_lms_url(course_block_tree)
+
         if request.user.has_perm(VIEW_COURSE_HOME, course):
             course_target = reverse(course_home_url_name(course.id), args=[text_type(course.id)])
         else:
@@ -268,12 +290,10 @@ def _get_course_about_context(request, course_id, category=None):  # pylint: dis
         can_enroll = can_enroll and is_course_enroll_able(course)
 
         invitation_only = course.invitation_only
-        is_enrolled = CourseEnrollment.is_enrolled(request.user, course.id)
-
         resume_course_url = None
         has_visited_course = None
         user_progress = 0
-        if is_enrolled:
+        if registered:
             has_visited_course, resume_course_url, _ = get_resume_course_info(request, course_id)
             user_progress = get_course_progress_percentage(request, course_id)
         is_course_full = CourseEnrollment.objects.is_course_full(course)
@@ -303,6 +323,7 @@ def _get_course_about_context(request, course_id, category=None):  # pylint: dis
         context = {
             'course': course,
             'language': language,
+            'preview_course_url': preview_course_url,
             'course_details': course_details,
             'staff_access': staff_access,
             'studio_url': studio_url,
@@ -328,7 +349,6 @@ def _get_course_about_context(request, course_id, category=None):  # pylint: dis
             'sidebar_html_enabled': sidebar_html_enabled,
             'allow_anonymous': allow_anonymous,
             'category': category,
-            'is_enrolled': is_enrolled,
             'resume_course_url': resume_course_url,
             'has_visited_course': has_visited_course,
             'user_progress': user_progress,
@@ -371,18 +391,38 @@ def course_about_category(request, category, course_id):
     return render_to_response('courseware/course_about.html', _get_course_about_context(request, course_id, category))
 
 
-class AboutUsView(TemplateView):
+class BaseTemplateView(TemplateView):
     """
-    View for viewing and submitting contact us form.
+    Base template view
+    """
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['tags'] = ['LMS']
+        context['platform_name'] = configuration_helpers.get_value('platform_name', settings.PLATFORM_NAME)
+        context['support_email'] = configuration_helpers.get_value('CONTACT_EMAIL', settings.CONTACT_EMAIL)
+        context['custom_fields'] = settings.ZENDESK_CUSTOM_FIELDS
+        request = kwargs.get('request')
+        if request and request.user.is_authenticated:
+            context['course_id'] = request.session.get('course_id', '')
+        return context
+
+    def get(self, request, *args, **kwargs):  # pylint: disable=unused-argument
+        context = self.get_context_data(request=request)
+        return render_to_response(self.template_name, context)
+
+
+class AboutUsView(BaseTemplateView):
+    """
+    View for viewing and submitting about us form.
     """
 
     form_class = AboutUsForm
-    success_redirect = '/about_us/'
     template_name = 'overrides/about_us.html'
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.email_subject = 'Contact Us Form Data'
+        self.email_subject = 'About Us Form Data'
         self.initial_data = {}
 
     def populate_form_initial_data(self, user=None):
@@ -393,28 +433,19 @@ class AboutUsView(TemplateView):
                 'organization': getattr(user.profile.organization, 'name', ''),
             })
 
-    def get_context_data(self, user=None, **kwargs):  # pylint: disable=arguments-differ
+    def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['tags'] = ['LMS']
-        context['platform_name'] = configuration_helpers.get_value('platform_name', settings.PLATFORM_NAME)
-        context['support_email'] = configuration_helpers.get_value('CONTACT_EMAIL', settings.CONTACT_EMAIL)
-        context['custom_fields'] = settings.ZENDESK_CUSTOM_FIELDS
+        request = kwargs.get('request')
+        if request and request.user.is_authenticated:
+            self.populate_form_initial_data(request.user)
 
-        self.populate_form_initial_data(user)
         context['form'] = self.form_class(initial=self.initial_data)
         return context
-
-    def get(self, request):  # pylint: disable=arguments-differ
-        user = request.user if request.user.is_authenticated else None
-        context = self.get_context_data(user=user)
-
-        context['course_id'] = request.session.get('course_id', '')
-
-        return render_to_response(self.template_name, context)
 
     def post(self, request):
         form_data = request.POST.copy()
         form = self.form_class(form_data)
+
         if form.is_valid():
             instance = form.save(commit=False)
             if request.user.is_authenticated:
@@ -432,54 +463,105 @@ class AboutUsView(TemplateView):
                 self.request,
                 _(u'Thank you for contacting us! Our team will get in touch with you soon')
             )
-            return HttpResponseRedirect(self.success_redirect)
+            context = self.get_context_data(request=request)
+            return render_to_response(self.template_name, context)
 
-        context = self.get_context_data()
+        context = self.get_context_data(request=request)
         context['form'] = form
         return render_to_response(self.template_name, context)
 
 
 class PartnerWithUsView(AboutUsView):
     """
-    View for partner-with-us page.
+    View for partner with us page.
     """
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.email_subject = 'Partner with Us Form Data'
 
-    success_redirect = '/partner-with-us/'
     template_name = "overrides/partner_with_us.html"
+
+
+# class BusinessView(AboutUsView):
+#     """
+#     View for business page.
+#     """
+#     template_name = 'overrides/business.html'
+#     success_redirect = '/business/#get-started'
+#
+#     def __init__(self, **kwargs):
+#         super().__init__(**kwargs)
+#         self.email_subject = 'ilmX for Business Form Data'
+#
+#     def populate_form_initial_data(self, user=None):
+#         super().populate_form_initial_data(user)
+#         self.initial_data.update({'message': 'Not Available. Submitted from Business Page'})
+
+
+class MarketingCampaignPage(AboutUsView):
+    """
+    View for marketing campaign page.
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.email_subject = 'Pakistan Against Workplace Harassment Form Data'
+        self.initial_data = {'message': 'Not Available. Submitted from Marketing campaign Page'}
+
+    template_name = 'overrides/marketing_campaign.html'
+
+    def populate_form_initial_data(self, user=None):
+        super().populate_form_initial_data(user)
 
 
 class BusinessView(AboutUsView):
     """
     View for business page.
     """
-    template_name = 'overrides/business.html'
-    success_redirect = '/business/#get-started'
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.email_subject = 'PakistanX for Business Form Data'
+        self.email_subject = 'Business Page Form Data'
+        self.initial_data = {'message': 'Not Available. Submitted from business Page'}
 
-    def populate_form_initial_data(self, user=None):
-        super().populate_form_initial_data(user)
-        self.initial_data.update({'message': 'Not Available. Submitted from Business Page'})
+    template_name = 'overrides/workplace_essential_showcase.html'
+
+    def get_context_data(self, **kwargs):
+        course_keys = configuration_helpers.get_value('we_demo_course_keys') or []
+        context = super().get_context_data(**kwargs)
+        course_url_map = {}
+
+        for idx, course_key in enumerate(course_keys, 1):
+            course_block_tree = get_course_outline_block_tree(self.request, course_key, None)
+            course_url_map[str(idx)] = {
+                'about_url': '/courses/{}/about'.format(course_key),
+                'preview_url': get_course_first_unit_lms_url(course_block_tree)
+            }
+
+        context['course_url_map'] = course_url_map
+        return context
 
 
-class MarketingCampaignPage(AboutUsView):
+class TermsOfUseView(BaseTemplateView):
     """
-    View for business page.
+    View for terms of use
+    """
+    template_name = 'overrides/terms_of_use.html'
+
+
+class PrivacyPolicyView(BaseTemplateView):
+    """
+    View for terms of use
+    """
+    template_name = 'overrides/privacy_policy.html'
+
+
+def partner_space_login(request, partner):
+    """
+    View for Loading desired partner's login page, loads login page after setting
+    partner space in session
     """
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.email_subject = 'Pakistan Against Workplace Harassment Form Data'
-
-    template_name = 'overrides/marketing_campaign.html'
-    success_redirect = '/workplace-harassment/#get-started'
-
-    def populate_form_initial_data(self, user=None):
-        super().populate_form_initial_data(user)
-        self.initial_data.update({'message': 'Not Available. Submitted from Marketing campaign Page'})
+    set_partner_space_in_session(request, partner)
+    return redirect(reverse('signin_user'))

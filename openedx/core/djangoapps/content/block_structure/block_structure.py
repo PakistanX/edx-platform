@@ -581,6 +581,23 @@ class BlockStructureBlockData(BlockStructure):
             value,
         )
 
+    def set_block_field(self, usage_key, key, value):
+        """
+        Updates the given transformer's field dictionary with the given
+        key and value for the block identified by the given usage_key.
+
+        Arguments:
+            usage_key (UsageKey) - Usage key of the block whose
+                transformer data is to be updated.
+
+            key (string) - A dictionary key to the transformer's data.
+
+            value (any picklable type) - The value to associate with the
+                given key for the given transformer's data for the
+                requested block.
+        """
+        self._get_or_create_block(usage_key).fields[key] = value
+
     def remove_transformer_block_field(self, usage_key, transformer, key):
         """
         Deletes the given transformer's entire data dict for the

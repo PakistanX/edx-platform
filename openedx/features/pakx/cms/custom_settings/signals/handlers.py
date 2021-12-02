@@ -1,6 +1,7 @@
 from logging import getLogger
 
-from django.db.models.signals import post_save
+from django.conf import settings
+from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
 
 from common.djangoapps.course_modes.models import CourseMode
@@ -10,7 +11,7 @@ log = getLogger(__name__)
 
 
 @receiver(post_save, sender=CourseOverview, dispatch_uid="custom_settings.signals.handlers.initialize_course_settings")
-def initialize_course_settings(sender, instance, created, **kwargs):
+def initialize_course_settings(sender, instance, created, **kwargs):  # pylint: disable=unused-argument
     """
     When ever a new course is created, add an honor mode for the given course so students can view certificates
     on their dashboard and progress page
@@ -28,3 +29,13 @@ def initialize_course_settings(sender, instance, created, **kwargs):
     )
 
     log.info("Course {} is added as honor mode".format(course_key))
+
+
+@receiver(pre_save, sender=CourseOverview)
+def course_image_change(sender, instance, **kwargs):  # pylint: disable=unused-argument
+    """
+    Change the default course image whenever new course is created
+    """
+
+    if instance.course_image_url.endswith('images_course_image.jpg'):
+        instance.course_image_url = "/static/" + settings.DEFAULT_COURSE_ABOUT_IMAGE_URL

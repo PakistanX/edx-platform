@@ -58,6 +58,8 @@
                 this.hideAuthWarnings = data.hideAuthWarnings;
                 this.pipelineUserDetails = data.pipelineUserDetails;
                 this.enterpriseName = data.enterpriseName;
+
+                this.spaceName = data.spaceName;
                 this.enterpriseSlugLoginURL = data.enterpriseSlugLoginURL;
                 this.isEnterpriseEnable = data.isEnterpriseEnable;
                 this.is_require_third_party_auth_enabled = data.is_require_third_party_auth_enabled || false;
@@ -87,6 +89,7 @@
                                 createAccountOption: this.createAccountOption,
                                 pipelineUserDetails: this.pipelineUserDetails,
                                 enterpriseName: this.enterpriseName,
+                                spaceName: this.spaceName,
                                 is_require_third_party_auth_enabled: this.is_require_third_party_auth_enabled
                             }
                         })
@@ -175,7 +178,7 @@
                 var email = $('#password-reset-email').val(),
                     successTitle = gettext('Check Your Email'),
                     successMessageHtml = HtmlUtils.interpolateHtml(
-                        gettext('{paragraphStart}You entered {boldStart}{email}{boldEnd}. If this email address is associated with your PakistanX account, we will send a message with password recovery instructions to this email address.{paragraphEnd}' + // eslint-disable-line max-len
+                        gettext('{paragraphStart}You entered {boldStart}{email}{boldEnd}. If this email address is associated with your ilmX account, we will send a message with password recovery instructions to this email address.{paragraphEnd}' + // eslint-disable-line max-len
                         '{paragraphStart}If you do not receive a password reset message after 1 minute, verify that you entered the correct email address, or check your spam folder.{paragraphEnd}'), { // eslint-disable-line max-len
                             boldStart: HtmlUtils.HTML('<b>'),
                             boldEnd: HtmlUtils.HTML('</b>'),

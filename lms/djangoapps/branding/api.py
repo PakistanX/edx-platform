@@ -25,6 +25,7 @@ from six.moves.urllib.parse import urljoin
 from common.djangoapps.edxmako.shortcuts import marketing_link
 from lms.djangoapps.branding.models import BrandingApiConfig
 from openedx.core.djangoapps.site_configuration import helpers as configuration_helpers
+from openedx.features.pakx.common.utils import get_active_partner_space
 
 log = logging.getLogger("edx.footer")
 EMPTY_URL = '#'
@@ -565,7 +566,7 @@ def get_base_url(is_secure):
     return _absolute_url(is_secure=is_secure, url_path="")
 
 
-def get_logo_url(is_secure=True):
+def get_logo_url(is_secure=True, request=None):
     """
     Return the url for the branded logo image to be used.
 
@@ -581,6 +582,7 @@ def get_logo_url(is_secure=True):
     default_local_path = 'images/logo.png'
     logo_url_from_site_config = configuration_helpers.get_value('logo_image_url')
     university = configuration_helpers.get_value('university')
+    space = 'ilmx' if request is None else get_active_partner_space(request)
 
     if logo_url_from_site_config:
         return _absolute_url_staticfile(is_secure=is_secure, name=logo_url_from_site_config)
