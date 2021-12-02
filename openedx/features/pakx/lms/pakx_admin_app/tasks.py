@@ -24,15 +24,15 @@ log = getLogger(__name__)
 
 
 @task(name='send course enrolment email')
-def send_course_enrolment_email(request_user_id, email_context_data):
+def send_course_enrolment_email(request_user_id, email_context_map):
     """
     send a course enrolment notification via email
     :param request_user_id: (int) request user id
-    :param email_context_data: (list<dict>) contains dict with email context data
+    :param email_context_map: (list<dict>) contains dict with email context data
     """
     site = Site.objects.get_current()
     request_user = User.objects.filter(id=request_user_id).first()
-    for context in email_context_data:
+    for context in email_context_map:
         with emulate_http_request(site, request_user):
             context.update({
                 'site_name': site.domain,
