@@ -6,7 +6,7 @@ from io import StringIO
 from itertools import groupby
 
 from django.conf import settings
-from django.contrib.auth.models import Group, User
+from django.contrib.auth.models import Group
 from django.db.models import ExpressionWrapper, F, IntegerField, Prefetch, Q, Sum
 from django.http import Http404
 from django.middleware import csrf
@@ -55,7 +55,6 @@ from .utils import (
     get_roles_q_filters,
     get_user_data_from_bulk_registration_file,
     get_user_org,
-    get_user_org_filter,
     is_courses_enroll_able
 )
 
