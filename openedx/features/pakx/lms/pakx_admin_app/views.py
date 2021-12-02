@@ -6,7 +6,7 @@ from io import StringIO
 from itertools import groupby
 
 from django.conf import settings
-from django.contrib.auth.models import Group, User
+from django.contrib.auth.models import Group
 from django.db.models import ExpressionWrapper, F, IntegerField, Prefetch, Q, Sum
 from django.http import Http404
 from django.middleware import csrf
@@ -55,7 +55,6 @@ from .utils import (
     get_roles_q_filters,
     get_user_data_from_bulk_registration_file,
     get_user_org,
-    get_user_org_filter,
     is_courses_enroll_able
 )
 
@@ -131,15 +130,12 @@ class UserProfileViewSet(viewsets.ModelViewSet):
 
     def get_object(self):
         group_qs = Group.objects.filter(name__in=[GROUP_TRAINING_MANAGERS, GROUP_ORGANIZATION_ADMIN]).order_by('name')
-        user_qs = User.objects.all()
-        if not self.request.user.is_superuser:
-            user_qs = user_qs.filter(**get_user_org_filter(self.request.user))
-
         completed_count, in_progress_count = get_completed_course_count_filters(req_user=self.request.user)
-        user_obj = user_qs.filter(
+
+        user_obj = get_org_users_qs(
+            self.request.user
+        ).filter(
             id=self.kwargs['pk']
-        ).select_related(
-            'profile'
         ).prefetch_related(
             'courseenrollment_set'
         ).prefetch_related(
