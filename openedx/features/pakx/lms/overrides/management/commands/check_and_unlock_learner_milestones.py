@@ -83,11 +83,10 @@ class Command(BaseCommand):
         elif (timezone.now() >= course_progress.unlock_subsection_on
               and not self._user_has_milestone(milestones, final_milestone)):
             milestones_api.add_user_milestone(model_to_dict(user), final_milestone)
-            self._send_post_assessment_email(user, course_progress.enrollment.course, final_milestone['content_id'])
 
-            log.info('Added Milestone for user:{} and course:{} and milestone:{} where dates were:'.format(
-                user.email, course_key, final_milestone['content_id']))
-            log.info('date_to_unlock: {}\tdate_now: {}'.format(date_to_unlock, timezone.now()))
+            self._send_post_assessment_email(user, course_progress.enrollment.course, final_milestone['content_id'])
+            log.info('Added Milestone for user:{} and course:{} where dates were:'.format(user.email, course_key))
+            log.info('date_to_unlock: {}\tdate_now: {}'.format(course_progress.unlock_subsection_on, timezone.now()))
 
     @staticmethod
     def _user_has_milestone(milestones, milestone):

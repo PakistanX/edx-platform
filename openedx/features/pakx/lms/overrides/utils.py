@@ -418,6 +418,20 @@ def get_course_progress_and_unlock_date(user_id, course_key):
         return None, None
 
 
+def get_or_set_unlock_date(user_id, course_key):
+    """Get unlock date for subsection after setting it if not already set."""
+
+    date_to_unlock, course_progress = get_course_progress_and_unlock_date(user_id, course_key)
+    if not date_to_unlock:
+        return 'date not yet finalized'
+
+    if not course_progress.unlock_subsection_on:
+        course_progress.unlock_subsection_on = date_to_unlock
+        course_progress.save(update_fields=['unlock_subsection_on'])
+
+    return course_progress.unlock_subsection_on.strftime('%B %d, %Y')
+
+
 def get_rtl_class(course_language):
     """
     Figure out layout style class for course based on course name and its language
