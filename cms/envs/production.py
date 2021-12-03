@@ -130,6 +130,9 @@ DEFAULT_MOBILE_AVAILABLE = ENV_TOKENS.get(
     'DEFAULT_MOBILE_AVAILABLE',
     DEFAULT_MOBILE_AVAILABLE
 )
+########################## Set Course Progress Reminder Email Days #######################
+
+DEFAULT_PUBLIC_PARTNER_SPACE = ENV_TOKENS.get('DEFAULT_PUBLIC_PARTNER_SPACE', 'ilmx')
 
 # How long to cache OpenAPI schemas and UI, in seconds.
 OPENAPI_CACHE_TIMEOUT = ENV_TOKENS.get('OPENAPI_CACHE_TIMEOUT', 60 * 60)

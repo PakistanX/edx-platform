@@ -2,6 +2,7 @@
 Serializers for Course Blocks related return objects.
 """
 
+import six
 
 from django.conf import settings
 from rest_framework import serializers
