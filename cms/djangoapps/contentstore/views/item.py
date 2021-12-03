@@ -632,7 +632,7 @@ def _save_xblock(user, xblock, data=None, children_strings=None, metadata=None, 
                 if is_prereq:
                     gating_api.add_prerequisite(xblock.location.course_key, xblock.location)
                 else:
-                    gating_api.remove_prerequisite(xblock.location)
+                    gating_api.delete_prerequisites(xblock.location, 'fulfills')
                 result['is_prereq'] = is_prereq
 
             if prereq_usage_key is not None:
