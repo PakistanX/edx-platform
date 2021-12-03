@@ -19,7 +19,7 @@ from openedx.core.lib.celery.task_utils import emulate_http_request
 from openedx.core.lib.gating.api import find_gating_milestones
 from openedx.features.pakx.lms.overrides.message_types import PostAssessment
 from openedx.features.pakx.lms.overrides.models import CourseProgressStats
-from openedx.features.pakx.lms.overrides.utils import get_course_progress_and_unlock_date
+from openedx.features.pakx.lms.overrides.utils import set_date_and_get_course_progress_stats
 
 log = getLogger(__name__)
 
@@ -72,19 +72,17 @@ class Command(BaseCommand):
     def _unlock_or_add_unlock_date(self, user, course_key, milestones, final_milestone):
         """Check and unlock subsection if unlock date has been specified and fulfilled."""
 
-        date_to_unlock, course_progress = get_course_progress_and_unlock_date(user.id, course_key)
+        course_progress = set_date_and_get_course_progress_stats(user.id, course_key)
 
-        if not date_to_unlock or not course_progress:
+        if not course_progress:
             return
 
-        if not course_progress.unlock_subsection_on:
-            course_progress.unlock_subsection_on = date_to_unlock
-            course_progress.save(update_fields=['unlock_subsection_on'])
-        elif (timezone.now() >= course_progress.unlock_subsection_on
-              and not self._user_has_milestone(milestones, final_milestone)):
-            milestones_api.add_user_milestone(model_to_dict(user), final_milestone)
+        if (timezone.now() >= course_progress.unlock_subsection_on
+                and not self._user_has_milestone(milestones, final_milestone)):
 
+            milestones_api.add_user_milestone(model_to_dict(user), final_milestone)
             self._send_post_assessment_email(user, course_progress.enrollment.course, final_milestone['content_id'])
+
             log.info('Added Milestone for user:{} and course:{} where dates were:'.format(user.email, course_key))
             log.info('date_to_unlock: {}\tdate_now: {}'.format(course_progress.unlock_subsection_on, timezone.now()))
 

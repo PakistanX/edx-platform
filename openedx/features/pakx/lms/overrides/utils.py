@@ -393,8 +393,8 @@ def get_course_progress_percentage(request, course_key):
     return format((total_completed_blocks / total_blocks) * 100, '.0f') if total_blocks > 0 else total_blocks
 
 
-def get_course_progress_and_unlock_date(user_id, course_key):
-    """Get date to unlock and course progress stats."""
+def set_date_and_get_course_progress_stats(user_id, course_key):
+    """Set date to unlock if not already set and course progress stats."""
 
     from .models import CourseProgressStats
 
@@ -406,7 +406,11 @@ def get_course_progress_and_unlock_date(user_id, course_key):
             enrollment__course_id=course_key
         ).first()
 
-        return date_to_unlock, course_stats
+        if not course_stats.unlock_subsection_on:
+            course_stats.unlock_subsection_on = date_to_unlock
+            course_stats.save(update_fields=['unlock_subsection_on'])
+
+        return course_stats
 
     except (CourseOverviewContent.DoesNotExist, CourseProgressStats.DoesNotExist):
         log.info(
@@ -415,21 +419,7 @@ def get_course_progress_and_unlock_date(user_id, course_key):
                 course_key
             )
         )
-        return None, None
-
-
-def get_or_set_unlock_date(user_id, course_key):
-    """Get unlock date for subsection after setting it if not already set."""
-
-    date_to_unlock, course_progress = get_course_progress_and_unlock_date(user_id, course_key)
-    if not date_to_unlock:
-        return 'date not yet finalized'
-
-    if not course_progress.unlock_subsection_on:
-        course_progress.unlock_subsection_on = date_to_unlock
-        course_progress.save(update_fields=['unlock_subsection_on'])
-
-    return course_progress.unlock_subsection_on.strftime('%B %d, %Y')
+        return None
 
 
 def get_rtl_class(course_language):
