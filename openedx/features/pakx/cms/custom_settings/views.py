@@ -17,7 +17,7 @@ from opaque_keys.edx.keys import CourseKey
 from cms.djangoapps.contentstore.views.course import get_course_and_check_access
 from lms.djangoapps.course_api.blocks.api import get_blocks
 from openedx.core.djangoapps.site_configuration import helpers as configuration_helpers
-from openedx.core.lib.gating.api import remove_prerequisite
+from openedx.core.lib.gating.api import delete_prerequisites
 from openedx.features.pakx.lms.overrides.utils import get_or_create_course_overview_content
 from common.djangoapps.util.views import ensure_valid_course_key
 from xmodule.modulestore.django import modulestore
@@ -153,7 +153,7 @@ class CourseCustomSettingsView(LoginRequiredMixin, View):
         """Remove old milestone and add new milestone to lock specified subsection."""
 
         if old_subsection:
-            remove_prerequisite(old_subsection)
+            delete_prerequisites(old_subsection, 'requires')
 
         self._create_milestone(new_subsection, course_key)
 
