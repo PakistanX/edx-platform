@@ -11,7 +11,8 @@ from django.utils.decorators import method_decorator
 from django.utils.translation import ugettext as _
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.generic import View
-from milestones import api as milestones_api, models as internal
+from milestones import api as milestones_api
+from milestones import models as internal
 from opaque_keys.edx.keys import CourseKey
 from six import text_type
 
