@@ -99,7 +99,7 @@ class CourseCustomSettingsView(LoginRequiredMixin, View):
                     'course_experience': course_experience,
                     'publisher_logo_url': publisher_logo_url,
                     'publisher_card_logo_url': publisher_card_logo_url,
-                    'days_to_unlock': days_to_unlock,
+                    'days_to_unlock': days_to_unlock if subsection_to_lock else 0,
                     'subsection_to_lock': subsection_to_lock
                 }
             )
@@ -146,7 +146,7 @@ class CourseCustomSettingsView(LoginRequiredMixin, View):
 
         course_overview_content = CourseOverviewContent.objects.get(course_id=course_key)
 
-        if subsection and course_overview_content.subsection_to_lock != subsection:
+        if course_overview_content.subsection_to_lock != subsection:
             self._update_course_milestone(course_overview_content.subsection_to_lock, subsection, course_key)
 
     def _update_course_milestone(self, old_subsection, new_subsection, course_key):
@@ -155,7 +155,8 @@ class CourseCustomSettingsView(LoginRequiredMixin, View):
         if old_subsection:
             delete_prerequisites(old_subsection, 'requires')
 
-        self._create_milestone(new_subsection, course_key)
+        if new_subsection:
+            self._create_milestone(new_subsection, course_key)
 
     @staticmethod
     def _create_milestone(subsection, course_key):
