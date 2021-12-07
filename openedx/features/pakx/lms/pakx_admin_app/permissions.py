@@ -5,7 +5,7 @@ from django.contrib.auth.models import User
 from rest_framework.permissions import BasePermission
 
 from .constants import GROUP_ORGANIZATION_ADMIN, GROUP_TRAINING_MANAGERS
-from .utils import get_request_user_org_id
+from .utils import get_user_same_org_filter
 
 
 class CanAccessPakXAdminPanel(BasePermission):
@@ -30,6 +30,7 @@ class IsSameOrganization(BasePermission):
 
     def has_permission(self, request, view):
         return request.user.is_superuser or User.objects.filter(
-            profile__organization_id=get_request_user_org_id(request),
             id=view.kwargs.get('user_id')
+        ).filter(
+            get_user_same_org_filter(request.user),
         ).exists()
