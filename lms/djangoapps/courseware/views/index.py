@@ -614,7 +614,7 @@ def render_accordion(request, course, table_of_contents, active_section, active_
             ('action_section', active_section),
             ('active_subsection', active_subsection),
             ('due_date_display_format', course.due_date_display_format),
-            ('course_experience_mode', course_experience_mode),
+            ('course_experience_mode', course_experience_mode)
         ] + list(TEMPLATE_IMPORTS.items())
     )
     return render_to_string('courseware/accordion.html', context)
