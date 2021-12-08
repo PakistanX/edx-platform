@@ -45,7 +45,11 @@ from openedx.features.course_experience import (
 )
 from openedx.features.course_experience.views.course_sock import CourseSockFragmentView
 from openedx.features.pakx.common.utils import get_partner_space_meta
-from openedx.features.pakx.lms.overrides.utils import get_rtl_class, get_course_mode_and_content_class
+from openedx.features.pakx.lms.overrides.utils import (
+    get_rtl_class,
+    get_course_mode_and_content_class,
+    get_course_progress_percentage
+)
 from openedx.features.course_experience.utils import get_course_outline_block_tree
 from openedx.features.course_experience.url_helpers import make_learning_mfe_courseware_url
 from openedx.features.enterprise_support.api import data_sharing_consent_required
@@ -608,7 +612,8 @@ def render_accordion(request, course, table_of_contents, active_section, active_
             ('action_section', active_section),
             ('active_subsection', active_subsection),
             ('due_date_display_format', course.due_date_display_format),
-            ('course_experience_mode', course_experience_mode)
+            ('course_experience_mode', course_experience_mode),
+            ('progress', get_course_progress_percentage(request, six.text_type(course.id)))
         ] + list(TEMPLATE_IMPORTS.items())
     )
     return render_to_string('courseware/accordion.html', context)
