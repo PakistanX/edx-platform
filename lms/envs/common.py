@@ -125,7 +125,7 @@ FEATURES = {
     #   attempting to expand those components will cause errors. So, this should only be set to False with an LMS that
     #   is running courses that do not contain discussion components.
     #   For consistency in user-experience, keep the value in sync with the setting of the same name in the CMS.
-    'ENABLE_DISCUSSION_SERVICE': True,
+    'ENABLE_DISCUSSION_SERVICE': False,
 
     # .. toggle_name: FEATURES['ENABLE_TEXTBOOK']
     # .. toggle_implementation: DjangoSetting
@@ -449,7 +449,7 @@ FEATURES = {
     #   backends with the AUTHENTICATION_BACKENDS setting.
     # .. toggle_use_cases: open_edx
     # .. toggle_creation_date: 2014-09-15
-    'ENABLE_THIRD_PARTY_AUTH': False,
+    'ENABLE_THIRD_PARTY_AUTH': True,
 
     # .. toggle_name: FEATURES['ENABLE_MKTG_SITE']
     # .. toggle_implementation: DjangoSetting
@@ -509,7 +509,7 @@ FEATURES = {
     # .. toggle_use_cases: open_edx
     # .. toggle_creation_date: 2016-06-24
     # .. toggle_tickets: https://openedx.atlassian.net/browse/OSPR-1320
-    'ENABLE_COMBINED_LOGIN_REGISTRATION_FOOTER': False,
+    'ENABLE_COMBINED_LOGIN_REGISTRATION_FOOTER': True,
 
     # Enable organizational email opt-in
     'ENABLE_MKTG_EMAIL_OPT_IN': False,
@@ -545,7 +545,7 @@ FEATURES = {
     'ENABLE_PUBLISHER': False,
 
     # Milestones application flag
-    'MILESTONES_APP': False,
+    'MILESTONES_APP': True,
 
     # Prerequisite courses feature flag
     'ENABLE_PREREQUISITE_COURSES': False,
@@ -582,6 +582,9 @@ FEATURES = {
     #   value does not matter in that case. This flag is enabled in devstack by default.
     # .. toggle_tickets: https://openedx.atlassian.net/browse/TNL-6931
     'ENABLE_COURSEWARE_SEARCH_FOR_COURSE_STAFF': False,
+
+    # Courseware navigation
+    'HIDE_COURSEWARE_NAVIGATION': False,
 
     # Dashboard search feature
     # .. toggle_name: FEATURES['ENABLE_DASHBOARD_SEARCH']
@@ -634,6 +637,17 @@ FEATURES = {
     # .. toggle_warnings: The COURSE_DISCOVERY_MEANINGS setting should be properly defined.
     # .. toggle_tickets: https://github.com/edx/edx-platform/pull/7845
     'ENABLE_COURSE_DISCOVERY': False,
+
+    # .. toggle_name: FEATURES['ENABLE_COURSE_FILENAME_CCX_SUFFIX']
+    # .. toggle_implementation: DjangoSetting
+    # .. toggle_default: False
+    # .. toggle_description: If set to True, CCX ID will be included in the generated filename for CCX courses.
+    # .. toggle_use_cases: open_edx
+    # .. toggle_creation_date: 2021-03-16
+    # .. toggle_target_removal_date: None
+    # .. toggle_tickets: None
+    # .. toggle_warnings: Turning this feature ON will affect all generated filenames which are related to CCX courses.
+    'ENABLE_COURSE_FILENAME_CCX_SUFFIX': False,
 
     # Setting for overriding default filtering facets for Course discovery
     # COURSE_DISCOVERY_FILTERS = ["org", "language", "modes"]
@@ -740,7 +754,7 @@ FEATURES = {
     # .. toggle_use_cases: open_edx
     # .. toggle_creation_date: 2017-04-12
     # .. toggle_tickets: https://openedx.atlassian.net/browse/YONK-513
-    'ALLOW_PUBLIC_ACCOUNT_CREATION': True,
+    'ALLOW_PUBLIC_ACCOUNT_CREATION': False,
 
     # .. toggle_name: FEATURES['ENABLE_COOKIE_CONSENT']
     # .. toggle_implementation: DjangoSetting
@@ -1290,7 +1304,7 @@ ENABLE_MULTICOURSE = False  # set to False to disable multicourse display (see l
 #   modify content of course related materials.
 # .. toggle_use_cases: open_edx
 # .. toggle_creation_date: 2012-07-13
-WIKI_ENABLED = True
+WIKI_ENABLED = False
 
 ###
 
@@ -2576,6 +2590,12 @@ DEBUG_TOOLBAR_PATCH_SETTINGS = False
 
 ################################# CELERY ######################################
 
+CELERY_IMPORTS = (
+    # Since xblock-poll is not a Django app, and XBlocks don't get auto-imported
+    # by celery workers, its tasks will not get auto-discovered:
+    'poll.tasks',
+)
+
 # Celery beat configuration
 
 CELERYBEAT_SCHEDULER = 'celery.beat:PersistentScheduler'
@@ -3114,6 +3134,21 @@ INSTALLED_APPS = [
     'user_tasks',
 ]
 
+######################### PAKX APPS #####################################
+
+PAKX_INSTALLED_APPS = [
+    # overrides app
+    'openedx.features.pakx.lms.overrides',
+
+    # pakx admin app
+    'openedx.features.pakx.lms.pakx_admin_app',
+
+    # custom settings app
+    'openedx.features.pakx.cms.custom_settings',
+]
+
+INSTALLED_APPS.extend(PAKX_INSTALLED_APPS)
+
 ######################### CSRF #########################################
 
 # Forwards-compatibility with Django 1.7
@@ -3478,7 +3513,7 @@ AUTH_PASSWORD_VALIDATORS = [
     {
         "NAME": "common.djangoapps.util.password_policy_validators.MinimumLengthValidator",
         "OPTIONS": {
-            "min_length": 2
+            "min_length": 8
         }
     },
     {

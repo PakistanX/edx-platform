@@ -130,6 +130,9 @@ DEFAULT_MOBILE_AVAILABLE = ENV_TOKENS.get(
     'DEFAULT_MOBILE_AVAILABLE',
     DEFAULT_MOBILE_AVAILABLE
 )
+########################## Set Course Progress Reminder Email Days #######################
+
+DEFAULT_PUBLIC_PARTNER_SPACE = ENV_TOKENS.get('DEFAULT_PUBLIC_PARTNER_SPACE', 'ilmx')
 
 # How long to cache OpenAPI schemas and UI, in seconds.
 OPENAPI_CACHE_TIMEOUT = ENV_TOKENS.get('OPENAPI_CACHE_TIMEOUT', 60 * 60)
@@ -506,6 +509,20 @@ COMPLETION_VIDEO_COMPLETE_PERCENTAGE = ENV_TOKENS.get(
     'COMPLETION_VIDEO_COMPLETE_PERCENTAGE',
     COMPLETION_VIDEO_COMPLETE_PERCENTAGE,
 )
+
+####################################### SENTRY ###########################################
+SENTRY_DSN = ENV_TOKENS.get('SENTRY_DSN', None)
+
+if SENTRY_DSN:
+    import sentry_sdk
+    from sentry_sdk.integrations.django import DjangoIntegration
+
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        integrations=[DjangoIntegration()],
+        traces_sample_rate=1.0,
+        send_default_pii=True
+    )
 
 ####################### Enterprise Settings ######################
 

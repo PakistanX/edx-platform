@@ -30,6 +30,7 @@ from openedx.core.djangoapps.user_authn.views.registration_form import Registrat
 from openedx.core.djangoapps.user_authn.views.utils import third_party_auth_context
 from openedx.core.djangoapps.user_authn.toggles import is_require_third_party_auth_enabled
 from openedx.features.enterprise_support.api import enterprise_customer_for_request, enterprise_enabled
+from openedx.features.pakx.common.utils import get_login_page_links
 from openedx.features.enterprise_support.utils import (
     get_enterprise_slug_login_url,
     handle_enterprise_cookies_for_logistration,
@@ -96,17 +97,10 @@ def get_login_session_form(request):
     # meant to hold the user's email address.
     email_label = _("Email")
 
-    # Translators: These instructions appear on the login form, immediately
-    # below a field meant to hold the user's email address.
-    email_instructions = _("The email address you used to register with {platform_name}").format(
-        platform_name=configuration_helpers.get_value('PLATFORM_NAME', settings.PLATFORM_NAME)
-    )
-
     form_desc.add_field(
         "email",
         field_type="email",
         label=email_label,
-        instructions=email_instructions,
         restrictions={
             "min_length": accounts.EMAIL_MIN_LENGTH,
             "max_length": accounts.EMAIL_MAX_LENGTH,
@@ -224,11 +218,14 @@ def login_and_registration_form(request, initial_mode="login"):
         } for message in messages.get_messages(request) if 'account-recovery' in message.tags
     ]
 
+    login_page_links = get_login_page_links(request)
+
     # Otherwise, render the combined login/registration page
     context = {
         'data': {
             'login_redirect_url': redirect_to,
             'initial_mode': initial_mode,
+            'space_name': login_page_links.get('organization', 'ilmX'),
             'third_party_auth': third_party_auth_context(request, redirect_to, third_party_auth_hint),
             'third_party_auth_hint': third_party_auth_hint or '',
             'platform_name': configuration_helpers.get_value('PLATFORM_NAME', settings.PLATFORM_NAME),
@@ -254,6 +251,7 @@ def login_and_registration_form(request, initial_mode="login"):
             'is_enterprise_enable': enterprise_enabled(),
             'is_require_third_party_auth_enabled': is_require_third_party_auth_enabled(),
         },
+        'disable_header': True,
         'login_redirect_url': redirect_to,  # This gets added to the query string of the "Sign In" button in header
         'responsive': True,
         'allow_iframing': True,
@@ -264,6 +262,7 @@ def login_and_registration_form(request, initial_mode="login"):
             settings.FEATURES['ENABLE_COMBINED_LOGIN_REGISTRATION_FOOTER']
         ),
     }
+    context.update(login_page_links)
 
     update_logistration_context_for_enterprise(request, context, enterprise_customer)
 

@@ -936,6 +936,25 @@ DASHBOARD_COURSE_LIMIT = ENV_TOKENS.get('DASHBOARD_COURSE_LIMIT', None)
 ######################## Setting for content libraries ########################
 MAX_BLOCKS_PER_CONTENT_LIBRARY = ENV_TOKENS.get('MAX_BLOCKS_PER_CONTENT_LIBRARY', MAX_BLOCKS_PER_CONTENT_LIBRARY)
 
+########################## Set Course Progress Reminder Email Days #######################
+
+DEFAULT_PUBLIC_PARTNER_SPACE = ENV_TOKENS.get('DEFAULT_PUBLIC_PARTNER_SPACE', 'ilmx')
+COURSE_PROGRESS_REMINDER_EMAIL_DAYS = ENV_TOKENS.get('COURSE_PROGRESS_REMINDER_EMAIL_DAYS', 5)
+
+####################################### SENTRY ###########################################
+SENTRY_DSN = ENV_TOKENS.get('SENTRY_DSN', None)
+
+if SENTRY_DSN:
+    import sentry_sdk
+    from sentry_sdk.integrations.django import DjangoIntegration
+
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        integrations=[DjangoIntegration()],
+        traces_sample_rate=1.0,
+        send_default_pii=True
+    )
+
 ############################### Plugin Settings ###############################
 
 # This is at the bottom because it is going to load more settings after base settings are loaded

@@ -22,6 +22,7 @@
             tpl: '#login-tpl',
             events: {
                 'click .js-login': 'submitForm',
+                'click .toggle-password': 'togglePassword',
                 'click .forgot-password': 'forgotPassword',
                 'click .login-provider': 'thirdPartyAuth',
                 'click .enterprise-login': 'enterpriseSlugLogin',
@@ -57,6 +58,8 @@
                 this.hideAuthWarnings = data.hideAuthWarnings;
                 this.pipelineUserDetails = data.pipelineUserDetails;
                 this.enterpriseName = data.enterpriseName;
+
+                this.spaceName = data.spaceName;
                 this.enterpriseSlugLoginURL = data.enterpriseSlugLoginURL;
                 this.isEnterpriseEnable = data.isEnterpriseEnable;
                 this.is_require_third_party_auth_enabled = data.is_require_third_party_auth_enabled || false;
@@ -86,6 +89,7 @@
                                 createAccountOption: this.createAccountOption,
                                 pipelineUserDetails: this.pipelineUserDetails,
                                 enterpriseName: this.enterpriseName,
+                                spaceName: this.spaceName,
                                 is_require_third_party_auth_enabled: this.is_require_third_party_auth_enabled
                             }
                         })
@@ -144,6 +148,14 @@
                 this.clearPasswordResetSuccess();
             },
 
+            togglePassword: function(event) {
+                event.preventDefault();
+                var passwordField = document.querySelector("#login-password")
+                var newType = passwordField.getAttribute("type") === "password" ? "text" : "password"
+                passwordField.setAttribute("type", newType);
+                $(event.target).toggleClass("fa-eye fa-eye-slash");
+            },
+
             toggleLoginHelp: function(event) {
                 var $help;
                 event.preventDefault();
@@ -166,10 +178,9 @@
                 var email = $('#password-reset-email').val(),
                     successTitle = gettext('Check Your Email'),
                     successMessageHtml = HtmlUtils.interpolateHtml(
-                        gettext('{paragraphStart}You entered {boldStart}{email}{boldEnd}. If this email address is associated with your {platform_name} account, we will send a message with password recovery instructions to this email address.{paragraphEnd}' + // eslint-disable-line max-len
-                        '{paragraphStart}If you do not receive a password reset message after 1 minute, verify that you entered the correct email address, or check your spam folder.{paragraphEnd}' + // eslint-disable-line max-len
-                        '{paragraphStart}If you need further assistance, {anchorStart}contact technical support{anchorEnd}.{paragraphEnd}'), { // eslint-disable-line max-len
-                            boldStart: HtmlUtils.HTML('<b data-hj-suppress>'),
+                        gettext('{paragraphStart}You entered {boldStart}{email}{boldEnd}. If this email address is associated with your ilmX account, we will send a message with password recovery instructions to this email address.{paragraphEnd}' + // eslint-disable-line max-len
+                        '{paragraphStart}If you do not receive a password reset message after 1 minute, verify that you entered the correct email address, or check your spam folder.{paragraphEnd}'), { // eslint-disable-line max-len
+                            boldStart: HtmlUtils.HTML('<b>'),
                             boldEnd: HtmlUtils.HTML('</b>'),
                             paragraphStart: HtmlUtils.HTML('<p>'),
                             paragraphEnd: HtmlUtils.HTML('</p>'),
@@ -207,6 +218,14 @@
             saveSuccess: function() {
                 this.trigger('auth-complete');
                 this.clearPasswordResetSuccess();
+            },
+
+            showServerError: function(msg) {
+              const passwordField = document.querySelector("#login-password")
+              const passwordLabel = document.querySelector("label[for=login-password")
+              passwordField.classList.add('error');
+              passwordLabel.classList.add('error');
+              document.querySelector("#login-password-validation-error-msg").innerHTML = msg
             },
 
             saveError: function(error) {
@@ -264,6 +283,7 @@
                     }
                 } else {
                     this.renderErrors(this.defaultFormErrorsTitle, this.errors);
+                    this.showServerError(msg)
                 }
                 this.toggleDisableButton(false);
             },

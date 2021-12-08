@@ -78,6 +78,8 @@ from django.utils.encoding import python_2_unicode_compatible
 from edx_django_utils.monitoring import set_custom_attribute
 
 from openedx.core.lib.mobile_utils import is_request_from_mobile_app
+from openedx.features.pakx.common.utils import load_space_in_session
+
 
 # .. toggle_name: LOG_REQUEST_USER_CHANGES
 # .. toggle_implementation: SettingToggle
@@ -300,6 +302,8 @@ class SafeSessionMiddleware(SessionMiddleware, MiddlewareMixin):
             # The process_request pipeline has been short circuited so
             # return the response.
             return process_request_response
+
+        load_space_in_session(request)
 
         if cookie_data_string and request.session.get(SESSION_KEY):
 

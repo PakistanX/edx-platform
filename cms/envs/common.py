@@ -259,7 +259,7 @@ FEATURES = {
     'ENABLE_CONTENT_LIBRARIES': True,
 
     # Milestones application flag
-    'MILESTONES_APP': False,
+    'MILESTONES_APP': True,
 
     # Prerequisite courses feature flag
     'ENABLE_PREREQUISITE_COURSES': False,
@@ -1612,6 +1612,14 @@ INSTALLED_APPS = [
     'organizations',
 ]
 
+######################### PAKX APPS #####################################
+
+PAKX_INSTALLED_APPS = [
+    # custom settings app
+    'openedx.features.pakx.cms.custom_settings',
+]
+
+INSTALLED_APPS.extend(PAKX_INSTALLED_APPS)
 
 ################# EDX MARKETING SITE ##################################
 
@@ -1701,7 +1709,7 @@ AUTH_PASSWORD_VALIDATORS = [
     {
         "NAME": "common.djangoapps.util.password_policy_validators.MinimumLengthValidator",
         "OPTIONS": {
-            "min_length": 2
+            "min_length": 8
         }
     },
     {
@@ -1806,6 +1814,42 @@ ADVANCED_PROBLEM_TYPES = [
     },
     {
         'component': 'staffgradedxblock',
+        'boilerplate_name': None
+    },
+    {
+        'component': 'adventure',
+        'boilerplate_name': None
+    },
+    {
+        'component': 'image-explorer',
+        'boilerplate_name': None
+    },
+    {
+        'component': 'problem-builder',
+        'boilerplate_name': None
+    },
+    {
+        'component': 'edly_kwl',
+        'boilerplate_name': None
+    },
+    {
+        'component': 'edly_carousel',
+        'boilerplate_name': None
+    },
+    {
+        'component': 'pakx_feedback',
+        'boilerplate_name': None
+    },
+    {
+        'component': 'pakx_video',
+        'boilerplate_name': None
+    },
+    {
+        'component': 'pakx_grid_dropdown',
+        'boilerplate_name': None
+    },
+    {
+        'component': 'edly_assessment',
         'boilerplate_name': None
     }
 ]

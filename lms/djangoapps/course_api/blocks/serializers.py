@@ -2,6 +2,7 @@
 Serializers for Course Blocks related return objects.
 """
 
+import six
 
 from django.conf import settings
 from rest_framework import serializers
@@ -55,7 +56,11 @@ SUPPORTED_FIELDS = [
     SupportedFieldType('has_score'),
     SupportedFieldType('has_scheduled_content'),
     SupportedFieldType('weight'),
+    SupportedFieldType('video_title'),
+    SupportedFieldType('thumbnail_url'),
+    SupportedFieldType('video_duration'),
     SupportedFieldType('show_correctness'),
+    SupportedFieldType('gated'),
     # 'student_view_data'
     SupportedFieldType(StudentViewTransformer.STUDENT_VIEW_DATA, StudentViewTransformer),
     # 'student_view_multi_device'
@@ -147,18 +152,29 @@ class BlockSerializer(serializers.Serializer):  # pylint: disable=abstract-metho
             request=self.context['request'],
         )
 
-        data = {
-            'id': str(block_key),
-            'block_id': str(block_key.block_id),
-            'lms_web_url': jump_to_courseware_url,
-            'legacy_web_url': jump_to_courseware_url + '?experience=legacy',
-            'student_view_url': reverse(
-                'render_xblock',
-                kwargs={'usage_key_string': str(block_key)},
-                request=self.context['request'],
-            ),
-        }
-
+        from django.urls import NoReverseMatch
+        try:
+            data = {
+                'id': six.text_type(block_key),
+                'block_id': six.text_type(block_key.block_id),
+                'lms_web_url': reverse(
+                    'jump_to',
+                    kwargs={'course_id': six.text_type(block_key.course_key), 'location': six.text_type(block_key)},
+                    request=self.context['request'],
+                ),
+                'student_view_url': reverse(
+                    'render_xblock',
+                    kwargs={'usage_key_string': six.text_type(block_key)},
+                    request=self.context['request'],
+                ),
+            }
+        except NoReverseMatch:
+            data = {
+                'id': six.text_type(block_key),
+                'block_id': six.text_type(block_key.block_id),
+                'lms_web_url': '',
+                'student_view_url': '',
+            }
         if settings.FEATURES.get("ENABLE_LTI_PROVIDER") and 'lti_url' in self.context['requested_fields']:
             data['lti_url'] = reverse(
                 'lti_provider_launch',

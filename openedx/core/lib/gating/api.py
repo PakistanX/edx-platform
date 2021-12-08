@@ -9,7 +9,7 @@ from completion.models import BlockCompletion
 from django.contrib.auth.models import User  # lint-amnesty, pylint: disable=imported-auth-user
 from django.urls import reverse
 from django.utils.translation import ugettext as _
-from milestones import api as milestones_api
+from milestones import api as milestones_api, models as internal
 from opaque_keys.edx.keys import UsageKey
 from xblock.completable import XBlockCompletionMode as CompletionMode
 
@@ -212,6 +212,27 @@ def remove_prerequisite(prereq_content_key):
     ))
     for milestone in milestones:
         milestones_api.remove_milestone(milestone.get('id'))
+
+
+def delete_prerequisites(prereq_content_key, relationship_type):
+    """
+        Deletes the CourseContentMilestones related to the gating
+        prerequisite
+        Arguments:
+            prereq_content_key (str|UsageKey): The prerequisite content usage key
+            relationship_type (str): relationship type either 'requires' or 'fulfills'
+        Returns:
+            None
+    """
+
+    milestones = internal.CourseContentMilestone.objects.filter(
+        content_id=prereq_content_key,
+        milestone__namespace="{}.gating".format(prereq_content_key),
+        milestone_relationship_type__name=relationship_type
+    )
+    log.info("\n\n\ndeleting:{}\n\n\n".format(milestones))
+
+    milestones.delete()
 
 
 def is_prerequisite(course_key, prereq_content_key):

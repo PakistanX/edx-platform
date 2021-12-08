@@ -20,7 +20,7 @@ from openedx.core.apidocs import api_info
 from openedx.core.djangoapps.password_policy import compliance as password_policy_compliance
 from openedx.core.djangoapps.password_policy.forms import PasswordPolicyAwareAdminAuthForm
 from openedx.core import toggles as core_toggles
-
+from openedx.features.pakx.cms.urls import pakx_url_patterns
 
 django_autodiscover()
 admin.site.site_header = _('Studio Administration')
@@ -182,6 +182,9 @@ urlpatterns = [
     url(r'^accessibility$', contentstore_views.accessibility, name='accessibility'),
 ]
 
+# include all pakx cms urls
+urlpatterns.extend(pakx_url_patterns)
+
 if not settings.DISABLE_DEPRECATED_SIGNIN_URL:
     # TODO: Remove deprecated signin url when traffic proves it is no longer in use
     urlpatterns += [
@@ -278,6 +281,11 @@ if settings.DEBUG:
 if 'debug_toolbar' in settings.INSTALLED_APPS:
     import debug_toolbar
     urlpatterns.append(url(r'^__debug__/', include(debug_toolbar.urls)))
+
+if 'silk' in settings.INSTALLED_APPS:
+    urlpatterns += [
+        url(r'^silk/', include('silk.urls', namespace='silk'))
+    ]
 
 # UX reference templates
 urlpatterns.append(url(r'^template/(?P<template>.+)$', openedx.core.djangoapps.debug.views.show_reference_template,
