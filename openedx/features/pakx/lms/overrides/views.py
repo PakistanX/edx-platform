@@ -6,7 +6,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import AnonymousUser
 from django.forms.models import model_to_dict
-from django.http import Http404, HttpResponseRedirect
+from django.http import Http404
 from django.shortcuts import redirect
 from django.urls import reverse
 from django.utils.translation import ugettext as _
@@ -57,7 +57,8 @@ from openedx.features.pakx.lms.overrides.utils import (
     get_featured_course_set,
     get_rating_classes_for_course,
     get_resume_course_info,
-    is_course_enroll_able
+    is_course_enroll_able,
+    is_rtl_language
 )
 from openedx.features.pakx.common.utils import set_partner_space_in_session
 from student.models import CourseEnrollment
@@ -366,7 +367,8 @@ def _get_course_about_context(request, course_id, category=None):  # pylint: dis
             'starts_in': starts_in,
             'org_description': course_map['org_description'],
             'publisher_logo': course_map['publisher_logo_url'],
-            'course_rating': get_rating_classes_for_course(course_id)
+            'course_rating': get_rating_classes_for_course(course_id),
+            'course_dir': 'rtl' if is_rtl_language(course.language) else ''
         }
 
         return context
@@ -416,7 +418,7 @@ class BaseTemplateView(TemplateView):
             context['course_id'] = request.session.get('course_id', '')
         return context
 
-    def get(self, request, *args, **kwargs):  # pylint: disable=unused-argument
+    def get(self, request, *args, **kwargs):
         context = self.get_context_data(request=request)
         return render_to_response(self.template_name, context)
 
@@ -519,9 +521,6 @@ class MarketingCampaignPage(AboutUsView):
         self.initial_data = {'message': 'Not Available. Submitted from Marketing campaign Page'}
 
     template_name = 'overrides/marketing_campaign.html'
-
-    def populate_form_initial_data(self, user=None):
-        super().populate_form_initial_data(user)
 
 
 class BusinessView(AboutUsView):
