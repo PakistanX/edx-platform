@@ -8,7 +8,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('organizations', '0006_auto_20171207_0259'),
-        ('student', '0042_userprofile_employee_id'),
+        ('student', '0033_userprofile_state'),
     ]
 
     operations = [
