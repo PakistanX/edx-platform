@@ -137,18 +137,19 @@ def get_gating_milestone(course_key, content_key, relationship):
         return None
 
 
-def get_prerequisites(course_key):
+def get_prerequisites(course_key, relationship_type=None):
     """
     Find all the gating milestones associated with a course and the
     XBlock info associated with those gating milestones.
 
     Arguments:
         course_key (str|CourseKey): The course key
+        relationship_type (str):    Either 'requires' or 'fulfills'
 
     Returns:
         list: A list of dicts containing the milestone and associated XBlock info
     """
-    course_content_milestones = find_gating_milestones(course_key)
+    course_content_milestones = find_gating_milestones(course_key, relationship=relationship_type)
 
     milestones_by_block_id = {}
     block_ids = []
