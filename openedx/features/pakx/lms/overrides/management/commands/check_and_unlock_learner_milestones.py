@@ -120,6 +120,7 @@ class Command(BaseCommand):
                 course_id=course.id,
                 block_id=block_id
             ),
+            'image_url': "https://{}{}".format(site.domain, course.course_image_url)
         })
 
         msg = PostAssessment().personalize(
