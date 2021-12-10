@@ -7,7 +7,7 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('student', '0035_bulkchangeenrollmentconfiguration'),
+        ('student', '0033_userprofile_state'),
         ('overrides', '0002_auto_20210622_1212'),
     ]
 
