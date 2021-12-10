@@ -1851,6 +1851,14 @@ ADVANCED_PROBLEM_TYPES = [
     {
         'component': 'edly_assessment',
         'boilerplate_name': None
+    },
+    {
+        'component': 'pakx_flashcard',
+        'boilerplate_name': None
+    },
+    {
+        'component': 'pakx_completion',
+        'boilerplate_name': None
     }
 ]
 
