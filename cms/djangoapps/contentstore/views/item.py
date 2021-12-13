@@ -1088,7 +1088,7 @@ def _get_gating_info(course, xblock):
     can be added to xblock info responses.
 
     Arguments:
-        course (CourseBlock): The course
+        course (CourseDescriptor): The course
         xblock (XBlock): The xblock
 
     Returns:
@@ -1099,10 +1099,10 @@ def _get_gating_info(course, xblock):
         if not hasattr(course, 'gating_prerequisites'):
             # Cache gating prerequisites on course module so that we are not
             # hitting the database for every xblock in the course
-            course.gating_prerequisites = gating_api.get_prerequisites(course.id)
+            course.gating_prerequisites = gating_api.get_prerequisites(course.id, 'fulfills')
         info["is_prereq"] = gating_api.is_prerequisite(course.id, xblock.location)
         info["prereqs"] = [
-            p for p in course.gating_prerequisites if str(xblock.location) not in p['namespace']
+            p for p in course.gating_prerequisites if text_type(xblock.location) not in p['namespace']
         ]
         prereq, prereq_min_score, prereq_min_completion = gating_api.get_required_content(
             course.id,
