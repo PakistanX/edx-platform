@@ -226,6 +226,7 @@ def delete_prerequisites(prereq_content_key, relationship_type):
             None
     """
 
+    remove_prerequisite(prereq_content_key)
     milestones = internal.CourseContentMilestone.objects.filter(
         content_id=prereq_content_key,
         milestone__namespace="{}.gating".format(prereq_content_key),
