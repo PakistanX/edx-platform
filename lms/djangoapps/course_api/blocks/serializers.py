@@ -143,15 +143,6 @@ class BlockSerializer(serializers.Serializer):  # pylint: disable=abstract-metho
         authorization_denial_reason = block_structure.get_xblock_field(block_key, 'authorization_denial_reason')
         authorization_denial_message = block_structure.get_xblock_field(block_key, 'authorization_denial_message')
 
-        jump_to_courseware_url = reverse(
-            'jump_to',
-            kwargs={
-                'course_id': str(block_key.course_key),
-                'location': str(block_key),
-            },
-            request=self.context['request'],
-        )
-
         from django.urls import NoReverseMatch
         try:
             data = {
