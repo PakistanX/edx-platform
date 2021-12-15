@@ -9,8 +9,7 @@ on:
       - master
       - develop
       - pakx_release
-      - video_experience
-      - mooc-develop
+      - lilac_develop
 
 jobs:
   quality:
