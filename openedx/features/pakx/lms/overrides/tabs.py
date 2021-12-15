@@ -1,6 +1,6 @@
 from django.utils.translation import ugettext_noop as _
 
-from courseware.tabs import CourseTab
+from xmodule.tabs import CourseTab
 
 
 class OverviewTab(CourseTab):
