@@ -93,7 +93,7 @@ def send_contact_us_email(data):
 
     recipient = configuration_helpers.get_value('CONTACT_EMAIL', settings.CONTACT_EMAIL)
     msg = ContactUs().personalize(
-        recipient=Recipient(username='', email_address=recipient),
+        recipient=Recipient('', email_address=recipient),
         language=settings.LANGUAGE_CODE,
         user_context=message_context
     )

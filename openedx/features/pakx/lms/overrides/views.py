@@ -419,13 +419,13 @@ class AboutUsView(BaseTemplateView):
     View for viewing and submitting about us form.
     """
 
-    form_class = AboutUsForm
     template_name = 'overrides/about_us.html'
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.email_subject = 'About Us Form Data'
         self.initial_data = {}
+        self.hidden_fields = []
 
     def populate_form_initial_data(self, user=None):
         if user:
@@ -440,13 +440,12 @@ class AboutUsView(BaseTemplateView):
         request = kwargs.get('request')
         if request and request.user.is_authenticated:
             self.populate_form_initial_data(request.user)
-
-        context['form'] = self.form_class(initial=self.initial_data)
+        context['form'] = AboutUsForm(initial=self.initial_data, hidden_fields=self.hidden_fields)
         return context
 
     def post(self, request):
         form_data = request.POST.copy()
-        form = self.form_class(form_data)
+        form = AboutUsForm(data=form_data, initial=self.initial_data, hidden_fields=self.hidden_fields)
 
         if form.is_valid():
             instance = form.save(commit=False)
@@ -494,6 +493,7 @@ class MarketingCampaignPage(AboutUsView):
         super().__init__(**kwargs)
         self.email_subject = 'Pakistan Against Workplace Harassment Form Data'
         self.initial_data = {'message': 'Not Available. Submitted from Marketing campaign Page'}
+        self.hidden_fields = ['message']
 
     template_name = 'overrides/marketing_campaign.html'
 
@@ -507,6 +507,7 @@ class BusinessView(AboutUsView):
         super().__init__(**kwargs)
         self.email_subject = 'Business Page Form Data'
         self.initial_data = {'message': 'Not Available. Submitted from business Page'}
+        self.hidden_fields = ['message']
 
     template_name = 'overrides/workplace_essential_showcase.html'
 
