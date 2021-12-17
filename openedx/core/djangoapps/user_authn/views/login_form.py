@@ -96,6 +96,7 @@ def get_login_session_form(request):
         "email",
         field_type="email",
         label=email_label,
+        placeholder="user@website.com",
         restrictions={
             "min_length": accounts.EMAIL_MIN_LENGTH,
             "max_length": accounts.EMAIL_MAX_LENGTH,

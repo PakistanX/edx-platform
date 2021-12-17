@@ -587,7 +587,7 @@ def get_logo_url(is_secure=True, request=None):
     if university:
         return staticfiles_storage.url('images/{uni}-on-edx-logo.png'.format(uni=university))
     else:
-        return staticfiles_storage.url('images/logo-{}.png'.format(space))
+        return staticfiles_storage.url('images/logo-{}.png'.format(space or 'ilmx'))
 
 
 def get_tos_and_honor_code_url():
