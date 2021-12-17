@@ -452,6 +452,7 @@ class RegistrationFormFactory(object):
             "email",
             field_type="email",
             label=email_label,
+            placeholder="user@website.com",
             instructions=email_instructions,
             restrictions={
                 "min_length": accounts.EMAIL_MIN_LENGTH,
@@ -475,6 +476,7 @@ class RegistrationFormFactory(object):
 
         form_desc.add_field(
             "confirm_email",
+            field_type="email",
             label=email_label,
             required=required,
             error_messages={
@@ -500,6 +502,7 @@ class RegistrationFormFactory(object):
         form_desc.add_field(
             "name",
             label=name_label,
+            placeholder="John Doe",
             instructions=name_instructions,
             restrictions={
                 "max_length": accounts.NAME_MAX_LENGTH,
@@ -527,6 +530,7 @@ class RegistrationFormFactory(object):
         form_desc.add_field(
             "username",
             label=username_label,
+            placeholder="john.doe",
             instructions=username_instructions,
             restrictions={
                 "min_length": accounts.USERNAME_MIN_LENGTH,
