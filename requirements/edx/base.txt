@@ -21,7 +21,7 @@
 -e git+https://github.com/edx-solutions/xblock-ooyala.git@rebase-juniper#egg=xblock-ooyala==rebase-juniper
 -e git://github.com/edx-solutions/xblock-mentoring.git@rebase-juniper#egg=xblock-mentoring==rebase-juniper
 -e git+https://github.com/PakistanX/xblock-adventure.git@1.0.2#egg=xblock-adventure
--e git+https://github.com/PakistanX/xblock-image-explorer.git@v2.1#egg=xblock-image-explorer
+-e git+https://github.com/PakistanX/xblock-image-explorer.git@v2.1.1#egg=xblock-image-explorer
 -e common/lib/xmodule  # via -r requirements/edx/local.in
 amqp==2.6.1               # via kombu
 analytics-python==1.2.9   # via -r requirements/edx/base.in
