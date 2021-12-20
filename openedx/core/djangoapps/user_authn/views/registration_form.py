@@ -537,7 +537,7 @@ class RegistrationFormFactory:
         form_desc.add_field(
             "username",
             label=username_label,
-            placeholder="john.doe",
+            placeholder="john_doe",
             instructions=username_instructions,
             restrictions={
                 "min_length": accounts.USERNAME_MIN_LENGTH,
