@@ -84,7 +84,7 @@ def index(request, extra_context=None, user=AnonymousUser()):
 
     context = {
         'courses': get_courses_for_user(user),
-        'featured_course': get_featured_course_data(),
+        'active_campaign': get_featured_course_data(),
         'featured_course_set': get_featured_course_set(),
         'show_partners': configuration_helpers.get_value('show_partners', True),
         'homepage_overlay_html': configuration_helpers.get_value('homepage_overlay_html'),
