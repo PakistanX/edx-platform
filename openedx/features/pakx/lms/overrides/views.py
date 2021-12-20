@@ -53,7 +53,7 @@ from openedx.features.pakx.lms.overrides.utils import (
     get_course_first_unit_lms_url,
     get_course_progress_percentage,
     get_courses_for_user,
-    get_featured_course_data,
+    get_active_campaign_data,
     get_featured_course_set,
     get_rating_classes_for_course,
     get_resume_course_info,
@@ -84,7 +84,7 @@ def index(request, extra_context=None, user=AnonymousUser()):
 
     context = {
         'courses': get_courses_for_user(user),
-        'active_campaign': get_featured_course_data(),
+        'active_campaign': get_active_campaign_data(),
         'featured_course_set': get_featured_course_set(),
         'show_partners': configuration_helpers.get_value('show_partners', True),
         'homepage_overlay_html': configuration_helpers.get_value('homepage_overlay_html'),
@@ -413,6 +413,7 @@ class BaseTemplateView(TemplateView):
         context['platform_name'] = configuration_helpers.get_value('platform_name', settings.PLATFORM_NAME)
         context['support_email'] = configuration_helpers.get_value('CONTACT_EMAIL', settings.CONTACT_EMAIL)
         context['custom_fields'] = settings.ZENDESK_CUSTOM_FIELDS
+        context['active_campaign'] = get_active_campaign_data()
         request = kwargs.get('request')
         if request and request.user.is_authenticated:
             context['course_id'] = request.session.get('course_id', '')

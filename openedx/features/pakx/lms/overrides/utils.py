@@ -107,9 +107,9 @@ def get_featured_course_set():
     return [get_course_card_data(course, org_prefetched=True) for course in courses]
 
 
-def get_featured_course_data():
+def get_active_campaign_data():
     """
-    Get featured course, if feature_course_key is set in Site Configurations
+    Get featured course, if active_campaign is set in Site Configurations
     :returns (CourseOverview): course or None
     """
 
