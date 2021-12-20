@@ -109,14 +109,11 @@ def get_featured_course_set():
 
 def get_featured_course_data():
     """
-    Get featured course, if feature_course_key is set in Site Configurations
+    Get featured course, if active_campaign is set in Site Configurations
     :returns (CourseOverview): course or None
     """
 
-    feature_course_key = configuration_helpers.get_value('feature_course_key')
-    if feature_course_key:
-        course = CourseOverview.get_from_id(CourseKey.from_string(feature_course_key))
-        return get_course_card_data(course)
+    return configuration_helpers.get_value('active_campaign')
 
 
 def get_rating_course(course_id):
