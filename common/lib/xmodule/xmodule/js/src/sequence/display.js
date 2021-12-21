@@ -284,7 +284,7 @@
                 sequenceLinks.click(this.goto);
 
                 this.sr_container.focus();
-                var courseware_view = document.querySelector('.view-in-course.view-courseware.courseware');
+                var courseware_view = document.querySelector(".view-in-course.view-courseware.courseware")
                 if (courseware_view) {
                   courseware_view.scrollIntoView();
                 }
@@ -333,6 +333,7 @@
                 this.render(newPosition);
             } else {
                 alertTemplate = gettext('Sequence error! Cannot navigate to %(tab_name)s in the current SequenceModule. Please contact the course staff.');  // eslint-disable-line max-len
+                // xss-lint: disable=javascript-interpolate
                 alertText = interpolate(alertTemplate, {
                     tab_name: newPosition
                 }, true);
@@ -406,44 +407,44 @@
             return this.$('#sequence-list .nav-item[data-element=' + position + ']');
         };
 
-        function get_formatting_char(s) {
-            var rtlChars = '\u0591-\u07FF\u200F\u202B\u202E\uFB1D-\uFDFD\uFE70-\uFEFC',
-                rtlDirCheck = new RegExp('^[^' + rtlChars + ']*?[' + rtlChars + ']');
+       function get_formatting_char(s){
+          var rtlChars        = '\u0591-\u07FF\u200F\u202B\u202E\uFB1D-\uFDFD\uFE70-\uFEFC',
+          rtlDirCheck     = new RegExp('^[^'+rtlChars+']*?['+rtlChars+']');
 
-            if (rtlDirCheck.test(s)) {
-                return '\u202B';
-            }
-            return '\u202A';
-        }
+          if (rtlDirCheck.test(s)) {
+              return "\u202B"
+          }
+          return "\u202A"
+        };
 
         function getAccordionElement(element) {
-            var accordionElementID = '#' + element.getAttribute('data-usage');
-            return $(accordionElementID);
+          var accordionElementID = "#" + element.getAttribute('data-usage')
+          return $(accordionElementID)
         }
 
         function update_unit_title(element, is_active) {
-            var element_title = element.getAttribute('data-page-title');
+          var element_title = element.getAttribute("data-page-title");
           // Update selected in Accordion
-            var accordionElement = getAccordionElement(element);
-            if (typeof accordionElement[0] !== 'undefined') {
-                $('.menu-item').removeClass('active');
-                $(accordionElement).addClass('active');
-            }
-            var updated_title = get_formatting_char(element_title) + element.getAttribute('data-element') + '. ';
-            if (is_active) {
-                updated_title += element_title;
-            }
-            var title_element = element.querySelector('#unit-title');
-            if (title_element) {
-                title_element.innerHTML = updated_title;
-            }
+          var accordionElement = getAccordionElement(element);
+          if (typeof accordionElement[0] !== "undefined") {
+            $(".menu-item").removeClass("active");
+            $(accordionElement).addClass('active');
+          }
+          var updated_title = get_formatting_char(element_title) + element.getAttribute("data-element") +". "
+          if (is_active) {
+            updated_title += element_title
+          }
+          var title_element = element.querySelector("#unit-title")
+          if (title_element) {
+            title_element.innerHTML = updated_title
+          }
         }
 
         Sequence.prototype.mark_visited = function(position) {
             // Don't overwrite class attribute to avoid changing Progress class
             var element = this.link_for(position);
             if (element[0]) {
-                update_unit_title(element[0], false);
+              update_unit_title(element[0], false)
             }
             element.attr({tabindex: '-1', 'aria-selected': 'false', 'aria-expanded': 'false'})
                 .removeClass('inactive')
@@ -457,10 +458,10 @@
             var completionUrl = this.ajaxUrl + '/get_completion';
             var usageKey = element[0].attributes['data-id'].value;
             var completionIndicators = element.find('.check-circle');
-            // Add completion marker class on Accordion Item
-            var accordionElement = getAccordionElement(element[0]);
             var $progressPercentage = $('#progress-percentage');
             var $progressSpan = $('#progress-percentage-span');
+            // Add completion marker class on Accordion Item
+            var accordionElement = getAccordionElement(element[0]);
             if (completionIndicators.length) {
                 $.postWithPrefix(completionUrl, {
                     usage_key: usageKey
@@ -479,7 +480,7 @@
             // Don't overwrite class attribute to avoid changing Progress class
             var element = this.link_for(position);
             if (element[0]) {
-                update_unit_title(element[0], true);
+              update_unit_title(element[0], true);
             }
             element.attr({tabindex: '0', 'aria-selected': 'true', 'aria-expanded': 'true'})
                 .removeClass('inactive')
