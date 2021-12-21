@@ -493,6 +493,8 @@ class CoursewareIndex(View):
                 course_experience_mode
             )
 
+            courseware_context['progress'] = get_course_progress_percentage(request, six.text_type(self.course.id))
+
         courseware_context['course_sock_fragment'] = CourseSockFragmentView().render_to_fragment(
             request, course=self.course)
 
@@ -613,7 +615,6 @@ def render_accordion(request, course, table_of_contents, active_section, active_
             ('active_subsection', active_subsection),
             ('due_date_display_format', course.due_date_display_format),
             ('course_experience_mode', course_experience_mode),
-            ('progress', get_course_progress_percentage(request, six.text_type(course.id)))
         ] + list(TEMPLATE_IMPORTS.items())
     )
     return render_to_string('courseware/accordion.html', context)
