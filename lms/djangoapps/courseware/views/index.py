@@ -45,11 +45,7 @@ from openedx.features.course_experience import (
 )
 from openedx.features.course_experience.views.course_sock import CourseSockFragmentView
 from openedx.features.pakx.common.utils import get_partner_space_meta
-from openedx.features.pakx.lms.overrides.utils import (
-    get_rtl_class,
-    get_course_mode_and_content_class,
-    get_course_progress_percentage
-)
+from openedx.features.pakx.lms.overrides.utils import get_rtl_class, get_course_mode_and_content_class
 from openedx.features.course_experience.utils import get_course_outline_block_tree
 from openedx.features.course_experience.url_helpers import make_learning_mfe_courseware_url
 from openedx.features.enterprise_support.api import data_sharing_consent_required
@@ -492,8 +488,6 @@ class CoursewareIndex(View):
                 self.section_url_name,
                 course_experience_mode
             )
-
-            courseware_context['progress'] = get_course_progress_percentage(request, six.text_type(self.course.id))
 
         courseware_context['course_sock_fragment'] = CourseSockFragmentView().render_to_fragment(
             request, course=self.course)
