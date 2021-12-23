@@ -333,6 +333,7 @@
                 this.render(newPosition);
             } else {
                 alertTemplate = gettext('Sequence error! Cannot navigate to %(tab_name)s in the current SequenceModule. Please contact the course staff.');  // eslint-disable-line max-len
+                // xss-lint: disable=javascript-interpolate
                 alertText = interpolate(alertTemplate, {
                     tab_name: newPosition
                 }, true);
@@ -457,7 +458,8 @@
             var completionUrl = this.ajaxUrl + '/get_completion';
             var usageKey = element[0].attributes['data-id'].value;
             var completionIndicators = element.find('.check-circle');
-            var element_title = element[0].getAttribute("data-page-title");
+            var progressPercentage = $('#progress-percentage');
+            var progressSpan = $('#progress-percentage-span');
             // Add completion marker class on Accordion Item
             var accordionElement = getAccordionElement(element[0]);
             if (completionIndicators.length) {
@@ -466,7 +468,9 @@
                 }, function(data) {
                     if (data.complete === true) {
                         completionIndicators.removeClass('is-hidden');
-                        accordionElement.addClass('complete')
+                        accordionElement.addClass('complete');
+                        progressPercentage.html(data.progress + '% complete');
+                        progressSpan.css('width', data.progress + '%');
                     }
                 });
             }
