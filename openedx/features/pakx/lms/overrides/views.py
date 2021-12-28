@@ -679,9 +679,7 @@ def _progress(request, course_key, student_id):
     )
     with outer_atomic():
         response = render_to_response('courseware/progress.html', context)
-
-    # import pdb
-    # pdb.set_trace()
+        
     return response
 
 
