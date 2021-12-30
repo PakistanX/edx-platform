@@ -458,7 +458,8 @@
             var completionUrl = this.ajaxUrl + '/get_completion';
             var usageKey = element[0].attributes['data-id'].value;
             var completionIndicators = element.find('.check-circle');
-            var element_title = element[0].getAttribute("data-page-title");
+            var progressPercentage = $('#progress-percentage');
+            var progressSpan = $('#progress-percentage-span');
             // Add completion marker class on Accordion Item
             var accordionElement = getAccordionElement(element[0]);
             if (completionIndicators.length) {
@@ -467,7 +468,9 @@
                 }, function(data) {
                     if (data.complete === true) {
                         completionIndicators.removeClass('is-hidden');
-                        accordionElement.addClass('complete')
+                        accordionElement.addClass('complete');
+                        progressPercentage.html(data.progress + '% complete');
+                        progressSpan.css('width', data.progress + '%');
                     }
                 });
             }

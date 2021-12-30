@@ -1,6 +1,9 @@
 """ Overridden views from core """
 from datetime import datetime
 
+from django.db import transaction
+from django.db.models import prefetch_related_objects
+
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -10,6 +13,7 @@ from django.http import Http404
 from django.shortcuts import redirect
 from django.urls import reverse
 from django.utils.translation import ugettext as _
+from django.views.decorators.cache import cache_control
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.generic.base import TemplateView
 from opaque_keys.edx.keys import CourseKey
@@ -28,12 +32,25 @@ from lms.djangoapps.courseware.courses import (
     get_permission_for_course_about,
     get_studio_url
 )
-from lms.djangoapps.courseware.permissions import VIEW_COURSE_HOME, VIEW_COURSEWARE
+from lms.djangoapps.courseware.masquerade import setup_masquerade
+from lms.djangoapps.courseware.permissions import VIEW_COURSE_HOME, VIEW_COURSEWARE, MASQUERADE_AS_STUDENT
 from lms.djangoapps.courseware.views.index import render_accordion
-from lms.djangoapps.courseware.views.views import _course_home_redirect_enabled, registered_for_course
+from lms.djangoapps.courseware.views.views import (
+    _course_home_redirect_enabled,
+    registered_for_course,
+    _credit_course_requirements,
+    _get_cert_data
+)
+# from lms.djangoapps.course_home_api.toggles import (
+#     course_home_mfe_progress_tab_is_active
+# )
+from lms.djangoapps.experiments.utils import get_experiment_user_metadata_context
+from lms.djangoapps.grades.api import CourseGradeFactory
 from lms.djangoapps.instructor.enrollment import uses_shib
 from openedx.core.djangoapps.catalog.utils import get_programs_with_type
 from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
+from openedx.features.course_duration_limits.access import generate_course_expired_fragment
+from openedx.features.enterprise_support.api import data_sharing_consent_required
 from openedx.core.djangoapps.enrollments.permissions import ENROLL_IN_COURSE
 from openedx.core.djangoapps.models.course_details import CourseDetails
 from openedx.core.djangoapps.site_configuration import helpers as configuration_helpers
@@ -52,6 +69,7 @@ from openedx.features.pakx.lms.overrides.utils import (
     get_course_card_data,
     get_course_first_unit_lms_url,
     get_course_progress_percentage,
+    get_progress_statistics_by_block_types,
     get_courses_for_user,
     get_active_campaign_data,
     get_featured_course_set,
@@ -62,6 +80,7 @@ from openedx.features.pakx.lms.overrides.utils import (
 )
 from openedx.features.pakx.common.utils import set_partner_space_in_session
 from student.models import CourseEnrollment
+from util.db import outer_atomic
 from util.cache import cache_if_anonymous
 from util.milestones_helpers import get_prerequisite_courses_display
 from util.views import ensure_valid_course_key
@@ -576,3 +595,117 @@ def partner_space_login(request, partner):
 
     set_partner_space_in_session(request, partner)
     return redirect(reverse('signin_user'))
+
+@transaction.non_atomic_requests
+@login_required
+@cache_control(no_cache=True, no_store=True, must_revalidate=True)
+@ensure_valid_course_key
+@data_sharing_consent_required
+def progress(request, course_id, student_id=None):
+    """ Display the progress page. """
+    # from lms.urls import COURSE_PROGRESS_NAME
+
+    course_key = CourseKey.from_string(course_id)
+
+    # if course_home_mfe_progress_tab_is_active(course_key) and not request.user.is_staff:
+    #     microfrontend_url = get_learning_mfe_home_url(course_key=course_key, view_name=COURSE_PROGRESS_NAME)
+    #     raise Redirect(microfrontend_url)
+    with modulestore().bulk_operations(course_key):
+        return _progress(request, course_key, student_id)
+
+
+def _progress(request, course_key, student_id):
+    """
+    Unwrapped version of "progress".
+    User progress. We show the grade bar and every problem score.
+    Course staff are allowed to see the progress of students in their class.
+    """
+
+    if student_id is not None:
+        try:
+            student_id = int(student_id)
+        # Check for ValueError if 'student_id' cannot be converted to integer.
+        except ValueError:
+            raise Http404  # lint-amnesty, pylint: disable=raise-missing-from
+
+    course = get_course_with_access(request.user, 'load', course_key)
+    user_progress = get_course_progress_percentage(request, text_type(course_key))
+    staff_access = bool(has_access(request.user, 'staff', course))
+    can_masquerade = request.user.has_perm(MASQUERADE_AS_STUDENT, course)
+
+    masquerade = None
+    if student_id is None or student_id == request.user.id:
+        # This will be a no-op for non-staff users, returning request.user
+        masquerade, student = setup_masquerade(request, course_key, can_masquerade, reset_masquerade_data=True)
+    else:
+        try:
+            coach_access = has_ccx_coach_role(request.user, course_key)
+        except CCXLocatorValidationException:
+            coach_access = False
+
+        has_access_on_students_profiles = staff_access or coach_access
+        # Requesting access to a different student's profile
+        if not has_access_on_students_profiles:
+            raise Http404
+        try:
+            student = User.objects.get(id=student_id)
+        except User.DoesNotExist:
+            raise Http404  # lint-amnesty, pylint: disable=raise-missing-from
+
+    # NOTE: To make sure impersonation by instructor works, use
+    # student instead of request.user in the rest of the function.
+
+    # The pre-fetching of groups is done to make auth checks not require an
+    # additional DB lookup (this kills the Progress page in particular).
+    prefetch_related_objects([student], 'groups')
+    if request.user.id != student.id:
+        # refetch the course as the assumed student
+        course = get_course_with_access(student, 'load', course_key, check_if_enrolled=True)
+
+    # NOTE: To make sure impersonation by instructor works, use
+    # student instead of request.user in the rest of the function.
+
+    course_grade = CourseGradeFactory().read(student, course)
+    courseware_summary = list(course_grade.chapter_grades.values())
+
+    studio_url = get_studio_url(course, 'settings/grading')
+    # checking certificate generation configuration
+    enrollment_mode, _ = CourseEnrollment.enrollment_mode_for_user(student, course_key)
+
+    course_expiration_fragment = generate_course_expired_fragment(student, course)
+    total_completed_block_types, total_block_types, accumulated_percentages_for_each_block = get_progress_statistics_by_block_types(request, text_type(course_key))
+    course_block_tree = get_course_outline_block_tree(
+        request, text_type(course_key), request.user, allow_start_dates_in_future=True
+    )
+    context = {
+        'course': course,
+        'courseware_summary': courseware_summary,
+        'studio_url': studio_url,
+        'grade_summary': course_grade.summary,
+        'can_masquerade': can_masquerade,
+        'staff_access': staff_access,
+        'masquerade': masquerade,
+        'supports_preview_menu': True,
+        'student': student,
+        'credit_course_requirements': _credit_course_requirements(course_key, student),
+        'course_expiration_fragment': course_expiration_fragment,
+        'certificate_data': _get_cert_data(student, course, enrollment_mode, course_grade),
+        'user_progress': user_progress,
+        'total_completed_block_types': total_completed_block_types,
+        'total_block_types': total_block_types,
+        'accumulated_percentages_for_each_block': accumulated_percentages_for_each_block,
+        'course_block_tree': course_block_tree
+    }
+
+    context.update(
+        get_experiment_user_metadata_context(
+            course,
+            student,
+        )
+    )
+    with outer_atomic():
+        response = render_to_response('courseware/progress.html', context)
+
+    return response
+
+
