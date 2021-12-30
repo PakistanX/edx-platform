@@ -4,7 +4,7 @@ Urls for pakx lms apps
 from django.conf import settings
 from django.conf.urls import include, url
 
-from openedx.features.pakx.lms.overrides.views import course_about_category, courses
+from openedx.features.pakx.lms.overrides.views import course_about_category, courses, progress
 
 pakx_url_patterns = [
     # URL for overrides app
@@ -28,7 +28,13 @@ pakx_url_patterns = [
         course_about_category,
         name='about_course_with_category',
     ),
-
+    url(
+        r'^courses/{}/progress$'.format(
+            settings.COURSE_ID_PATTERN,
+        ),
+        progress,
+        name='progress',
+    ),
     # URL for pakx_admin_app
     url(r'^adminpanel/', include('openedx.features.pakx.lms.pakx_admin_app.urls')),
 ]

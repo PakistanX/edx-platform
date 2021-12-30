@@ -346,15 +346,7 @@ def create_dummy_request(site, user):
     return request
 
 
-def get_course_progress_percentage(request, course_key):
-    """
-    get course progress in percentage for a given course key
-    :param request: (HttpRequest) request object
-    :param course_key: (str) course key
-
-    :return: (str) course progress i.e 70
-    """
-
+def get_progress_information(request, course_key):
     course_key = CourseKey.from_string(course_key)
     course_block_structure = get_course_in_cache(course_key)
     serialized_course_block_structure, course_blocks_keys = _serialize_course_block_structure(
@@ -366,6 +358,7 @@ def get_course_progress_percentage(request, course_key):
     total_blocks = sum(total_block_types.values())
     completions = BlockCompletion.objects.filter(user=request.user, context_key=course_key,
                                                  block_key__in=course_blocks_keys)
+
     total_completed_block_types = completions.aggregate(
         video=Coalesce(
             Sum(Case(When(block_type='video', then=1), default=0, output_field=IntegerField())),
@@ -386,7 +379,41 @@ def get_course_progress_percentage(request, course_key):
     )
     total_completed_blocks = sum(list(filter(lambda value: value is not None, total_completed_block_types.values()))) \
         if total_completed_block_types and total_completed_block_types.values() else 0
+    block_info = {
+        'total_blocks': total_blocks,
+        'total_completed_blocks': total_completed_blocks,
+        'total_block_types': total_block_types,
+        'total_completed_block_types': total_completed_block_types
+    }
+    return block_info
 
+
+def get_progress_statistics_by_block_types(request, course_key):
+    block_info = get_progress_information(request, course_key)
+    total_block_types = block_info['total_block_types']
+    total_completed_block_types = block_info['total_completed_block_types']
+    accumulated_percentages_for_each_block = {
+        'problem': 0,
+        'video': 0,
+        'html': 0,
+        'other': 0
+    }
+    for block_type, count in total_completed_block_types.items():
+        accumulated_percentages_for_each_block[block_type] = format((total_completed_block_types[block_type] / total_block_types[block_type]) * 100, '.0f') if total_block_types[block_type] > 0 else total_block_types[block_type]
+    return total_completed_block_types, total_block_types, accumulated_percentages_for_each_block
+
+
+def get_course_progress_percentage(request, course_key):
+    """
+    get course progress in percentage for a given course key
+    :param request: (HttpRequest) request object
+    :param course_key: (str) course key
+
+    :return: (str) course progress i.e 70
+    """
+    block_info = get_progress_information(request, course_key)
+    total_blocks = block_info['total_blocks']
+    total_completed_blocks = block_info['total_completed_blocks']
     return format((total_completed_blocks / total_blocks) * 100, '.0f') if total_blocks > 0 else total_blocks
 
 
