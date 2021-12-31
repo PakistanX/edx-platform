@@ -12,8 +12,8 @@ from datetime import datetime
 from functools import reduce
 
 from pkg_resources import resource_string
-
 import six
+from django.test import RequestFactory
 from lxml import etree
 from opaque_keys.edx.keys import UsageKey
 from pytz import UTC
@@ -225,7 +225,13 @@ class SequenceModule(SequenceFields, ProctoringFields, XModule):
             return json.dumps({'success': True})
 
         if dispatch == 'get_completion':
+            from openedx.features.pakx.lms.overrides.utils import get_course_progress_percentage
+            from django.contrib.auth.models import User
+
             completion_service = self.runtime.service(self, 'completion')
+            user = User.objects.get(id=self.runtime.user_id)
+            request = RequestFactory().request()
+            request.user = user
 
             usage_key = data.get('usage_key', None)
             if not usage_key:
@@ -236,7 +242,8 @@ class SequenceModule(SequenceFields, ProctoringFields, XModule):
 
             complete = completion_service.vertical_is_complete(item)
             return json.dumps({
-                'complete': complete
+                'complete': complete,
+                'progress': get_course_progress_percentage(request, text_type(self.course_id))
             })
         elif dispatch == 'metadata':
             context = {'exclude_units': True}
