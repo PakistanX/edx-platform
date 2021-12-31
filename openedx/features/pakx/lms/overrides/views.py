@@ -41,9 +41,7 @@ from lms.djangoapps.courseware.views.views import (
     _credit_course_requirements,
     _get_cert_data
 )
-# from lms.djangoapps.course_home_api.toggles import (
-#     course_home_mfe_progress_tab_is_active
-# )
+
 from lms.djangoapps.experiments.utils import get_experiment_user_metadata_context
 from lms.djangoapps.grades.api import CourseGradeFactory
 from lms.djangoapps.instructor.enrollment import uses_shib
@@ -596,6 +594,7 @@ def partner_space_login(request, partner):
     set_partner_space_in_session(request, partner)
     return redirect(reverse('signin_user'))
 
+
 @transaction.non_atomic_requests
 @login_required
 @cache_control(no_cache=True, no_store=True, must_revalidate=True)
@@ -603,13 +602,9 @@ def partner_space_login(request, partner):
 @data_sharing_consent_required
 def progress(request, course_id, student_id=None):
     """ Display the progress page. """
-    # from lms.urls import COURSE_PROGRESS_NAME
 
     course_key = CourseKey.from_string(course_id)
 
-    # if course_home_mfe_progress_tab_is_active(course_key) and not request.user.is_staff:
-    #     microfrontend_url = get_learning_mfe_home_url(course_key=course_key, view_name=COURSE_PROGRESS_NAME)
-    #     raise Redirect(microfrontend_url)
     with modulestore().bulk_operations(course_key):
         return _progress(request, course_key, student_id)
 
