@@ -5,6 +5,7 @@ from logging import getLogger
 from re import compile as re_compile
 from re import findall
 
+from collections import OrderedDict
 from completion.models import BlockCompletion
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -394,15 +395,14 @@ def get_progress_statistics_by_block_types(request, course_key):
     block_info['user_progress'] = _calculate_progress_for_block(block_info)
     total_block_types = block_info['total_block_types']
     total_completed_block_types = block_info['total_completed_block_types']
-    accumulated_percentages_for_each_block = {
-        'problem': 0,
-        'video': 0,
-        'html': 0,
-        'other': 0
-    }
-    for block_type in total_completed_block_types.keys():
+    accumulated_percentages_for_each_block = OrderedDict()
+    accumulated_percentages_for_each_block['problem'] = accumulated_percentages_for_each_block['html'] = 0
+    accumulated_percentages_for_each_block['video'] = accumulated_percentages_for_each_block['other'] = 0
+
+    for block_type in accumulated_percentages_for_each_block.keys():
         accumulated_percentages_for_each_block[block_type] = _calculate_percentage(
             total_completed_block_types[block_type], total_block_types[block_type])
+
     return block_info, accumulated_percentages_for_each_block
 
 
