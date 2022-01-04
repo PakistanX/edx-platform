@@ -1,17 +1,17 @@
 """ Overridden views from core """
 from datetime import datetime
 
-from django.db import transaction
-from django.db.models import prefetch_related_objects
-
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import AnonymousUser
+from django.db import transaction
+from django.db.models import prefetch_related_objects
 from django.forms.models import model_to_dict
 from django.http import Http404
 from django.shortcuts import redirect
 from django.urls import reverse
+from django.contrib.auth.models import User
 from django.utils.translation import ugettext as _
 from django.views.decorators.cache import cache_control
 from django.views.decorators.csrf import ensure_csrf_cookie
@@ -24,7 +24,6 @@ from waffle import switch_is_active
 from course_modes.models import CourseMode, get_course_prices
 from edxmako.shortcuts import marketing_link, render_to_response
 from lms.djangoapps.commerce.utils import EcommerceService
-from lms.djangoapps.courseware.access import has_access
 from lms.djangoapps.courseware.access_utils import check_public_access
 from lms.djangoapps.courseware.courses import (
     can_self_enroll_in_course,
@@ -33,53 +32,56 @@ from lms.djangoapps.courseware.courses import (
     get_studio_url
 )
 from lms.djangoapps.courseware.masquerade import setup_masquerade
-from lms.djangoapps.courseware.permissions import VIEW_COURSE_HOME, VIEW_COURSEWARE, MASQUERADE_AS_STUDENT
+from lms.djangoapps.courseware.permissions import MASQUERADE_AS_STUDENT, VIEW_COURSE_HOME, VIEW_COURSEWARE
 from lms.djangoapps.courseware.views.index import render_accordion
 from lms.djangoapps.courseware.views.views import (
     _course_home_redirect_enabled,
-    registered_for_course,
     _credit_course_requirements,
-    _get_cert_data
+    _get_cert_data,
+    registered_for_course
 )
-
 from lms.djangoapps.experiments.utils import get_experiment_user_metadata_context
 from lms.djangoapps.grades.api import CourseGradeFactory
 from lms.djangoapps.instructor.enrollment import uses_shib
 from openedx.core.djangoapps.catalog.utils import get_programs_with_type
+from lms.djangoapps.courseware.access import has_access, has_ccx_coach_role
+from lms.djangoapps.ccx.custom_exception import CCXLocatorValidationException
 from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
-from openedx.features.course_duration_limits.access import generate_course_expired_fragment
-from openedx.features.enterprise_support.api import data_sharing_consent_required
 from openedx.core.djangoapps.enrollments.permissions import ENROLL_IN_COURSE
 from openedx.core.djangoapps.models.course_details import CourseDetails
 from openedx.core.djangoapps.site_configuration import helpers as configuration_helpers
 from openedx.core.djangoapps.theming import helpers as theming_helpers
+from openedx.features.course_duration_limits.access import generate_course_expired_fragment
 from openedx.features.course_experience import course_home_url_name
 from openedx.features.course_experience.utils import get_course_outline_block_tree
 from openedx.features.course_experience.waffle import ENABLE_COURSE_ABOUT_SIDEBAR_HTML
 from openedx.features.course_experience.waffle import waffle as course_experience_waffle
+from openedx.features.enterprise_support.api import data_sharing_consent_required
 from openedx.features.pakx.cms.custom_settings.models import CourseOverviewContent
-from openedx.features.pakx.common.utils import get_active_partner_model
+from openedx.features.pakx.common.utils import (
+    get_active_partner_model,
+    get_partner_space_meta,
+    set_partner_space_in_session
+)
 from openedx.features.pakx.lms.overrides.forms import AboutUsForm
-from openedx.features.pakx.common.utils import get_partner_space_meta
 from openedx.features.pakx.lms.overrides.tasks import send_contact_us_email
 from openedx.features.pakx.lms.overrides.utils import (
     add_course_progress_to_enrolled_courses,
+    get_active_campaign_data,
     get_course_card_data,
     get_course_first_unit_lms_url,
     get_course_progress_percentage,
-    get_progress_statistics_by_block_types,
     get_courses_for_user,
-    get_active_campaign_data,
     get_featured_course_set,
+    get_progress_statistics_by_block_types,
     get_rating_classes_for_course,
     get_resume_course_info,
     is_course_enroll_able,
     is_rtl_language
 )
-from openedx.features.pakx.common.utils import set_partner_space_in_session
 from student.models import CourseEnrollment
-from util.db import outer_atomic
 from util.cache import cache_if_anonymous
+from util.db import outer_atomic
 from util.milestones_helpers import get_prerequisite_courses_display
 from util.views import ensure_valid_course_key
 from xmodule.course_module import COURSE_VISIBILITY_PUBLIC, COURSE_VISIBILITY_PUBLIC_OUTLINE
@@ -620,11 +622,10 @@ def _progress(request, course_key, student_id):
         try:
             student_id = int(student_id)
         # Check for ValueError if 'student_id' cannot be converted to integer.
-        except ValueError:
-            raise Http404  # lint-amnesty, pylint: disable=raise-missing-from
+        except ValueError:  # pylint: disable=bad-option-value
+            raise Http404
 
     course = get_course_with_access(request.user, 'load', course_key)
-    user_progress = get_course_progress_percentage(request, text_type(course_key))
     staff_access = bool(has_access(request.user, 'staff', course))
     can_masquerade = request.user.has_perm(MASQUERADE_AS_STUDENT, course)
 
@@ -644,8 +645,8 @@ def _progress(request, course_key, student_id):
             raise Http404
         try:
             student = User.objects.get(id=student_id)
-        except User.DoesNotExist:
-            raise Http404  # lint-amnesty, pylint: disable=raise-missing-from
+        except User.DoesNotExist:  # pylint: disable=bad-option-value
+            raise Http404
 
     # NOTE: To make sure impersonation by instructor works, use
     # student instead of request.user in the rest of the function.
@@ -668,7 +669,8 @@ def _progress(request, course_key, student_id):
     enrollment_mode, _ = CourseEnrollment.enrollment_mode_for_user(student, course_key)
 
     course_expiration_fragment = generate_course_expired_fragment(student, course)
-    total_completed_block_types, total_block_types, accumulated_percentages_for_each_block = get_progress_statistics_by_block_types(request, text_type(course_key))
+    block_info, accumulated_percentages_for_each_block = get_progress_statistics_by_block_types(
+        request, text_type(course_key))
     course_block_tree = get_course_outline_block_tree(
         request, text_type(course_key), request.user, allow_start_dates_in_future=True
     )
@@ -685,9 +687,7 @@ def _progress(request, course_key, student_id):
         'credit_course_requirements': _credit_course_requirements(course_key, student),
         'course_expiration_fragment': course_expiration_fragment,
         'certificate_data': _get_cert_data(student, course, enrollment_mode, course_grade),
-        'user_progress': user_progress,
-        'total_completed_block_types': total_completed_block_types,
-        'total_block_types': total_block_types,
+        'block_info': block_info,
         'accumulated_percentages_for_each_block': accumulated_percentages_for_each_block,
         'course_block_tree': course_block_tree
     }
@@ -702,5 +702,3 @@ def _progress(request, course_key, student_id):
         response = render_to_response('courseware/progress.html', context)
 
     return response
-
-

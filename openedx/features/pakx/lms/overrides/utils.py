@@ -28,14 +28,14 @@ from openedx.core.djangoapps.site_configuration import helpers as configuration_
 from openedx.core.lib.request_utils import get_request_or_stub
 from openedx.features.course_experience.utils import get_course_outline_block_tree, get_resume_block
 from openedx.features.pakx.cms.custom_settings.models import CourseOverviewContent
-from pakx_feedback.feedback_app.models import UserFeedbackModel  # pylint: disable=import-error
+from pakx_feedback.feedback_app.models import UserFeedbackModel
 from student.models import CourseEnrollment
 from util.organizations_helpers import get_organization_by_short_name
 from xmodule import course_metadata_utils
 
 log = getLogger(__name__)
 
-CORE_BLOCK_TYPES = ['html', 'video', 'problem']
+CORE_BLOCK_TYPES = ['html', 'video', 'problem', 'pakx_video', 'edly_carousel']
 BLOCK_TYPES_TO_FILTER = [
     'course', 'chapter', 'sequential', 'vertical', 'discussion', 'openassessment', 'pb-mcq', 'pb-answer', 'pb-choice',
     'pb-message'
@@ -265,13 +265,16 @@ def _accumulate_total_block_counts(total_block_type_counts):
         'html': 0,
         'other': 0
     }
+    mapped_type = {  # pakx_video should be treated as Video & carousel as problem type
+        'pakx_video': 'video',
+        'edly_carousel': 'problem',
+    }
     if total_block_type_counts:
         for block_type, count in total_block_type_counts.items():
             if block_type in CORE_BLOCK_TYPES:
-                accumulated_data[block_type] = count
+                accumulated_data[mapped_type.get(block_type, block_type)] = count
             else:
                 accumulated_data['other'] += count
-
     return accumulated_data
 
 
@@ -358,27 +361,25 @@ def get_progress_information(request, course_key):
     total_blocks = sum(total_block_types.values())
     completions = BlockCompletion.objects.filter(user=request.user, context_key=course_key,
                                                  block_key__in=course_blocks_keys)
-
     total_completed_block_types = completions.aggregate(
         video=Coalesce(
-            Sum(Case(When(block_type='video', then=1), default=0, output_field=IntegerField())),
-            0
+            Sum(Case(When(block_type__in=['video', 'pakx_video'], then=1), default=0,
+                     output_field=IntegerField())), 0
         ),
         problem=Coalesce(
-            Sum(Case(When(block_type='problem', then=1), default=0, output_field=IntegerField())),
-            0
+            Sum(Case(When(block_type__in=['problem', 'edly_carousel'], then=1), default=0,
+                     output_field=IntegerField())), 0
         ),
         html=Coalesce(
-            Sum(Case(When(block_type='html', then=1), default=0, output_field=IntegerField())),
-            0
+            Sum(Case(When(block_type='html', then=1), default=0, output_field=IntegerField())), 0
         ),
         other=Coalesce(
-            Sum(Case(When(block_type__in=CORE_BLOCK_TYPES, then=0), default=1, output_field=IntegerField())),
-            0
+            Sum(Case(When(block_type__in=CORE_BLOCK_TYPES, then=0), default=1, output_field=IntegerField())), 0
         ),
     )
     total_completed_blocks = sum(list(filter(lambda value: value is not None, total_completed_block_types.values()))) \
         if total_completed_block_types and total_completed_block_types.values() else 0
+
     block_info = {
         'total_blocks': total_blocks,
         'total_completed_blocks': total_completed_blocks,
@@ -390,6 +391,7 @@ def get_progress_information(request, course_key):
 
 def get_progress_statistics_by_block_types(request, course_key):
     block_info = get_progress_information(request, course_key)
+    block_info['user_progress'] = _calculate_progress_for_block(block_info)
     total_block_types = block_info['total_block_types']
     total_completed_block_types = block_info['total_completed_block_types']
     accumulated_percentages_for_each_block = {
@@ -398,9 +400,20 @@ def get_progress_statistics_by_block_types(request, course_key):
         'html': 0,
         'other': 0
     }
-    for block_type, count in total_completed_block_types.items():
-        accumulated_percentages_for_each_block[block_type] = format((total_completed_block_types[block_type] / total_block_types[block_type]) * 100, '.0f') if total_block_types[block_type] > 0 else total_block_types[block_type]
-    return total_completed_block_types, total_block_types, accumulated_percentages_for_each_block
+    for block_type in total_completed_block_types.keys():
+        accumulated_percentages_for_each_block[block_type] = _calculate_percentage(
+            total_completed_block_types[block_type], total_block_types[block_type])
+    return block_info, accumulated_percentages_for_each_block
+
+
+def _calculate_percentage(completed_count, total_count):
+    return format((completed_count / total_count) * 100, '.0f') if total_count > 0 else total_count
+
+
+def _calculate_progress_for_block(block_info):
+    total_blocks = block_info['total_blocks']
+    total_completed_blocks = block_info['total_completed_blocks']
+    return _calculate_percentage(total_completed_blocks, total_blocks)
 
 
 def get_course_progress_percentage(request, course_key):
@@ -411,10 +424,8 @@ def get_course_progress_percentage(request, course_key):
 
     :return: (str) course progress i.e 70
     """
-    block_info = get_progress_information(request, course_key)
-    total_blocks = block_info['total_blocks']
-    total_completed_blocks = block_info['total_completed_blocks']
-    return format((total_completed_blocks / total_blocks) * 100, '.0f') if total_blocks > 0 else total_blocks
+
+    return _calculate_progress_for_block(get_progress_information(request, course_key))
 
 
 def set_date_and_get_course_progress_stats(user_id, course_key):
