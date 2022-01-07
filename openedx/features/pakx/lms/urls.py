@@ -7,17 +7,9 @@ from django.conf.urls import include, url
 from openedx.features.pakx.lms.overrides.views import course_about_category, courses, progress
 
 pakx_url_patterns = [
-    # URL for overrides app
     url(r'', include('openedx.features.pakx.lms.overrides.urls')),
-
     url(r'^dashboard/?$', courses, name='dashboard'),
-
-    url(r'^courses/?/{section}$'.format(
-            section=r'(?P<section>[a-z-]+)'
-        ),
-        courses,
-        name='courses',
-    ),
+    url(r'^courses/?/{section}$'.format(section=r'(?P<section>[a-z-]+)'), courses, name='courses'),
     url(r'^courses/?$', courses, name='courses'),
 
     url(
@@ -35,6 +27,12 @@ pakx_url_patterns = [
         progress,
         name='progress',
     ),
-    # URL for pakx_admin_app
+    url(
+        r'^courses/{}/progress/(?P<student_id>[^/]*)/$'.format(
+            settings.COURSE_ID_PATTERN,
+        ),
+        progress,
+        name='student_progress',
+    ),
     url(r'^adminpanel/', include('openedx.features.pakx.lms.pakx_admin_app.urls')),
 ]
