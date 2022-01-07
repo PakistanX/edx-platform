@@ -273,9 +273,11 @@ def _accumulate_total_block_counts(total_block_type_counts):
     if total_block_type_counts:
         for block_type, count in total_block_type_counts.items():
             if block_type in CORE_BLOCK_TYPES:
-                accumulated_data[mapped_type.get(block_type, block_type)] = count
+                mapped_key = mapped_type.get(block_type, block_type)
+                accumulated_data[mapped_key] = accumulated_data.get(mapped_key, 0) + count
             else:
                 accumulated_data['other'] += count
+
     return accumulated_data
 
 
@@ -387,11 +389,13 @@ def get_progress_information(request, course_key):
         'total_block_types': total_block_types,
         'total_completed_block_types': total_completed_block_types
     }
+
     return block_info
 
 
 def get_progress_statistics_by_block_types(request, course_key):
     block_info = get_progress_information(request, course_key)
+
     block_info['user_progress'] = _calculate_progress_for_block(block_info)
     total_block_types = block_info['total_block_types']
     total_completed_block_types = block_info['total_completed_block_types']
@@ -411,6 +415,7 @@ def _calculate_percentage(completed_count, total_count):
 def _calculate_progress_for_block(block_info):
     total_blocks = block_info['total_blocks']
     total_completed_blocks = block_info['total_completed_blocks']
+
     return _calculate_percentage(total_completed_blocks, total_blocks)
 
 
