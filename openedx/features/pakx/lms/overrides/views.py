@@ -4,14 +4,13 @@ from datetime import datetime
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.models import AnonymousUser
+from django.contrib.auth.models import AnonymousUser, User
 from django.db import transaction
 from django.db.models import prefetch_related_objects
 from django.forms.models import model_to_dict
 from django.http import Http404
 from django.shortcuts import redirect
 from django.urls import reverse
-from django.contrib.auth.models import User
 from django.utils.translation import ugettext as _
 from django.views.decorators.cache import cache_control
 from django.views.decorators.csrf import ensure_csrf_cookie
@@ -23,7 +22,9 @@ from waffle import switch_is_active
 
 from course_modes.models import CourseMode, get_course_prices
 from edxmako.shortcuts import marketing_link, render_to_response
+from lms.djangoapps.ccx.custom_exception import CCXLocatorValidationException
 from lms.djangoapps.commerce.utils import EcommerceService
+from lms.djangoapps.courseware.access import has_access, has_ccx_coach_role
 from lms.djangoapps.courseware.access_utils import check_public_access
 from lms.djangoapps.courseware.courses import (
     can_self_enroll_in_course,
@@ -44,8 +45,6 @@ from lms.djangoapps.experiments.utils import get_experiment_user_metadata_contex
 from lms.djangoapps.grades.api import CourseGradeFactory
 from lms.djangoapps.instructor.enrollment import uses_shib
 from openedx.core.djangoapps.catalog.utils import get_programs_with_type
-from lms.djangoapps.courseware.access import has_access, has_ccx_coach_role
-from lms.djangoapps.ccx.custom_exception import CCXLocatorValidationException
 from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
 from openedx.core.djangoapps.enrollments.permissions import ENROLL_IN_COURSE
 from openedx.core.djangoapps.models.course_details import CourseDetails

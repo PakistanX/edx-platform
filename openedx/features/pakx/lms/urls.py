@@ -7,7 +7,6 @@ from django.conf.urls import include, url
 from openedx.features.pakx.lms.overrides.views import course_about_category, courses, progress
 
 pakx_url_patterns = [
-    # URL for overrides app
     url(r'', include('openedx.features.pakx.lms.overrides.urls')),
     url(r'^dashboard/?$', courses, name='dashboard'),
     url(r'^courses/?/{section}$'.format(section=r'(?P<section>[a-z-]+)'), courses, name='courses'),
