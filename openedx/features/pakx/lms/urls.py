@@ -9,15 +9,8 @@ from openedx.features.pakx.lms.overrides.views import course_about_category, cou
 pakx_url_patterns = [
     # URL for overrides app
     url(r'', include('openedx.features.pakx.lms.overrides.urls')),
-
     url(r'^dashboard/?$', courses, name='dashboard'),
-
-    url(r'^courses/?/{section}$'.format(
-            section=r'(?P<section>[a-z-]+)'
-        ),
-        courses,
-        name='courses',
-    ),
+    url(r'^courses/?/{section}$'.format(section=r'(?P<section>[a-z-]+)'), courses, name='courses'),
     url(r'^courses/?$', courses, name='courses'),
 
     url(
@@ -42,6 +35,5 @@ pakx_url_patterns = [
         progress,
         name='student_progress',
     ),
-    # URL for pakx_admin_app
     url(r'^adminpanel/', include('openedx.features.pakx.lms.pakx_admin_app.urls')),
 ]
