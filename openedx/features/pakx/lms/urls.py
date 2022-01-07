@@ -35,6 +35,13 @@ pakx_url_patterns = [
         progress,
         name='progress',
     ),
+    url(
+        r'^courses/{}/progress/(?P<student_id>[^/]*)/$'.format(
+            settings.COURSE_ID_PATTERN,
+        ),
+        progress,
+        name='student_progress',
+    ),
     # URL for pakx_admin_app
     url(r'^adminpanel/', include('openedx.features.pakx.lms.pakx_admin_app.urls')),
 ]

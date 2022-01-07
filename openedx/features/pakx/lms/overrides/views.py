@@ -597,6 +597,21 @@ def partner_space_login(request, partner):
     return redirect(reverse('signin_user'))
 
 
+def get_data_for_progress(request, course_key, student):
+    """Get data to display on progress page."""
+
+    if student and request.user.id != student.id:
+        request.user = student
+
+    block_info, accumulated_percentages_for_each_block = get_progress_statistics_by_block_types(
+        request, text_type(course_key))
+    course_block_tree = get_course_outline_block_tree(
+        request, text_type(course_key), request.user, allow_start_dates_in_future=True
+    )
+
+    return block_info, accumulated_percentages_for_each_block, course_block_tree
+
+
 @transaction.non_atomic_requests
 @login_required
 @cache_control(no_cache=True, no_store=True, must_revalidate=True)
@@ -621,7 +636,6 @@ def _progress(request, course_key, student_id):
     if student_id is not None:
         try:
             student_id = int(student_id)
-        # Check for ValueError if 'student_id' cannot be converted to integer.
         except ValueError:  # pylint: disable=bad-option-value
             raise Http404
 
@@ -640,7 +654,6 @@ def _progress(request, course_key, student_id):
             coach_access = False
 
         has_access_on_students_profiles = staff_access or coach_access
-        # Requesting access to a different student's profile
         if not has_access_on_students_profiles:
             raise Http404
         try:
@@ -648,32 +661,22 @@ def _progress(request, course_key, student_id):
         except User.DoesNotExist:  # pylint: disable=bad-option-value
             raise Http404
 
-    # NOTE: To make sure impersonation by instructor works, use
-    # student instead of request.user in the rest of the function.
-
-    # The pre-fetching of groups is done to make auth checks not require an
-    # additional DB lookup (this kills the Progress page in particular).
     prefetch_related_objects([student], 'groups')
     if request.user.id != student.id:
         # refetch the course as the assumed student
         course = get_course_with_access(student, 'load', course_key, check_if_enrolled=True)
 
-    # NOTE: To make sure impersonation by instructor works, use
-    # student instead of request.user in the rest of the function.
-
     course_grade = CourseGradeFactory().read(student, course)
     courseware_summary = list(course_grade.chapter_grades.values())
-
     studio_url = get_studio_url(course, 'settings/grading')
     # checking certificate generation configuration
     enrollment_mode, _ = CourseEnrollment.enrollment_mode_for_user(student, course_key)
-
     course_expiration_fragment = generate_course_expired_fragment(student, course)
-    block_info, accumulated_percentages_for_each_block = get_progress_statistics_by_block_types(
-        request, text_type(course_key))
-    course_block_tree = get_course_outline_block_tree(
-        request, text_type(course_key), request.user, allow_start_dates_in_future=True
+
+    block_info, accumulated_percentages_for_each_block, course_block_tree = get_data_for_progress(
+        request, course_key, student
     )
+
     context = {
         'course': course,
         'courseware_summary': courseware_summary,
