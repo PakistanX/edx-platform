@@ -23,7 +23,7 @@ log = logging.getLogger(__name__)
 
 # HACK: This shouldn't be hard-coded to two types
 # OBSOLETE: This obsoletes 'type'
-CLASS_PRIORITY = ['video', 'problem']
+CLASS_PRIORITY = ['html', 'video', 'problem']
 
 
 @XBlock.needs('user', 'bookmarks')
@@ -153,6 +153,7 @@ class VerticalBlock(SequenceFields, XModuleFields, StudioEditableBlock, XmlParse
         Returns the highest priority icon class.
         """
         child_classes = set(child.get_icon_class() for child in self.get_children())
+
         new_class = 'other'
         for higher_class in CLASS_PRIORITY:
             if higher_class in child_classes:
