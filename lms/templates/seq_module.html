@@ -41,9 +41,12 @@
           </button>
         </li>
         % else:
+          <%
+            icon_map = {'html': 'other'}
+          %>
         % for idx, item in enumerate(items):
         <li role="presentation">
-          <button class="seq_${item['type']} inactive nav-item tab"
+          <button class="seq_${icon_map.get(item['type'], item['type'])} inactive nav-item tab"
             role="tab"
             tabindex="-1"
             aria-selected="false"
@@ -59,7 +62,7 @@
             data-href="${item['href']}"
             % endif
             id="tab_${idx}">
-            <span class="icon fa seq_${item['type']}" aria-hidden="true"></span>
+            <span class="icon fa seq_${icon_map.get(item['type'], item['type'])}" aria-hidden="true"></span>
             % if 'complete' in item:
               <span
                 class="fa fa-check-circle check-circle ${"is-hidden" if not item['complete'] else ""}"

@@ -52,6 +52,7 @@ class HtmlBlock(
     """
     The HTML XBlock.
     """
+    icon_class = 'html'
     display_name = String(
         display_name=_("Display Name"),
         help=_("The display name for this component."),
