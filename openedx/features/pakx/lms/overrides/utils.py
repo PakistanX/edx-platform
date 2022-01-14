@@ -131,7 +131,7 @@ def get_rating_course(course_id):
         rating=Avg('experience'), total_responses=Count('experience')
     )
     if course_rating.get("rating"):
-        course_rating.update({"rating": round(course_rating.get("rating") * 2.0) / 2.0})
+        course_rating.update({"rating": round(float(course_rating.get("rating")) * 2.0) / 2.0})
     return course_rating
 
 
