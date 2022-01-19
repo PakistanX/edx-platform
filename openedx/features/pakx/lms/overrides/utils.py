@@ -37,6 +37,7 @@ from xmodule import course_metadata_utils
 log = getLogger(__name__)
 
 CORE_BLOCK_TYPES = ['html', 'video', 'problem', 'pakx_video', 'edly_carousel', 'edly_assessment', 'pakx_grid_dropdown']
+PROBLEM_BLOCK_TYPES = ['edly_carousel', 'edly_assessment', 'pakx_grid_dropdown']
 BLOCK_TYPES_TO_FILTER = [
     'course', 'chapter', 'sequential', 'vertical', 'discussion', 'openassessment', 'pb-mcq', 'pb-answer', 'pb-choice',
     'pb-message'
@@ -372,7 +373,7 @@ def get_progress_information(request, course_key):
                      output_field=IntegerField())), 0
         ),
         problem=Coalesce(
-            Sum(Case(When(block_type__in=['problem', 'edly_carousel', 'edly_assessment', 'pakx_grid_dropdown'], then=1), default=0,
+            Sum(Case(When(block_type__in=['problem', PROBLEM_BLOCK_TYPES], then=1), default=0,
                      output_field=IntegerField())), 0
         ),
         html=Coalesce(
