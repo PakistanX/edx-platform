@@ -36,8 +36,9 @@ from xmodule import course_metadata_utils
 
 log = getLogger(__name__)
 
+VIDEO_BLOCK_TYPES = ['video', 'pakx_video']
 CORE_BLOCK_TYPES = ['html', 'video', 'problem', 'pakx_video', 'edly_carousel', 'edly_assessment', 'pakx_grid_dropdown']
-PROBLEM_BLOCK_TYPES = ['edly_carousel', 'edly_assessment', 'pakx_grid_dropdown']
+PROBLEM_BLOCK_TYPES = ['problem', 'edly_carousel', 'edly_assessment', 'pakx_grid_dropdown']
 BLOCK_TYPES_TO_FILTER = [
     'course', 'chapter', 'sequential', 'vertical', 'discussion', 'openassessment', 'pb-mcq', 'pb-answer', 'pb-choice',
     'pb-message'
@@ -369,12 +370,10 @@ def get_progress_information(request, course_key):
                                                  block_key__in=course_blocks_keys)
     total_completed_block_types = completions.aggregate(
         video=Coalesce(
-            Sum(Case(When(block_type__in=['video', 'pakx_video'], then=1), default=0,
-                     output_field=IntegerField())), 0
+            Sum(Case(When(block_type__in=VIDEO_BLOCK_TYPES, then=1), default=0, output_field=IntegerField())), 0
         ),
         problem=Coalesce(
-            Sum(Case(When(block_type__in=['problem', PROBLEM_BLOCK_TYPES], then=1), default=0,
-                     output_field=IntegerField())), 0
+            Sum(Case(When(block_type__in=PROBLEM_BLOCK_TYPES, then=1), default=0, output_field=IntegerField())), 0
         ),
         html=Coalesce(
             Sum(Case(When(block_type='html', then=1), default=0, output_field=IntegerField())), 0
