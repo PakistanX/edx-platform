@@ -78,6 +78,7 @@ class CourseCustomSettingsView(LoginRequiredMixin, View):
 
         course_set = request.POST['course-set']
         publisher_name = request.POST['publisher_name']
+        publisher_description = request.POST['publisher_description']
         course_overview = request.POST['course-overview']
         card_description = request.POST['card-description']
         is_public = request.POST.get('is_public', 'off') == 'on'
@@ -97,6 +98,7 @@ class CourseCustomSettingsView(LoginRequiredMixin, View):
                     'course_set_id': course_set,
                     'body_html': course_overview,
                     'publisher_name': publisher_name,
+                    'publisher_description': publisher_description,
                     'card_description': card_description,
                     'course_experience': course_experience,
                     'publisher_logo_url': publisher_logo_url,
