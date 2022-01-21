@@ -96,7 +96,7 @@ def get_login_session_form(request):
         "email",
         field_type="email",
         label=email_label,
-        placeholder="user@website.com",
+        placeholder="user@email.com",
         restrictions={
             "min_length": accounts.EMAIL_MIN_LENGTH,
             "max_length": accounts.EMAIL_MAX_LENGTH,
@@ -273,7 +273,7 @@ def _third_party_auth_context(request, redirect_to, tpa_hint=None):
         "secondaryProviders": [],
         "finishAuthUrl": None,
         "errorMessage": None,
-        "registerFormSubmitButtonText": _("Create Account"),
+        "registerFormSubmitButtonText": _("Join Now"),
         "syncLearnerProfileData": False,
         "pipeline_user_details": {}
     }

@@ -452,7 +452,7 @@ class RegistrationFormFactory(object):
             "email",
             field_type="email",
             label=email_label,
-            placeholder="user@website.com",
+            placeholder="user@email.com",
             instructions=email_instructions,
             restrictions={
                 "min_length": accounts.EMAIL_MIN_LENGTH,
