@@ -21,7 +21,7 @@ class AboutUsForm(ModelForm):
             },
         }
         help_texts = {
-            'email': _('user@website.com'),
+            'email': _('user@email.com'),
             'message': _(''),
             'full_name': _('John Doe'),
             'organization': _('ilmX'),
