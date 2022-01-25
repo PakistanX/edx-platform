@@ -57,6 +57,10 @@ def _get_org_log(organization):
     return org_logo.url if org_logo else org_logo
 
 
+def is_blank_str(value):
+    return value is None or not value or value.isspace()
+
+
 def get_course_card_data(course, org_prefetched=False):
     """
     Get course data required for home page course card
@@ -70,14 +74,14 @@ def get_course_card_data(course, org_prefetched=False):
 
     if not org_prefetched:
         course_org = get_organization_by_short_name(course.org)
-        org_description = course_org.get('description')
+        org_description = course_org.get('description') if is_blank_str(course_custom_setting.publisher_description) else course_custom_setting.publisher_description
         org_logo_url = course_custom_setting.publisher_card_logo_url or _get_org_log(course_org)
-        org_name = course_custom_setting.publisher_name or course_org.get('name')
+        org_name = course_org.get('name') if is_blank_str(course_custom_setting.publisher_name) else course_custom_setting.publisher_name
     else:
-        org_name = course_custom_setting.publisher_name or course_custom_setting.course_set.publisher_org.name
-        org_logo_url = course_custom_setting.publisher_card_logo_url or course_custom_setting.\
+        org_name = course_org.get('name') if is_blank_str(course_custom_setting.publisher_name) else course_custom_setting.publisher_name
+        org_logo_url = course_custom_setting.publisher_card_logo_url or course_custom_setting. \
             course_set.publisher_org.logo
-        org_description = course_custom_setting.course_set.publisher_org.description
+        org_description = course_org.get('description') if is_blank_str(course_custom_setting.publisher_description) else course_custom_setting.publisher_description
 
     return {
         'key': course.id,
