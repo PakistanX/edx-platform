@@ -537,6 +537,7 @@ ENTERPRISE_CATALOG_INTERNAL_ROOT_URL = ENV_TOKENS.get(
 )
 
 ########################## CUSTOM ILMX CHANGES #######################
+ENABLE_PARTNER_SPACES = ENV_TOKENS.get('ENABLE_PARTNER_SPACES', False)
 DEFAULT_PUBLIC_PARTNER_SPACE = ENV_TOKENS.get('DEFAULT_PUBLIC_PARTNER_SPACE', 'ilmx')
 
 ############### Settings for Retirement #####################

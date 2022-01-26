@@ -596,6 +596,18 @@ def partner_space_login(request, partner):
     return redirect(reverse('signin_user'))
 
 
+def switch_space(request, space):
+    """
+    Switch to given space
+    """
+
+    set_partner_space_in_session(request, space)
+    host_to_redirect = request.META.get(
+        'HTTP_REFERER', None) or "{}://{}".format(request.scheme, request.META.get('HTTP_HOST', "ilmx.org"))
+
+    return redirect(host_to_redirect)
+
+
 def get_data_for_progress(request, course_key, student):
     """Get data to display on progress page."""
 
