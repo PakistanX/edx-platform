@@ -35,7 +35,7 @@ def get_active_partner_space(request):
 
 def is_default_space_activated(request):
 
-    return get_active_partner_space(request) == settings.DEFAULT_PUBLIC_PARTNER_SPACE
+    return get_space_name_for_footer(request).lower() == settings.DEFAULT_PUBLIC_PARTNER_SPACE
 
 
 def get_space_name_for_footer(request):
