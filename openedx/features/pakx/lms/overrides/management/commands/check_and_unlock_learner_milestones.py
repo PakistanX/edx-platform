@@ -1,7 +1,9 @@
 """Management command to check and unlock subsections based on days"""
 
 from logging import getLogger
+
 from django.core.management.base import BaseCommand
+
 from openedx.features.pakx.lms.overrides.tasks import unlock_subsections
 
 log = getLogger(__name__)

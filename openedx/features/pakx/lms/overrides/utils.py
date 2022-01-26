@@ -1,6 +1,6 @@
 """ Overrides app util functions """
 
-from datetime import datetime, timedelta
+from datetime import datetime
 from logging import getLogger
 from re import compile as re_compile
 from re import findall
@@ -13,7 +13,6 @@ from django.core.validators import MinLengthValidator, RegexValidator
 from django.db.models import Avg, Case, Count, IntegerField, Sum, When
 from django.db.models.functions import Coalesce
 from django.urls import reverse
-from django.utils import timezone
 from django.utils.translation import ugettext as _
 from opaque_keys.edx.keys import CourseKey
 from pytz import utc
