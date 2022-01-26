@@ -428,7 +428,7 @@ class SequenceModule(SequenceFields, ProctoringFields, XModule):
         if not prereq_met:
             # Check if subsection is pre-req of itself
             if self.display_name == prereq_meta_info['display_name']:
-                from openedx.features.pakx.lms.overrides.utils import set_date_and_get_course_progress_stats
+                from openedx.features.pakx.lms.overrides.post_assessment import set_date_and_get_course_progress_stats
                 course_stats = set_date_and_get_course_progress_stats(self.runtime.user_id, self.course_id)
 
                 date_to_unlock = 'date not yet finalized'
