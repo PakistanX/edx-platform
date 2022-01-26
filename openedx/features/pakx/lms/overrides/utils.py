@@ -1,6 +1,6 @@
 """ Overrides app util functions """
 
-from datetime import datetime, timedelta
+from datetime import datetime
 from logging import getLogger
 from re import compile as re_compile
 from re import findall
@@ -13,7 +13,6 @@ from django.core.validators import MinLengthValidator, RegexValidator
 from django.db.models import Avg, Case, Count, IntegerField, Sum, When
 from django.db.models.functions import Coalesce
 from django.urls import reverse
-from django.utils import timezone
 from django.utils.translation import ugettext as _
 from opaque_keys.edx.keys import CourseKey
 from pytz import utc
@@ -435,35 +434,6 @@ def get_course_progress_percentage(request, course_key):
     """
 
     return _calculate_progress_for_block(get_progress_information(request, course_key))
-
-
-def set_date_and_get_course_progress_stats(user_id, course_key):
-    """Set date to unlock if not already set and course progress stats."""
-
-    from .models import CourseProgressStats
-
-    try:
-        course_overview_content = CourseOverviewContent.objects.get(course_id=course_key)
-        date_to_unlock = timezone.now() + timedelta(days=course_overview_content.days_to_unlock)
-        course_stats = CourseProgressStats.objects.filter(
-            enrollment__user_id=user_id,
-            enrollment__course_id=course_key
-        ).first()
-
-        if not course_stats.unlock_subsection_on:
-            course_stats.unlock_subsection_on = date_to_unlock
-            course_stats.save(update_fields=['unlock_subsection_on'])
-
-        return course_stats
-
-    except (CourseOverviewContent.DoesNotExist, CourseProgressStats.DoesNotExist):
-        log.info(
-            'Course Progress stats or Course Overview does not exist for user:{} and course:{}'.format(
-                user_id,
-                course_key
-            )
-        )
-        return None
 
 
 def get_rtl_class(course_language):
