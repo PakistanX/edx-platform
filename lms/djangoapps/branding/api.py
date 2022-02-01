@@ -615,4 +615,4 @@ def get_home_url():
     """
     Return Dashboard page url
     """
-    return reverse('root')
+    return reverse('dashboard')
