@@ -463,6 +463,7 @@ class CoursewareIndex(View):
             'disable_accordion': hide_course_navigation,
             'disable_footer': True,
             'show_search': show_search,
+            'course_experience_mode': course_experience_mode
         }
 
         courseware_context.update(get_partner_space_meta(request))
