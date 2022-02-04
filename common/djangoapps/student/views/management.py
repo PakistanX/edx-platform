@@ -514,7 +514,7 @@ def activate_account(request, key):
             messages.info(
                 request,
                 HTML(_('{html_start}This account has already been activated.{html_end}')).format(
-                    html_start=HTML('<span class="message-title activation-msgs">'),
+                    html_start=HTML('<span class="message-title">'),
                     html_end=HTML('</span>'),
                 ),
                 extra_tags='account-activation aa-icon',
