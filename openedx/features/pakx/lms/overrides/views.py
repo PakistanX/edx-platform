@@ -173,10 +173,8 @@ def courses(request, section='in-progress'):
 
     #  we do not expect this case to be reached in cases where
     #  marketing is enabled or the courses are not browsable
-    courses_list = []
     course_discovery_meanings = getattr(settings, 'COURSE_DISCOVERY_MEANINGS', {})
-    if not settings.FEATURES.get('ENABLE_COURSE_DISCOVERY'):
-        courses_list = get_courses_for_user(request.user)
+    courses_list = get_courses_for_user(request.user)
 
     # split courses into categories i.e upcoming & in-progress
     in_progress_courses = []
