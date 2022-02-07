@@ -463,7 +463,7 @@ class CoursewareIndex(View):
             'disable_accordion': hide_course_navigation,
             'disable_footer': True,
             'show_search': show_search,
-            'course_experience_mode': course_experience_mode
+            'course_experience_icon': 'icon-Video-1' if course_experience_mode == 'Video' else 'fa icon-Book'
         }
 
         courseware_context.update(get_partner_space_meta(request))
