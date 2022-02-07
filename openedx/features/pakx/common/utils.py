@@ -109,3 +109,15 @@ def get_active_partner_model(request):
 
     active_space = get_active_partner_space(request)
     return PartnerSpace.get_partner_space(active_space)
+
+
+def get_course_experience_icon(course_experience_mode):
+    """Get course experience icon according to course experience mode."""
+
+    default_book_icon = 'icon-Book'
+    course_experience_icons = {
+        'Normal': default_book_icon,
+        'Video': 'icon-Video-1'
+    }
+
+    return course_experience_icons.get(course_experience_mode, default_book_icon)
