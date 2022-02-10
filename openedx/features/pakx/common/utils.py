@@ -121,3 +121,11 @@ def get_course_experience_icon(course_experience_mode):
     }
 
     return course_experience_icons.get(course_experience_mode, default_book_icon)
+
+
+def truncate_string_up_to(value, max_limit):
+    """
+    truncate string up to given max limit
+    """
+
+    return None if value is None else value[:max_limit]

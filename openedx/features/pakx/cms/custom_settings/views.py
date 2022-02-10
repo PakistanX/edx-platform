@@ -20,6 +20,7 @@ from cms.djangoapps.contentstore.views.course import get_course_and_check_access
 from lms.djangoapps.course_api.blocks.api import get_blocks
 from openedx.core.djangoapps.site_configuration import helpers as configuration_helpers
 from openedx.core.lib.gating.api import delete_prerequisites
+from openedx.features.pakx.common.utils import truncate_string_up_to
 from openedx.features.pakx.lms.overrides.utils import get_or_create_course_overview_content
 from util.views import ensure_valid_course_key
 from xmodule.modulestore.django import modulestore
@@ -77,14 +78,14 @@ class CourseCustomSettingsView(LoginRequiredMixin, View):
         course_key = CourseKey.from_string(course_key_string)
 
         course_set = request.POST['course-set']
-        publisher_name = request.POST['publisher_name']
+        publisher_name = truncate_string_up_to(request.POST['publisher_name'], 128)
         publisher_description = request.POST['publisher_description']
         course_overview = request.POST['course-overview']
-        card_description = request.POST['card-description']
+        card_description = truncate_string_up_to(request.POST['card-description'], 256)
         is_public = request.POST.get('is_public', 'off') == 'on'
         course_experience = request.POST.get('course_experience', 0)
-        publisher_logo_url = request.POST['publisher-logo-url']
-        publisher_card_logo_url = request.POST['publisher_card_logo_url']
+        publisher_logo_url = truncate_string_up_to(request.POST['publisher-logo-url'], 256)
+        publisher_card_logo_url = truncate_string_up_to(request.POST['publisher_card_logo_url'], 256)
         days_to_unlock = int(request.POST.get('days-duration') or 0)
         subsection_to_lock = request.POST.get('subsection')
 
