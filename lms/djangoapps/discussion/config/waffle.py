@@ -18,7 +18,7 @@ def waffle_flags():
         USE_BOOTSTRAP: WaffleFlag(
             namespace,
             USE_BOOTSTRAP,
-            flag_undefined_default=True
+            flag_undefined_default=False
         ),
         # By default, enable forum notifications. Can be disabled platform wide.
         ENABLE_FORUM_DAILY_DIGEST: WaffleFlag(
