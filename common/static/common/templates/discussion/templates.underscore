@@ -304,7 +304,7 @@
       <%
       var icon_class, sr_text;
       if (thread_type === "discussion") {
-          icon_class = "fa-comments";
+          icon_class = "icon-Discussion";
           // Translators: This is a label for a Discussion forum thread
           sr_text = gettext("discussion");
       } else if (endorsed) {
@@ -312,13 +312,13 @@
           // Translators: This is a label for a Question forum thread with a marked answer
           sr_text = gettext("answered question");
       } else {
-          icon_class = "fa-question";
+          icon_class = "icon-Interrogation";
           // Translators: This is a label for a Question forum thread without a marked answer
           sr_text = gettext("unanswered question");
       }
       %>
       <span class="sr"><%= HtmlUtils.HTML(sr_text) %></span>
-      <span class="icon fa <%- icon_class %>" aria-hidden="true"></span>
+      <span class=" <%- icon_class %>" aria-hidden="true"></span>
     </div><div class="forum-nav-thread-wrapper-1">
       <span class="forum-nav-thread-title"><%- title %></span>
       <% if (showThreadPreview){ %>
