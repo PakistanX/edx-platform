@@ -794,6 +794,22 @@
             <span class="icon fa fa-plus" aria-hidden="true"></span>
         </span>
     </button>
+    <span aria-hidden="true" class="display-downvote is-hidden" >
+      <span class="downvvote-count"></span>
+    </span>
+    <button class="btn-link action-button action-downvote" role="checkbox" aria-checked="false">
+        <% // Vote counts are populated by JS %>
+        <span class="sr"><%- gettext("Downvote for this post,") %>&nbsp;</span>
+        <span class="sr js-sr-downvote-count"></span>
+
+        <span class="action-label" aria-hidden="true">
+          <span class="downvote-count"></span>
+        </span>
+
+        <span class="action-icon" aria-hidden="true">
+            <span class="icon fa fa-plus" aria-hidden="true"></span>
+        </span>
+    </button>
 </li>
 </script>
 <script aria-hidden="true" type="text/template" id="forum-action-report">
