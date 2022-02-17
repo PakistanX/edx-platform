@@ -285,6 +285,59 @@
     </span>
   </div>
 </div>
+<div>
+    <span aria-hidden="true" class="display-vote is-hidden" >
+      <span class="vote-count"></span>
+    </span>
+    <button class="btn-link action-button action-vote" role="checkbox" aria-checked="false">
+        <% // Vote counts are populated by JS %>
+        <span class="sr"><%- gettext("Vote for this post,") %>&nbsp;</span>
+        <span class="sr js-sr-vote-count"></span>
+
+        <span class="action-label" aria-hidden="true">
+          <span class="vote-count"></span>
+        </span>
+
+        <span class="action-icon" aria-hidden="true">
+            <span class="icon fa fa-plus" aria-hidden="true"></span>
+        </span>
+    </button>
+    <span aria-hidden="true" class="display-downvote is-hidden" >
+      <span class="downvvote-count"></span>
+    </span>
+    <button class="btn-link action-button action-downvote" role="checkbox" aria-checked="false">
+        <% // Vote counts are populated by JS %>
+        <span class="sr"><%- gettext("Downvote for this post,") %>&nbsp;</span>
+        <span class="sr js-sr-downvote-count"></span>
+
+        <span class="action-label" aria-hidden="true">
+          <span class="downvote-count"></span>
+        </span>
+
+        <span class="action-icon" aria-hidden="true">
+            <span class="icon fa fa-minus" aria-hidden="true"></span>
+        </span>
+    </button>
+    <button class="btn-link action-button action-comments" aria-checked="false">
+        <span class="sr"><%- gettext("Comments") %>&nbsp;</span>
+        <span class="sr js-sr-count"></span>
+
+        <span class="action-label" aria-hidden="true">
+          <span class="count"></span>
+        </span>
+
+        <span class="action-icon" aria-hidden="true">
+            <span class="icon fa fa-comment" aria-hidden="true"></span>
+        </span>
+        <span class="icon fa fa-arrow"></span>
+        <span>
+            <%
+                var fmts = ngettext("Show Comment (%(num_comments)s)", "Show Comments (%(num_comments)s)", comments.length);
+                print(interpolate(fmts, {num_comments: comments.length}, true));
+            %>
+        </span>
+    </button>
+</div>
 </script>
 <script aria-hidden="true" type="text/template" id="response-comment-edit-template">
 <div class="edit-post-form" id="comment_<%- id %>">
@@ -298,25 +351,28 @@
 </div>
 </script>
 <script aria-hidden="true" type="text/template" id="thread-list-item-template">
-<li data-id="<%- id %>" class="forum-nav-thread<% if (!hideReadState && neverRead) { %> never-read<% } %>">
+<%
+  var icon_class, sr_text, li_class;
+  if (thread_type === "discussion") {
+      icon_class = "icon-Discussion";
+      li_class = "discussion";
+      // Translators: This is a label for a Discussion forum thread
+      sr_text = gettext("discussion");
+  } else if (endorsed) {
+      icon_class = "fa-check-square-o";
+      // Translators: This is a label for a Question forum thread with a marked answer
+      sr_text = gettext("answered question");
+      li_class = "endorsed";
+  } else {
+      icon_class = "icon-Interrogation";
+      // Translators: This is a label for a Question forum thread without a marked answer
+      sr_text = gettext("unanswered question");
+      li_class = "question";
+  }
+%>
+<li data-id="<%- id %>" class="<%- li_class %> forum-nav-thread<% if (!hideReadState && neverRead) { %> never-read<% } %>">
   <a href="<%- threadUrl %>" class="forum-nav-thread-link">
     <div class="forum-nav-thread-wrapper-0">
-      <%
-      var icon_class, sr_text;
-      if (thread_type === "discussion") {
-          icon_class = "icon-Discussion";
-          // Translators: This is a label for a Discussion forum thread
-          sr_text = gettext("discussion");
-      } else if (endorsed) {
-          icon_class = "fa-check-square-o";
-          // Translators: This is a label for a Question forum thread with a marked answer
-          sr_text = gettext("answered question");
-      } else {
-          icon_class = "icon-Interrogation";
-          // Translators: This is a label for a Question forum thread without a marked answer
-          sr_text = gettext("unanswered question");
-      }
-      %>
       <span class="sr"><%= HtmlUtils.HTML(sr_text) %></span>
       <span class=" <%- icon_class %>" aria-hidden="true"></span>
     </div><div class="forum-nav-thread-wrapper-1">
@@ -355,6 +411,14 @@
             <%- gettext("Community TA") %>
           </li>
         <% } %>
+        <li>
+            <%- gettext(comments_count + 1) %>
+            <span class="icon fa fa-comment" aria-hidden="true"></span>
+            <%- gettext(votes['up_count']) %>
+            <span class="icon fa fa-plus" aria-hidden="true"></span>
+            <%- gettext(votes['down_count']) %>
+            <span class="icon fa fa-minus" aria-hidden="true"></span>
+        </li>
         </ul>
       <% } %>
     </div><div class="forum-nav-thread-wrapper-2">
@@ -366,47 +430,7 @@
            votes['up_count']
       );
       %>
-      <span class="forum-nav-thread-votes-count">
-      +<%= /* xss-lint: disable=underscore-not-escaped */
-           interpolate(fmt, {
-               votes_count: votes['up_count'],
-               span_start: '<span class="sr">',
-               span_end: '</span>'
-            }, true)
-      %>
-      </span>
-
-      <% if (!hideReadState && !neverRead && unread_comments_count > 0) { %>
-        <span class="forum-nav-thread-unread-comments-count">
-          <%-
-            StringUtils.interpolate(
-              gettext('{unread_comments_count} new'),
-              {unread_comments_count: unread_comments_count}
-            )
-          %>
-        </span>
-      <% } %>
-
-      <span class="forum-nav-thread-comments-count">
-      <%
-      var fmt;
-      // Counts in data do not include the post itself, but the UI should
-      var data = {
-          'span_sr_open': '<span class="sr">',
-          'span_close': '</span>',
-          'unread_comments_count': unread_comments_count + (read ? 0 : 1),
-          'comments_count': comments_count + 1
-      };
-      if (unread_comments_count > 0) {
-          // Translators: 'comments_count' and 'unread_comments_count' are numerical placeholders for a specific discussion thread; 'span_*' placeholders refer to HTML markup.  Please translate the word 'comments'.
-          fmt = gettext('%(comments_count)s %(span_sr_open)scomments (%(unread_comments_count)s unread comments)%(span_close)s');
-      } else {
-          // Translators: 'comments_count' is a numerical placeholder for a specific discussion thread; 'span_*' placeholders refer to HTML markup.  Please translate the word 'comments'.
-          fmt = gettext('%(comments_count)s %(span_sr_open)scomments %(span_close)s');
-      }
-      print(interpolate(fmt, data, true));
-      %>
-      </span>
+      <span class="forum-nav-thread-date-posted">27 Jan 2021 at 6:08 PM</span>
     </div>
   </a>
 </li>
@@ -788,6 +812,22 @@
 
         <span class="action-label" aria-hidden="true">
           <span class="vote-count"></span>
+        </span>
+
+        <span class="action-icon" aria-hidden="true">
+            <span class="icon fa fa-plus" aria-hidden="true"></span>
+        </span>
+    </button>
+    <span aria-hidden="true" class="display-downvote is-hidden" >
+      <span class="downvvote-count"></span>
+    </span>
+    <button class="btn-link action-button action-downvote" role="checkbox" aria-checked="false">
+        <% // Vote counts are populated by JS %>
+        <span class="sr"><%- gettext("Downvote for this post,") %>&nbsp;</span>
+        <span class="sr js-sr-downvote-count"></span>
+
+        <span class="action-label" aria-hidden="true">
+          <span class="downvote-count"></span>
         </span>
 
         <span class="action-icon" aria-hidden="true">
