@@ -84,7 +84,6 @@
                 'change .forum-nav-sort-control': 'sortThreads',
                 'click .forum-nav-thread-link': 'threadSelected',
                 'click .forum-nav-load-more-link': 'loadMorePages',
-                'click .fake-radio-input': 'checkDeselectFilter',
                 'change input[name="filter"]': 'loadSelectedFilter',
                 'change .forum-nav-filter-main-control': 'chooseFilter',
                 'change .forum-nav-filter-cohort-control': 'chooseGroup'
