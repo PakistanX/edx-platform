@@ -84,6 +84,7 @@
                 'change .forum-nav-sort-control': 'sortThreads',
                 'click .forum-nav-thread-link': 'threadSelected',
                 'click .forum-nav-load-more-link': 'loadMorePages',
+                'change input[name="filter"]': 'loadSelectedFilter',
                 'change .forum-nav-filter-main-control': 'chooseFilter',
                 'change .forum-nav-filter-cohort-control': 'chooseGroup'
             };
@@ -221,6 +222,7 @@
                 for (i = 0, len = this.displayedCollection.models.length; i < len; i++) {
                     thread = this.displayedCollection.models[i];
                     $content = this.renderThread(thread);
+                    $content.find('span.timeago').timeago();
                     this.$('.forum-nav-thread-list').append($content);
                 }
                 if (this.$('.forum-nav-thread-list li').length === 0) {
@@ -275,7 +277,7 @@
                 DiscussionUtil.makeFocusTrap(loadingElem);
                 loadingElem.focus();
                 options = {
-                    filter: this.filter
+                    filters: this.filters
                 };
                 switch (this.mode) {
                 case 'search':
@@ -413,8 +415,25 @@
             };
 
             DiscussionThreadListView.prototype.chooseFilter = function() {
-                this.filter = $('.forum-nav-filter-main-control :selected').val();
+                this.filters = [$('.forum-nav-filter-main-control :selected').val()];
                 this.clearSearchAlerts();
+                return this.retrieveFirstPage();
+            };
+
+            DiscussionThreadListView.prototype.loadSelectedFilter = function() {
+                this.clearSearchAlerts();
+                var filters = []
+                $('input[name="filter"]:checked').each(function(index, filter) {
+                    var filter_val = filter.value;
+                    if(filter_val === 'following'){
+                      this.mode = 'followed';
+                    }
+                    else{
+                      filters.push(filter_val);
+                    }
+                });
+                filters = filters.length ? filters : ['all'];
+                this.filters = filters;
                 return this.retrieveFirstPage();
             };
 

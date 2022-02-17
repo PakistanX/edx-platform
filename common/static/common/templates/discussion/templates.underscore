@@ -430,7 +430,9 @@
            votes['up_count']
       );
       %>
-      <span class="forum-nav-thread-date-posted">27 Jan 2021 at 6:08 PM</span>
+      <span class="timeago forum-nav-thread-date-posted" title="<%= HtmlUtils.HTML(created_at) %>">
+        <%= HtmlUtils.HTML(created_at) %>
+      </span>
     </div>
   </a>
 </li>
