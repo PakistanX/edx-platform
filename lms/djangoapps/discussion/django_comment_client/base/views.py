@@ -527,7 +527,7 @@ def _vote_or_unvote(request, course_id, obj, value='up', undo_vote=False):
     course = get_course_with_access(request.user, 'load', course_key)
     user = cc.User.from_django_user(request.user)
     if undo_vote:
-        user.unvote(obj)
+        user.unvote(obj, value)
         # TODO(smarnach): Determine the value of the vote that is undone.  Currently, you can
         # only cast upvotes in the user interface, so it is assumed that the vote value is 'up'.
         # (People could theoretically downvote by handcrafting AJAX requests.)
@@ -554,12 +554,12 @@ def vote_for_comment(request, course_id, comment_id, value):
 @require_POST
 @login_required
 @permitted
-def undo_vote_for_comment(request, course_id, comment_id):
+def undo_vote_for_comment(request, course_id, comment_id, value):
     """
     given a course id and comment id, remove vote
     ajax only
     """
-    return _vote_or_unvote(request, course_id, cc.Comment.find(comment_id), undo_vote=True)
+    return _vote_or_unvote(request, course_id, cc.Comment.find(comment_id), value, undo_vote=True)
 
 
 @require_POST
@@ -578,12 +578,12 @@ def vote_for_thread(request, course_id, thread_id, value):
 @require_POST
 @login_required
 @permitted
-def undo_vote_for_thread(request, course_id, thread_id):
+def undo_vote_for_thread(request, course_id, thread_id, value):
     """
     given a course id and thread id, remove users vote for thread
     ajax only
     """
-    return _vote_or_unvote(request, course_id, cc.Thread.find(thread_id), undo_vote=True)
+    return _vote_or_unvote(request, course_id, cc.Thread.find(thread_id), value, undo_vote=True)
 
 
 @require_POST

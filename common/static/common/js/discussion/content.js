@@ -205,19 +205,27 @@
                 );
             };
 
-            Content.prototype.incrementVote = function(increment) {
+            Content.prototype.incrementVote = function(increment, count_mode) {
                 var newVotes;
                 newVotes = _.clone(this.get('votes'));
-                newVotes.up_count = newVotes.up_count + increment;
+                newVotes[count_mode] = newVotes[count_mode] + increment;
                 return this.set('votes', newVotes);
             };
 
             Content.prototype.vote = function() {
-                return this.incrementVote(1);
+                return this.incrementVote(1, 'up_count');
             };
 
             Content.prototype.unvote = function() {
-                return this.incrementVote(-1);
+                return this.incrementVote(-1, 'up_count');
+            };
+
+            Content.prototype.downvote = function() {
+                return this.incrementVote(1, 'down_count');
+            };
+
+            Content.prototype.undownvote = function() {
+                return this.incrementVote(-1, 'down_count');
             };
 
             return Content;
@@ -244,6 +252,9 @@
                 },
                 downvote: function() {
                     return DiscussionUtil.urlFor('downvote_' + (this.get('type')), this.id);
+                },
+                undownvote: function() {
+                    return DiscussionUtil.urlFor('undo_downvote_for_' + (this.get('type')), this.id);
                 },
                 close: function() {
                     return DiscussionUtil.urlFor('openclose_thread', this.id);
@@ -356,7 +367,10 @@
                     return DiscussionUtil.urlFor('upvote_' + (this.get('type')), this.id);
                 },
                 downvote: function() {
-                    return DiscussionUtil.urlFor('downvote_' + (this.get('type')), this.id);
+                    return DiscussionUtil.urlFor('undo_vote_for_' + (this.get('type')), this.id);
+                },
+                undownvote: function() {
+                    return DiscussionUtil.urlFor('undo_downvote_for_' + (this.get('type')), this.id);
                 },
                 endorse: function() {
                     return DiscussionUtil.urlFor('endorse_comment', this.id);

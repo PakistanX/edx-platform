@@ -82,14 +82,14 @@ class User(models.Model):
         )
         voteable._update_from_response(response)
 
-    def unvote(self, voteable):
+    def unvote(self, voteable, value):
         if voteable.type == 'thread':
             url = _url_for_vote_thread(voteable.id)
         elif voteable.type == 'comment':
             url = _url_for_vote_comment(voteable.id)
         else:
             raise utils.CommentClientRequestError("Can only vote / unvote for threads or comments")
-        params = {'user_id': self.id}
+        params = {'user_id': self.id, 'value': value}
         response = utils.perform_request(
             'delete',
             url,

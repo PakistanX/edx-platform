@@ -165,6 +165,7 @@
                     this.$('.discussion-reply-new').toggle(!closed);
                     this.$('.comment-form').closest('li').toggle(!closed);
                     this.$('.action-vote').toggle(!closed);
+                    this.$('.action-downvote').toggle(!closed);
                     this.$('.display-vote').toggle(closed);
                     return this.renderAddResponseButton();
                 }
@@ -360,7 +361,8 @@
                     created_at: (new Date()).toISOString(),
                     username: window.user.get('username'),
                     votes: {
-                        up_count: 0
+                        up_count: 0,
+                        down_count: 0
                     },
                     abuse_flaggers: [],
                     endorsed: false,
