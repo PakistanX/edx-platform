@@ -125,6 +125,7 @@
                     return $('.forum-content').fadeOut({
                         duration: 200,
                         complete: function() {
+                            $('aside.forum-nav').hide();
                             return self.newPostView.$el.fadeIn(200).focus();
                         }
                     });
@@ -134,6 +135,7 @@
                     return this.newPostView.$el.fadeOut({
                         duration: 200,
                         complete: function() {
+                            $('aside.forum-nav').show();
                             return $('.forum-content').fadeIn(200).find('.thread-wrapper')
                                 .focus();
                         }
