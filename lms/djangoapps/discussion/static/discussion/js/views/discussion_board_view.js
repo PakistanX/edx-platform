@@ -27,6 +27,7 @@
                 'click .forum-nav-browse-menu-wrapper': 'ignoreClick',
                 'keydown .search-input': 'performSearch',
                 'click .search-button': 'performSearch',
+                'click a.show-hide': 'hideShowElement',
                 'topic:selected': 'clearSearch'
             },
 
@@ -125,6 +126,26 @@
                     this.breadcrumbs.model.set('contents', ['Search Results']);
                     this.discussionThreadListView.performSearch($('.search-input', this.$el));
                 }
+            },
+
+            hideShowElement: function(event) {
+              event.preventDefault();
+              var anchor = this.$('a.show-hide');
+              var itag = anchor.find('i'), elementToHideOrShow = anchor.parent().parent().find('table.home-helpgrid');
+              var text, className;
+              if(itag.hasClass('icon-Invisible-Outline-Color')){
+                  text = "Show ";
+                  className = "icon-Visible-Outline-Color";
+                  elementToHideOrShow.hide();
+              }
+              else{
+                  text = "Hide ";
+                  className = "icon-Invisible-Outline-Color";
+                  elementToHideOrShow.show();
+              }
+              itag.attr('class', className);
+              anchor.html(text);
+              anchor.append(itag);
             },
 
             clearSearch: function() {
