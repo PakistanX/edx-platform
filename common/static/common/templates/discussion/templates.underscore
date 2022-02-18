@@ -383,6 +383,18 @@
       <% if(typeof(subscribed) === "undefined") { var subscribed = null; } %>
       <% if(pinned || subscribed || staff_authored || community_ta_authored) { %>
         <ul class="forum-nav-thread-labels">
+            <li>
+                <%- gettext(comments_count + 1) %>
+                <i class="icon-Interrogation"></i>
+            </li>
+            <li>
+                <%- gettext(votes['up_count']) %>
+                <i class="icon-Like-Outline-Color-01"></i>
+            </li>
+            <li>
+                <%- gettext(votes['down_count']) %>
+                <i class="icon-Dislike-Outline-01"></i>
+            </li>
         <% if (pinned) { %>
           <li class="post-label post-label-pinned">
             <span class="icon fa fa-thumb-tack" aria-hidden="true"></span>
@@ -392,7 +404,7 @@
         <% } %>
         <% if (subscribed) { %>
           <li class="post-label post-label-following">
-            <span class="icon fa fa-star" aria-hidden="true"></span>
+            <i class="icon-Star-Outline-Color-1"></i>
             <% // Translators: This is a label for a forum thread that the user is subscribed to %>
             <%- gettext("Following") %>
           </li>
@@ -411,14 +423,6 @@
             <%- gettext("Community TA") %>
           </li>
         <% } %>
-        <li>
-            <%- gettext(comments_count + 1) %>
-            <span class="icon fa fa-comment" aria-hidden="true"></span>
-            <%- gettext(votes['up_count']) %>
-            <span class="icon fa fa-plus" aria-hidden="true"></span>
-            <%- gettext(votes['down_count']) %>
-            <span class="icon fa fa-minus" aria-hidden="true"></span>
-        </li>
         </ul>
       <% } %>
     </div><div class="forum-nav-thread-wrapper-2">
