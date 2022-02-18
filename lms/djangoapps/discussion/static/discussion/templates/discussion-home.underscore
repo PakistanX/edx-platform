@@ -1,8 +1,6 @@
 
 <div class="discussion-article view-discussion-home">
-  <h3>First</h3>
   <% if (window.ENABLE_DISCUSSION_HOME_PANEL) { %>
-    <h3>Second</h3>
     <div class="label-setting-head">
       <span class="label label-settings">
         <%- interpolate(
