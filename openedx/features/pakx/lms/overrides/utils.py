@@ -530,7 +530,10 @@ def validate_text_for_emoji(text):
 
 
 def create_accordion_for_sidebar(request, course, course_experience_mode):
+    """Create and render accordion to display in sidebar for discussion course and other templates."""
+
     from lms.djangoapps.courseware.views.index import render_accordion
+
     accordion = None
     hide_course_navigation = settings.FEATURES.get('HIDE_COURSEWARE_NAVIGATION')
     field_data_cache = FieldDataCache.cache_for_descriptor_descendents(
