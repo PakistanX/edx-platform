@@ -1,6 +1,8 @@
-<div class="discussion-article view-discussion-home">
 
+<div class="discussion-article view-discussion-home">
+  <h3>First</h3>
   <% if (window.ENABLE_DISCUSSION_HOME_PANEL) { %>
+    <h3>Second</h3>
     <div class="label-setting-head">
       <span class="label label-settings">
         <%- interpolate(
@@ -8,8 +10,7 @@
               {platform_name: window.PLATFORM_NAME}, true
             ) %>
       </span>
-        <a href="#" class="show-hide">Hide <i class="icon-Invisible-Outline-Color"></i></a>
-        <a href="#" class="show-hide">Show <i class="icon-Visible-Outline-Color"></i></a>
+      <a href="#" class="show-hide">Hide <i class="icon-Invisible-Outline-Color"></i></a>
     </div>
     <table class="home-helpgrid">
       <tr class="helpgrid-row helpgrid-row-navigation">
