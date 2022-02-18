@@ -35,9 +35,6 @@
                 this.chooseGroup = function() {
                     return DiscussionThreadListView.prototype.chooseGroup.apply(self, arguments);
                 };
-                this.chooseFilter = function() {
-                    return DiscussionThreadListView.prototype.chooseFilter.apply(self, arguments);
-                };
                 this.threadRemoved = function() {
                     return DiscussionThreadListView.prototype.threadRemoved.apply(self, arguments);
                 };
@@ -85,7 +82,6 @@
                 'click .forum-nav-thread-link': 'threadSelected',
                 'click .forum-nav-load-more-link': 'loadMorePages',
                 'change input[name="filter"]': 'loadSelectedFilter',
-                'change .forum-nav-filter-main-control': 'chooseFilter',
                 'change .forum-nav-filter-cohort-control': 'chooseGroup'
             };
 
@@ -412,12 +408,6 @@
                     this.retrieveDiscussions(discussionIds);
                     return this.$('.forum-nav-filter-cohort').toggle($item.data('divided') === true);
                 }
-            };
-
-            DiscussionThreadListView.prototype.chooseFilter = function() {
-                this.filters = [$('.forum-nav-filter-main-control :selected').val()];
-                this.clearSearchAlerts();
-                return this.retrieveFirstPage();
             };
 
             DiscussionThreadListView.prototype.loadSelectedFilter = function() {
