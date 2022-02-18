@@ -91,11 +91,11 @@
                 data = {
                     page: this.current_page + 1
                 };
-                self.$.each(options.filters, function(index, value){
+                $.each(options.filters, function(index, value){
                   if (_.contains(['unread', 'unanswered', 'flagged'], value)) {
                     data[value] = true;
                   }
-                })
+                });
 
                 switch (mode) {
                 case 'search':
