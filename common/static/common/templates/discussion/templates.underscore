@@ -23,23 +23,29 @@
             <div class="post-status-closed bottom-post-status" style="display: none">
               <%- gettext("This thread is closed.") %>
             </div>
-            <% if (can_create_comment && !readOnly) { %>
-            <form class="discussion-reply-new" data-id="<%- id %>">
-                <h<%- startHeader %> class="add-response"><%- gettext("Add a response:") %></h<%- startHeader %> >
 
-                <ul class="discussion-errors"></ul>
-                <div class="reply-body" data-id="<%- id %>"></div>
-                <div class="reply-post-control">
-                    <button class="btn btn-outline-primary discussion-submit-post control-button"><%- gettext("Submit") %></button>
-                </div>
-            </form>
-            <% } %>
         </div>
     </div>
 </article>
 </script>
 <script aria-hidden="true" type="text/template" id="thread-show-template">
-<div class="discussion-post">
+<%
+  var icon_class, sr_text, div_class;
+  if (thread_type === "discussion") {
+      icon_class = "icon-Discussion";
+      div_class = "discussion";
+      sr_text = gettext("discussion");
+  } else if (endorsed) {
+      icon_class = "fa-check-square-o";
+      sr_text = gettext("answered question");
+      div_class = "endorsed";
+  } else {
+      icon_class = "icon-Interrogation";
+      sr_text = gettext("unanswered question");
+      div_class = "question";
+  }
+%>
+<div class="discussion-post <%- div_class %>">
     <header class="post-header">
         <% if (!readOnly) { %>
             <div class="post-header-actions">
@@ -49,8 +55,8 @@
                     {
                         contentId: cid,
                         contentType: 'post',
-                        primaryActions: ['vote', 'follow'],
-                        secondaryActions: ['pin', 'edit', 'delete', 'report', 'close'],
+                        primaryActions: ['follow'],
+                        secondaryActions: ['pin', 'edit', 'delete', 'close'],
                         readOnly: readOnly
                     }
                 )
@@ -122,6 +128,33 @@
                 %>
             <% } else { %>
                 <%- gettext('This post is visible to everyone.') %>
+            <% } %>
+        </div>
+        <div class="post-header-actions">
+            <%= /* xss-lint: disable=underscore-not-escaped */
+                _.template(
+                    $('#forum-actions').html())(
+                    {
+                        contentId: cid,
+                        contentType: 'post',
+                        primaryActions: ['vote', 'report'],
+                        secondaryActions: [],
+                        readOnly: readOnly
+                    }
+                )
+            %>
+        </div>
+        <div>
+            <% if (can_create_comment && !readOnly) { %>
+            <form class="discussion-reply-new" data-id="<%- id %>">
+                <h<%- startHeader %> class="add-response"><%- gettext("Add a response:") %></h<%- startHeader %> >
+
+                <ul class="discussion-errors"></ul>
+                <div class="reply-body" data-id="<%- id %>"></div>
+                <div class="reply-post-control">
+                    <button class="btn btn-outline-primary discussion-submit-post control-button"><%- gettext("Submit") %></button>
+                </div>
+            </form>
             <% } %>
         </div>
     </div>
@@ -226,16 +259,31 @@
                 {
                     contentId: cid,
                     contentType: 'response',
-                    primaryActions: ['vote', thread.get('thread_type') == 'question' ? 'answer' : 'endorse'],
-                    secondaryActions: ['edit', 'delete', 'report'],
+                    primaryActions: [thread.get('thread_type') == 'question' ? 'answer' : 'endorse'],
+                    secondaryActions: [],
                     readOnly: readOnly
                 }
             )
         %>
       </div>
+
 </header>
 
 <div class="response-body"><%- body %></div>
+<div class="post-up-down">
+    <%= /* xss-lint: disable=underscore-not-escaped */
+        _.template(
+            $('#forum-actions').html())(
+            {
+                contentId: cid,
+                contentType: 'response',
+                primaryActions: ['vote', 'report'],
+                secondaryActions: [],
+                readOnly: readOnly
+            }
+        )
+    %>
+</div>
 </script>
 <script aria-hidden="true" type="text/template" id="thread-response-edit-template">
 <div class="edit-post-form">
@@ -258,7 +306,7 @@
               contentId: cid,
               contentType: 'comment',
               primaryActions: [],
-              secondaryActions: ['edit', 'delete', 'report'],
+              secondaryActions: ['edit', 'delete'],
               readOnly: readOnly
           }
       )
@@ -318,25 +366,20 @@
             <span class="icon fa fa-minus" aria-hidden="true"></span>
         </span>
     </button>
-    <button class="btn-link action-button action-comments" aria-checked="false">
-        <span class="sr"><%- gettext("Comments") %>&nbsp;</span>
-        <span class="sr js-sr-count"></span>
-
-        <span class="action-label" aria-hidden="true">
-          <span class="count"></span>
-        </span>
-
-        <span class="action-icon" aria-hidden="true">
-            <span class="icon fa fa-comment" aria-hidden="true"></span>
-        </span>
-        <span class="icon fa fa-arrow"></span>
-        <span>
-            <%
-                var fmts = ngettext("Show Comment (%(num_comments)s)", "Show Comments (%(num_comments)s)", comments.length);
-                print(interpolate(fmts, {num_comments: comments.length}, true));
-            %>
-        </span>
-    </button>
+    <div>
+        <%= /* xss-lint: disable=underscore-not-escaped */
+          _.template(
+              $('#forum-actions').html())(
+              {
+                  contentId: cid,
+                  contentType: 'comment',
+                  primaryActions: ['report'],
+                  secondaryActions: [],
+                  readOnly: readOnly
+              }
+          )
+        %>
+    </div>
 </div>
 </script>
 <script aria-hidden="true" type="text/template" id="response-comment-edit-template">
@@ -904,19 +947,22 @@
 <% if (!readOnly) { %>
     <ul class="<%- contentType %>-actions-list">
         <% _.each(primaryActions, function(action) { print(_.template($('#forum-action-' + action).html())({})) }) %>
-        <li class="actions-item is-visible">
-            <div class="more-wrapper">
-                <button class="btn-link action-button action-more" aria-label="<%- gettext('More') %>" aria-haspopup="true" aria-controls="action-menu-<%- contentType %>-<%- contentId %>">
-                    <span class="action-label"><%- gettext('More') %></span>
-                    <span class="action-icon"><span class="icon fa fa-ellipsis-h" aria-hidden="true"></span></span>
-                </button>
-                <div class="actions-dropdown" id="action-menu-<%- contentType %>-<%- contentId %>" aria-expanded="false">
-                  <ul class="actions-dropdown-list">
-                    <% _.each(secondaryActions, function(action) { print(_.template($('#forum-action-' + action).html())({})) }) %>
-                  </ul>
+        <% if (secondaryActions.length) { %>
+            <li class="actions-item is-visible">
+                <div class="more-wrapper">
+                    <button class="btn-link action-button action-more" aria-label="<%- gettext('More') %>" aria-haspopup="true" aria-controls="action-menu-<%- contentType %>-<%- contentId %>">
+                        <span class="action-label"><%- gettext('More') %></span>
+                        <span class="action-icon"><span class="icon fa fa-ellipsis-h" aria-hidden="true"></span></span>
+                    </button>
+
+                    <div class="actions-dropdown" id="action-menu-<%- contentType %>-<%- contentId %>" aria-expanded="false">
+                      <ul class="actions-dropdown-list">
+                        <% _.each(secondaryActions, function(action) { print(_.template($('#forum-action-' + action).html())({})) }) %>
+                      </ul>
+                    </div>
                 </div>
-            </div>
-        </li>
+            </li>
+        <% } %>
     </ul>
 <% } %>
 </script>
