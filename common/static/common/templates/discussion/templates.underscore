@@ -292,7 +292,7 @@
         )
     %>
 </div>
-<div class="newcom">
+<div class="post-comment-count">
     <button class="btn-link action-show-replies">
         <span class="icon fa fa-comments" aria-hidden="true"> <%= comments.length %> replies</span>
     </button>
