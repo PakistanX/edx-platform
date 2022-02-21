@@ -154,7 +154,7 @@
             },
 
             goHome: function() {
-                HtmlUtils.append(this.$('.forum-content').empty(), HtmlUtils.template(discussionHomeTemplate)({}));
+                HtmlUtils.append(this.$('.discussion-helper').empty(), HtmlUtils.template(discussionHomeTemplate)({}));
                 this.$('.forum-nav-thread-list a').removeClass('is-active').find('.sr')
                   .remove();
                 this.setupForumDigestSettings(window.user.get('id'));
