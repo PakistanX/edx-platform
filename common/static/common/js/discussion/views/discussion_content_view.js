@@ -51,15 +51,25 @@
                     var action, selector, _ref, _results;
                     _ref = this.abilityRenderer;
                     _results = [];
+                    var hide_or_show = {
+                      editable: true,
+                      can_delete: true
+                    };
                     for (action in _ref) {
                         if (_ref.hasOwnProperty(action)) {
                             selector = _ref[action];
                             if (!ability[action]) {
                                 _results.push(selector.disable.apply(this));
+                              if (action === 'editable' || action === 'can_delete') {
+                                hide_or_show[action] = false;
+                              }
                             } else {
                                 _results.push(selector.enable.apply(this));
                             }
                         }
+                    }
+                    if(!hide_or_show.editable && !hide_or_show.can_delete){
+                      this.$el.find('.more-wrapper').hide();
                     }
                     return _results;
                 }

@@ -77,14 +77,22 @@
             // thread_type describes the kind of post this is (e.g. "question" or "discussion");
             // time_ago is how much time has passed since the post was created (e.g. "4 hours ago")
             if (thread_type === 'discussion') {
-                postedTimeAgoMessage = gettext('discussion posted %(time_ago)s by %(author)s');
+                postedTimeAgoMessage = gettext('discussion posted %(time_ago)s');
             } else {
-                postedTimeAgoMessage = gettext('question posted %(time_ago)s by %(author)s');
+                postedTimeAgoMessage = gettext('question posted %(time_ago)s by');
             }
             %>
             <%= /* xss-lint: disable=underscore-not-escaped */
-            interpolate(_.escape(postedTimeAgoMessage), {time_ago: timeAgoHtml, author: author_display}, true) %>
+            interpolate(_.escape(postedTimeAgoMessage), {time_ago: timeAgoHtml}, true) %>
             </p>
+
+            <div class="post-author-comment">
+                <span>
+                    <%= author_display %>
+                </span>
+                <span id="post-comment-count""></span>
+                <span class="icon fa fa-comment" aria-hidden="true"></span>
+            </div>
             <div class="post-labels">
                 <span class="post-label post-label-pinned">
                     <span class="icon fa fa-thumb-tack" aria-hidden="true"></span><%- gettext("Pinned") %>
@@ -283,6 +291,11 @@
             }
         )
     %>
+</div>
+<div class="newcom">
+    <button class="btn-link action-show-replies">
+        <span class="icon fa fa-comments" aria-hidden="true"> <%= comments.length %> replies</span>
+    </button>
 </div>
 </script>
 <script aria-hidden="true" type="text/template" id="thread-response-edit-template">

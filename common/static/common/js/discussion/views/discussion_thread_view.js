@@ -259,6 +259,7 @@
                 this.$el.find('.response-count').text(
                     edx.StringUtils.interpolate(responseCountFormat, {numResponses: responseTotal}, true)
                 );
+                this.$el.find('#post-comment-count').text(responseTotal);
 
                 responsePagination = this.$el.find('.response-pagination');
                 responsePagination.empty();
