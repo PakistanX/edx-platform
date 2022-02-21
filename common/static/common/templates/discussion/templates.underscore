@@ -437,50 +437,51 @@
         <div class="thread-preview-body"><%- threadPreview %></div>
       <% } %>
       <% if(typeof(subscribed) === "undefined") { var subscribed = null; } %>
-      <% if(pinned || subscribed || staff_authored || community_ta_authored) { %>
-        <ul class="forum-nav-thread-labels">
-            <li>
-                <%- gettext(comments_count + 1) %>
-                <i class="icon-Interrogation"></i>
-            </li>
-            <li>
-                <%- gettext(votes['up_count']) %>
-                <i class="icon-Like-Outline-Color-01"></i>
-            </li>
-            <li>
-                <%- gettext(votes['down_count']) %>
-                <i class="icon-Dislike-Outline-01"></i>
-            </li>
-        <% if (pinned) { %>
-          <li class="post-label post-label-pinned">
-            <span class="icon fa fa-thumb-tack" aria-hidden="true"></span>
-            <% // Translators: This is a label for a forum thread that has been pinned %>
-            <%- gettext("Pinned") %>
-          </li>
+      <ul class="forum-nav-thread-labels">
+        <li>
+            <%- gettext(comments_count + 1) %>
+            <i class="icon-Interrogation"></i>
+        </li>
+        <li>
+            <%- gettext(votes['up_count']) %>
+            <i class="icon-Like-Outline-Color-01"></i>
+        </li>
+        <li>
+            <%- gettext(votes['down_count']) %>
+            <i class="icon-Dislike-Outline-01"></i>
+        </li>
+        <% if(pinned || subscribed || staff_authored || community_ta_authored) { %>
+
+            <% if (pinned) { %>
+              <li class="post-label post-label-pinned">
+                <span class="icon fa fa-thumb-tack" aria-hidden="true"></span>
+                <% // Translators: This is a label for a forum thread that has been pinned %>
+                <%- gettext("Pinned") %>
+              </li>
+            <% } %>
+            <% if (subscribed) { %>
+              <li class="post-label post-label-following">
+                <i class="icon-Star-Outline-Color-1"></i>
+                <% // Translators: This is a label for a forum thread that the user is subscribed to %>
+                <%- gettext("Following") %>
+              </li>
+            <% } %>
+            <% if (staff_authored) { %>
+              <li class="post-label post-label-by-staff">
+                <span class="icon fa fa-user" aria-hidden="true"></span>
+                <% // Translators: This is a label for a forum thread that was authored by a member of the course staff %>
+                <%- gettext("Staff") %>
+              </li>
+            <% } %>
+            <% if (community_ta_authored) { %>
+              <li class="post-label post-label-by-community-ta">
+                <span class="icon fa fa-user" aria-hidden="true"></span>
+                <% // Translators: This is a label for a forum thread that was authored by a community TA %>
+                <%- gettext("Community TA") %>
+              </li>
+            <% } %>
         <% } %>
-        <% if (subscribed) { %>
-          <li class="post-label post-label-following">
-            <i class="icon-Star-Outline-Color-1"></i>
-            <% // Translators: This is a label for a forum thread that the user is subscribed to %>
-            <%- gettext("Following") %>
-          </li>
-        <% } %>
-        <% if (staff_authored) { %>
-          <li class="post-label post-label-by-staff">
-            <span class="icon fa fa-user" aria-hidden="true"></span>
-            <% // Translators: This is a label for a forum thread that was authored by a member of the course staff %>
-            <%- gettext("Staff") %>
-          </li>
-        <% } %>
-        <% if (community_ta_authored) { %>
-          <li class="post-label post-label-by-community-ta">
-            <span class="icon fa fa-user" aria-hidden="true"></span>
-            <% // Translators: This is a label for a forum thread that was authored by a community TA %>
-            <%- gettext("Community TA") %>
-          </li>
-        <% } %>
-        </ul>
-      <% } %>
+      </ul>
     </div><div class="forum-nav-thread-wrapper-2">
       <%
       // Translators: 'votes_count' is a numerical placeholder for a specific discussion thread; 'span_start' and 'span_end' placeholders refer to HTML markup.  Please translate the word 'votes'.

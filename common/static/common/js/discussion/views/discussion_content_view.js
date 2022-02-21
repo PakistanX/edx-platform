@@ -298,7 +298,7 @@
                             edx.StringUtils.interpolate(votesCountMsg, {numVotes: numVotes})
                         );
                         votesText = edx.StringUtils.interpolate(
-                            ngettext('{numVotes} Vote', '{numVotes} Votes', numVotes),
+                            ngettext('{numVotes}', '{numVotes}', numVotes),
                             {numVotes: numVotes});
                         button.find('.' + countClass).empty().text(votesText);
                         context.$el.find(displayClass + countClass).empty().text(votesText);
