@@ -152,7 +152,7 @@
                 )
             %>
         </div>
-        <div>
+        <div class="post-response">
             <% if (can_create_comment && !readOnly) { %>
             <form class="discussion-reply-new" data-id="<%- id %>">
                 <h<%- startHeader %> class="add-response"><%- gettext("Add a response:") %></h<%- startHeader %> >

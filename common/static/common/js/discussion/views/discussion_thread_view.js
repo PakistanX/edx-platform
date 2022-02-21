@@ -63,9 +63,30 @@
             DiscussionThreadView.prototype.events = {
                 'click .discussion-submit-post': 'submitComment',
                 'click .add-response-btn': 'scrollToAddResponse',
+                'focus .wmd-input': 'showEditorChrome',
                 'keydown .wmd-button': function(event) {
                     return DiscussionUtil.handleKeypressInToolbar(event);
                 }
+            };
+
+            DiscussionThreadView.prototype.hideEditorChrome = function() {
+                this.$('.wmd-button-row').hide();
+                this.$('.wmd-preview-container').hide();
+                this.$('.wmd-input').css({
+                    height: '35px',
+                    padding: '5px'
+                });
+                return this.$('.comment-post-control').hide();
+            };
+
+            DiscussionThreadView.prototype.showEditorChrome = function() {
+                this.$('.wmd-button-row').show();
+                this.$('.wmd-preview-container').show();
+                this.$('.comment-post-control').show();
+                return this.$('.wmd-input').css({
+                    height: '125px',
+                    padding: '10px'
+                });
             };
 
             DiscussionThreadView.prototype.$ = function(selector) {
@@ -158,6 +179,7 @@
                     });
                 }
                 this.loadInitialResponses();
+                this.hideEditorChrome();
             };
 
             DiscussionThreadView.prototype.attrRenderer = $.extend({}, DiscussionContentView.prototype.attrRenderer, {
