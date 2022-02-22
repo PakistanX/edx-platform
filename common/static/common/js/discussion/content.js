@@ -367,7 +367,7 @@
                     return DiscussionUtil.urlFor('upvote_' + (this.get('type')), this.id);
                 },
                 downvote: function() {
-                    return DiscussionUtil.urlFor('undo_vote_for_' + (this.get('type')), this.id);
+                    return DiscussionUtil.urlFor('downvote_' + (this.get('type')), this.id);
                 },
                 undownvote: function() {
                     return DiscussionUtil.urlFor('undo_downvote_for_' + (this.get('type')), this.id);
