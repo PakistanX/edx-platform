@@ -104,22 +104,24 @@
 
     <div class="post-body"><%- body %></div>
     <div class="post-context">
-        <% if (mode === "tab" && obj.courseware_url) { %>
-            <%
-            var courseware_title_linked = interpolate(
-                '<a href="%(courseware_url)s">%(courseware_title)s</a>',
-                {courseware_url: courseware_url, courseware_title: _.escape(courseware_title)},
-                true
-            );
-            %>
-            <%= /* xss-lint: disable=underscore-not-escaped */
-            interpolate(
-                _.escape(gettext('Related to: %(courseware_title_linked)s')),
-                {courseware_title_linked: courseware_title_linked},
-                true
-            )
-            %>
-        <% } %>
+        <div class="related-text">
+            <% if (mode === "tab" && obj.courseware_url) { %>
+                <%
+                var courseware_title_linked = interpolate(
+                    '<a href="%(courseware_url)s">%(courseware_title)s</a>',
+                    {courseware_url: courseware_url, courseware_title: _.escape(courseware_title)},
+                    true
+                );
+                %>
+                <%= /* xss-lint: disable=underscore-not-escaped */
+                interpolate(
+                    _.escape(gettext('Related to: %(courseware_title_linked)s')),
+                    {courseware_title_linked: courseware_title_linked},
+                    true
+                )
+                %>
+            <% } %>
+        </div>
         <div class="group-visibility-label">
             <% if (obj.group_name && is_commentable_divided) { %>
                 <%-
@@ -133,7 +135,7 @@
                 <%- gettext('This post is visible to everyone.') %>
             <% } %>
         </div>
-        <div class="post-header-actions">
+        <div class="post-up-down big">
             <%= /* xss-lint: disable=underscore-not-escaped */
                 _.template(
                     $('#forum-actions').html())(
@@ -345,54 +347,20 @@
     </span>
   </div>
 </div>
-<div>
-    <span aria-hidden="true" class="display-vote is-hidden" >
-      <span class="vote-count"></span>
-    </span>
-    <button class="btn-link action-button action-vote" role="checkbox" aria-checked="false">
-        <% // Vote counts are populated by JS %>
-        <span class="sr"><%- gettext("Vote for this post,") %>&nbsp;</span>
-        <span class="sr js-sr-vote-count"></span>
-
-        <span class="action-label" aria-hidden="true">
-          <span class="vote-count"></span>
-        </span>
-
-        <span class="action-icon" aria-hidden="true">
-            <span class="icon fa fa-plus" aria-hidden="true"></span>
-        </span>
-    </button>
-    <span aria-hidden="true" class="display-downvote is-hidden" >
-      <span class="downvvote-count"></span>
-    </span>
-    <button class="btn-link action-button action-downvote" role="checkbox" aria-checked="false">
-        <% // Vote counts are populated by JS %>
-        <span class="sr"><%- gettext("Downvote for this post,") %>&nbsp;</span>
-        <span class="sr js-sr-downvote-count"></span>
-
-        <span class="action-label" aria-hidden="true">
-          <span class="downvote-count"></span>
-        </span>
-
-        <span class="action-icon" aria-hidden="true">
-            <span class="icon fa fa-minus" aria-hidden="true"></span>
-        </span>
-    </button>
-    <div>
-        <%= /* xss-lint: disable=underscore-not-escaped */
-          _.template(
-              $('#forum-actions').html())(
-              {
-                  contentId: cid,
-                  contentType: 'comment',
-                  primaryActions: ['report'],
-                  secondaryActions: [],
-                  readOnly: readOnly,
-                  comments: false,
-              }
-          )
-        %>
-    </div>
+<div class="post-up-down">
+    <%= /* xss-lint: disable=underscore-not-escaped */
+        _.template(
+            $('#forum-actions').html())(
+            {
+                contentId: cid,
+                contentType: 'post',
+                primaryActions: ['vote', 'report'],
+                secondaryActions: [],
+                readOnly: readOnly,
+                comments: false,
+            }
+        )
+    %>
 </div>
 </script>
 <script aria-hidden="true" type="text/template" id="response-comment-edit-template">
@@ -868,7 +836,7 @@
     <span aria-hidden="true" class="display-vote is-hidden" >
       <span class="vote-count"></span>
     </span>
-    <button class="btn-link action-button action-vote" role="checkbox" aria-checked="false">
+    <button class="action-vote" role="checkbox" aria-checked="false">
         <% // Vote counts are populated by JS %>
         <span class="sr"><%- gettext("Vote for this post,") %>&nbsp;</span>
         <span class="sr js-sr-vote-count"></span>
@@ -877,24 +845,19 @@
           <span class="vote-count"></span>
         </span>
 
-        <span class="action-icon" aria-hidden="true">
-            <span class="icon fa fa-plus" aria-hidden="true"></span>
-        </span>
     </button>
+    </li>
+    <li>
     <span aria-hidden="true" class="display-downvote is-hidden" >
       <span class="downvvote-count"></span>
     </span>
-    <button class="btn-link action-button action-downvote" role="checkbox" aria-checked="false">
+    <button class="action-downvote" role="checkbox" aria-checked="false">
         <% // Vote counts are populated by JS %>
         <span class="sr"><%- gettext("Downvote for this post,") %>&nbsp;</span>
         <span class="sr js-sr-downvote-count"></span>
 
         <span class="action-label" aria-hidden="true">
           <span class="downvote-count"></span>
-        </span>
-
-        <span class="action-icon" aria-hidden="true">
-            <span class="icon fa fa-plus" aria-hidden="true"></span>
         </span>
     </button>
 </li>
