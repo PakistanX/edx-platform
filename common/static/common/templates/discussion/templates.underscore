@@ -57,7 +57,8 @@
                         contentType: 'post',
                         primaryActions: ['follow'],
                         secondaryActions: ['pin', 'edit', 'delete', 'close'],
-                        readOnly: readOnly
+                        readOnly: readOnly,
+                        comments: true,
                     }
                 )
                 %>
@@ -76,22 +77,16 @@
             // Using a separate message to ensure proper translation for different languages
             // thread_type describes the kind of post this is (e.g. "question" or "discussion");
             // time_ago is how much time has passed since the post was created (e.g. "4 hours ago")
-            if (thread_type === 'discussion') {
-                postedTimeAgoMessage = gettext('discussion posted %(time_ago)s');
-            } else {
-                postedTimeAgoMessage = gettext('question posted %(time_ago)s by');
-            }
+            postedTimeAgoMessage = gettext('%(time_ago)s');
             %>
             <%= /* xss-lint: disable=underscore-not-escaped */
             interpolate(_.escape(postedTimeAgoMessage), {time_ago: timeAgoHtml}, true) %>
             </p>
 
-            <div class="post-author-comment">
+            <div class="post-author">
                 <span>
                     <%= author_display %>
                 </span>
-                <span id="post-comment-count""></span>
-                <span class="icon fa fa-comment" aria-hidden="true"></span>
             </div>
             <div class="post-labels">
                 <span class="post-label post-label-pinned">
@@ -147,7 +142,8 @@
                         contentType: 'post',
                         primaryActions: ['vote', 'report'],
                         secondaryActions: [],
-                        readOnly: readOnly
+                        readOnly: readOnly,
+                        comments: false,
                     }
                 )
             %>
@@ -269,7 +265,8 @@
                     contentType: 'response',
                     primaryActions: [thread.get('thread_type') == 'question' ? 'answer' : 'endorse'],
                     secondaryActions: [],
-                    readOnly: readOnly
+                    readOnly: readOnly,
+                    comments: false,
                 }
             )
         %>
@@ -287,7 +284,8 @@
                 contentType: 'response',
                 primaryActions: ['vote', 'report'],
                 secondaryActions: [],
-                readOnly: readOnly
+                readOnly: readOnly,
+                comments: false,
             }
         )
     %>
@@ -320,7 +318,8 @@
               contentType: 'comment',
               primaryActions: [],
               secondaryActions: ['edit', 'delete'],
-              readOnly: readOnly
+              readOnly: readOnly,
+              comments: false,
           }
       )
   %>
@@ -388,7 +387,8 @@
                   contentType: 'comment',
                   primaryActions: ['report'],
                   secondaryActions: [],
-                  readOnly: readOnly
+                  readOnly: readOnly,
+                  comments: false,
               }
           )
         %>
@@ -960,7 +960,6 @@
 <script aria-hidden="true" type="text/template" id="forum-actions">
 <% if (!readOnly) { %>
     <ul class="<%- contentType %>-actions-list">
-        <% _.each(primaryActions, function(action) { print(_.template($('#forum-action-' + action).html())({})) }) %>
         <% if (secondaryActions.length) { %>
             <li class="actions-item is-visible">
                 <div class="more-wrapper">
@@ -975,6 +974,13 @@
                       </ul>
                     </div>
                 </div>
+            </li>
+        <% } %>
+        <% _.each(primaryActions, function(action) { print(_.template($('#forum-action-' + action).html())({})) }) %>
+        <% if (comments) { %>
+            <li class="post-comments">
+                <span id="post-comment-count""></span>
+                <span class="icon fa fa-comment" aria-hidden="true"></span>
             </li>
         <% } %>
     </ul>
