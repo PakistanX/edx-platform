@@ -196,18 +196,7 @@
     <span class="icon fa fa-caret-down" aria-hidden="true"></span>
 </button>
 <ol class="comments">
-    <li class="new-comment">
-        <% if (create_sub_comment && !readOnly) { %>
-            <form class="comment-form" data-id="<%- wmdId %>">
-                <ul class="discussion-errors"></ul>
-                <label class="sr" for="add-new-comment-<%- wmdId %>"><%- gettext("Add a comment") %></label>
-                <div class="comment-body" id="add-new-comment-<%- wmdId %>" data-id="<%- wmdId %>"
-                data-placeholder="<%- gettext('Add a comment') %>"></div>
-                <div class="comment-post-control">
-                    <button class="btn btn-primary discussion-submit-comment control-button"><%- gettext("Submit") %></button>
-                </div>
-            </form>
-        <% } %>
+    <li class="new-comment" style="display: none">
     </li>
 </ol>
 </script>
@@ -296,6 +285,19 @@
     <button class="btn-link action-show-replies">
         <span class="icon fa fa-comments" aria-hidden="true"> <%= comments.length %> replies</span>
     </button>
+</div>
+<div>
+    <% if (create_sub_comment && !readOnly) { %>
+        <form class="comment-form" data-id="<%- wmdId %>">
+            <ul class="discussion-errors"></ul>
+            <label class="sr" for="add-new-comment-<%- wmdId %>"><%- gettext("Add a comment") %></label>
+            <div class="comment-body" id="add-new-comment-<%- wmdId %>" data-id="<%- wmdId %>"
+            data-placeholder="<%- gettext('Add a comment') %>"></div>
+            <div class="comment-post-control">
+                <button class="btn btn-primary discussion-submit-comment control-button"><%- gettext("Submit") %></button>
+            </div>
+        </form>
+    <% } %>
 </div>
 </script>
 <script aria-hidden="true" type="text/template" id="thread-response-edit-template">
@@ -513,18 +515,6 @@
     </div>
     <% } %>
     <div class="post-field group-visibility" id="wrapper-visibility-message"></div>
-    <div class="post-field">
-        <label class="field-label" for='discussion-forum-title'>
-            <span class="field-label-text"><%- gettext("Title") %></span>
-            <div class="field-help" id="field_help_title">
-                <%- gettext("Add a clear and descriptive title to encourage participation. (Required)") %>
-            </div>
-            <div>
-                <input id='discussion-forum-title' aria-describedby="field_help_title" type="text" class="js-post-title field-input" name="title">
-            </div>
-        </label>
-    </div>
-
     <div>
         <span class="field-label-text field-label-text-full" id="new-post-editor-description"><%- gettext('Your question or idea (required)') %></span>
         <div class="js-post-body editor" aria-describedby="new-post-editor-description" name="body"></div>
@@ -762,6 +752,19 @@
         <%- gettext("Load more") %>
     </button>
 </li>
+</script>
+<script aria-hidden="true" type="text/template" id="thread-title-template">
+     <div class="post-field">
+        <label class="field-label" for='discussion-forum-title'>
+            <span class="field-label-text"><%- gettext("Title") %></span>
+            <div>
+                <input id='discussion-forum-title' aria-describedby="field_help_title" type="text" class="js-post-title field-input" name="title">
+            </div>
+            <div class="field-help" id="field_help_title">
+                <%- gettext("Add a clear and descriptive title to encourage participation. (Required)") %>
+            </div>
+        </label>
+    </div>
 </script>
 <script aria-hidden="true" type="text/template" id="thread-type-template">
 <div class="post-field">

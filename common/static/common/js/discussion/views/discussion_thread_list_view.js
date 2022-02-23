@@ -82,7 +82,7 @@
                 'click .forum-nav-thread-link': 'threadSelected',
                 'click .forum-nav-load-more-link': 'loadMorePages',
                 'change input[name="filter"]': 'loadSelectedFilter',
-                'change .forum-nav-filter-cohort-control': 'chooseGroup'
+                'change .forum-nav-filter-cohort-control': 'chooseGroup',
             };
 
             DiscussionThreadListView.prototype.initialize = function(options) {
@@ -367,6 +367,7 @@
                     this.setActiveThread(threadId);
                 }
                 this.trigger('thread:selected', threadId);
+                $('div.discussion-cols').addClass('two-cols');
                 return false;
             };
 
