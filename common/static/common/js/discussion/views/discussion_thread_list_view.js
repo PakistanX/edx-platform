@@ -107,6 +107,9 @@
                 this.current_search = '';
                 this.mode = options.mode || 'commentables';
                 this.showThreadPreview = true;
+                this.addTowCol = true;
+                this.twoColDiv = null;
+                this.forumDiv = null;
                 this.searchAlertCollection = new Backbone.Collection([], {
                     model: Backbone.Model
                 });
@@ -143,6 +146,9 @@
             DiscussionThreadListView.prototype.addSearchAlert = function(message, cssClass) {
                 var searchAlertModel = new Backbone.Model({message: message, css_class: cssClass || ''});
                 this.searchAlertCollection.add(searchAlertModel);
+                this.twoColDiv.removeClass('two-cols');
+                this.forumDiv.hide();
+                this.addTowCol = false;
                 return searchAlertModel;
             };
 
@@ -151,6 +157,8 @@
             };
 
             DiscussionThreadListView.prototype.clearSearchAlerts = function() {
+                this.addTowCol = true;
+                this.forumDiv.show();
                 return this.searchAlertCollection.reset();
             };
 
@@ -208,6 +216,8 @@
                         self.retrieveDiscussions(self.discussionIds.split(','));
                     }
                 });
+                this.twoColDiv = $('div.discussion-cols');
+                this.forumDiv = $('div.forum-content');
                 this.renderThreads();
                 return this;
             };
@@ -387,12 +397,22 @@
                 this.$(".forum-nav-thread[data-id='" + threadId + "'] .forum-nav-thread-link")
                     .addClass('is-active').find('.forum-nav-thread-wrapper-1')
                     .prepend($srElem);
-                $('div.discussion-cols').addClass('two-cols');
+                if(this.addTowCol) {
+                  this.twoColDiv.addClass('two-cols');
+                }
+                this.addTowCol = true;
             };
 
             DiscussionThreadListView.prototype.selectTopic = function($target) {
-                var allItems, discussionIds, $item;
+                var allItems, discussionIds, $item, selector = '.forum-nav-browse-menu-item';
                 $item = $target.closest('.forum-nav-browse-menu-item');
+                this.clearSearchAlerts();
+                $(selector).each(function(index, element) {
+                  element = $(element)
+                  if(!element.is($item)){
+                    element.hide();
+                  }
+                });
 
                 if ($item.hasClass('forum-nav-browse-menu-all')) {
                     this.discussionIds = '';
@@ -402,7 +422,7 @@
                     this.retrieveFollowed();
                     return this.$('.forum-nav-filter-cohort').hide();
                 } else {
-                    allItems = $item.find('.forum-nav-browse-menu-item').andSelf();
+                    allItems = $item.find(selector).andSelf();
                     discussionIds = allItems.filter('[data-discussion-id]').map(function(i, elem) {
                         return $(elem).data('discussion-id');
                     }).get();
