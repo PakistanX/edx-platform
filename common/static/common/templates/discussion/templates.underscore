@@ -408,7 +408,7 @@
       <ul class="forum-nav-thread-labels">
         <li>
             <%- gettext(comments_count + 1) %>
-            <i class="icon-Interrogation"></i>
+            <i class="icon-Round-Chat-6-Outline-Color"></i>
         </li>
         <li>
             <%- gettext(votes['up_count']) %>

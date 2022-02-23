@@ -73,8 +73,8 @@
                 this.$('.wmd-button-row').hide();
                 this.$('.wmd-preview-container').hide();
                 this.$('.wmd-input').css({
-                    height: '35px',
-                    padding: '5px'
+                    height: '80px',
+                    padding: '10px'
                 });
                 return this.$('.comment-post-control').hide();
             };
