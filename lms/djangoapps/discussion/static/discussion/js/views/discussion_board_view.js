@@ -300,6 +300,7 @@
                 var $item = $(event.target).closest('.forum-nav-browse-menu-item');
                 event.preventDefault();
                 this.hideBrowseMenu();
+                $('a.back').show();
                 this.trigger('topic:selected', this.getBreadcrumbText($item));
                 return this.discussionThreadListView.selectTopic($(event.target));
             },
