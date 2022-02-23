@@ -67,6 +67,9 @@
                 this.addField(threadTypeTemplate({
                     form_id: _.uniqueId('form-')
                 }));
+                this.addField(_.template($('#thread-title-template').html())({
+                    form_id: _.uniqueId('form-')
+                }));
                 if (this.isTabMode()) {
                     this.topicView = new DiscussionTopicMenuView({
                         topicId: this.topicId,
