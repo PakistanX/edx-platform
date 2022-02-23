@@ -64,10 +64,10 @@
                 if ($('.js-group-select').prop('disabled')) {
                     $('.group-selector-wrapper').addClass('disabled');
                 }
-                this.addField(threadTypeTemplate({
+                this.addField(_.template($('#thread-title-template').html())({
                     form_id: _.uniqueId('form-')
                 }));
-                this.addField(_.template($('#thread-title-template').html())({
+                this.addField(threadTypeTemplate({
                     form_id: _.uniqueId('form-')
                 }));
                 if (this.isTabMode()) {
