@@ -102,8 +102,7 @@
                 this.$('.wmd-button-row').hide();
                 this.$('.wmd-preview-container').hide();
                 this.$('.wmd-input').css({
-                    height: '35px',
-                    padding: '5px'
+                    height: '45px'
                 });
                 return this.$('.comment-post-control').hide();
             };
@@ -113,8 +112,7 @@
                 this.$('.wmd-preview-container').show();
                 this.$('.comment-post-control').show();
                 return this.$('.wmd-input').css({
-                    height: '125px',
-                    padding: '10px'
+                    height: '125px'
                 });
             };
 
