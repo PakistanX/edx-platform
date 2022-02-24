@@ -63,29 +63,27 @@
             DiscussionThreadView.prototype.events = {
                 'click .discussion-submit-post': 'submitComment',
                 'click .add-response-btn': 'scrollToAddResponse',
-                'focus .wmd-input': 'showEditorChrome',
+                'click .post-response': 'showEditorChromeForPost',
                 'keydown .wmd-button': function(event) {
                     return DiscussionUtil.handleKeypressInToolbar(event);
                 }
             };
 
-            DiscussionThreadView.prototype.hideEditorChrome = function() {
-                this.$('.wmd-button-row').hide();
-                this.$('.wmd-preview-container').hide();
-                this.$('.wmd-input').css({
-                    height: '80px',
-                    padding: '10px'
+            DiscussionThreadView.prototype.hideEditorChromeForPost = function() {
+                this.$('.post-response .wmd-button-row').hide();
+                this.$('.post-response .wmd-preview-container').hide();
+                this.$('.post-response .wmd-input').css({
+                    height: '80px'
                 });
                 return this.$('.comment-post-control').hide();
             };
 
-            DiscussionThreadView.prototype.showEditorChrome = function() {
-                this.$('.wmd-button-row').show();
-                this.$('.wmd-preview-container').show();
-                this.$('.comment-post-control').show();
-                return this.$('.wmd-input').css({
-                    height: '125px',
-                    padding: '10px'
+            DiscussionThreadView.prototype.showEditorChromeForPost = function() {
+                this.$('.post-response .wmd-button-row').show();
+                this.$('.post-response .wmd-preview-container').show();
+                this.$('.post-response .comment-post-control').show();
+                return this.$('.post-response .wmd-input').css({
+                    height: '125px'
                 });
             };
 
@@ -179,7 +177,7 @@
                     });
                 }
                 this.loadInitialResponses();
-                this.hideEditorChrome();
+                this.hideEditorChromeForPost();
             };
 
             DiscussionThreadView.prototype.attrRenderer = $.extend({}, DiscussionContentView.prototype.attrRenderer, {

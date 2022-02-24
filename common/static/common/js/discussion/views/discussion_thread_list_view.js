@@ -367,7 +367,6 @@
                     this.setActiveThread(threadId);
                 }
                 this.trigger('thread:selected', threadId);
-                $('div.discussion-cols').addClass('two-cols');
                 return false;
             };
 
@@ -388,6 +387,7 @@
                 this.$(".forum-nav-thread[data-id='" + threadId + "'] .forum-nav-thread-link")
                     .addClass('is-active').find('.forum-nav-thread-wrapper-1')
                     .prepend($srElem);
+                $('div.discussion-cols').addClass('two-cols');
             };
 
             DiscussionThreadListView.prototype.selectTopic = function($target) {

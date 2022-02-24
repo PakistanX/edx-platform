@@ -156,9 +156,11 @@
                 <h<%- startHeader %> class="add-response"><%- gettext("Add a response:") %></h<%- startHeader %> >
 
                 <ul class="discussion-errors"></ul>
-                <div class="reply-body" data-id="<%- id %>"></div>
-                <div class="reply-post-control">
-                    <button class="btn btn-outline-primary discussion-submit-post control-button"><%- gettext("Submit") %></button>
+                <div class="reply-holder">
+                    <div class="reply-body" data-id="<%- id %>"></div>
+                    <div class="reply-post-control">
+                        <button class="discussion-submit-post control-button"><%- gettext("Send") %></button>
+                    </div>
                 </div>
             </form>
             <% } %>
@@ -283,7 +285,8 @@
 </div>
 <div class="post-comment-count">
     <button class="btn-link action-show-replies">
-        <span class="icon fa fa-comments" aria-hidden="true"> <%= comments.length %> replies</span>
+        <i class="icon-Arrow-back"></i>
+        <%= comments.length %> replies
     </button>
 </div>
 <div>
@@ -291,10 +294,12 @@
         <form class="comment-form" data-id="<%- wmdId %>">
             <ul class="discussion-errors"></ul>
             <label class="sr" for="add-new-comment-<%- wmdId %>"><%- gettext("Add a comment") %></label>
-            <div class="comment-body" id="add-new-comment-<%- wmdId %>" data-id="<%- wmdId %>"
-            data-placeholder="<%- gettext('Add a comment') %>"></div>
-            <div class="comment-post-control">
-                <button class="btn btn-primary discussion-submit-comment control-button"><%- gettext("Submit") %></button>
+            <div class="reply-holder">
+                <div class="comment-body" id="add-new-comment-<%- wmdId %>" data-id="<%- wmdId %>"
+                data-placeholder="<%- gettext('Add a comment') %>"></div>
+                <div class="comment-post-control">
+                    <button class="discussion-submit-comment control-button"><%- gettext("Send") %></button>
+                </div>
             </div>
         </form>
     <% } %>
@@ -313,7 +318,6 @@
 </script>
 <script aria-hidden="true" type="text/template" id="response-comment-show-template">
 <div class="discussion-comment" id="comment_<%- id %>">
-  <div class="response-body"><%- body %></div>
   <%= /* xss-lint: disable=underscore-not-escaped */
       _.template(
           $('#forum-actions').html())(
@@ -327,6 +331,7 @@
           }
       )
   %>
+  <%= author_display %>
   <p class="posted-details">
     <%
     var time_ago = interpolate(
@@ -338,11 +343,12 @@
     <%= /* xss-lint: disable=underscore-not-escaped */
     interpolate(
       // Translators: 'timeago' is a placeholder for a fuzzy, relative timestamp (see: https://github.com/rmm5t/jquery-timeago)
-      gettext("posted %(time_ago)s by %(author)s"),
-      {time_ago: time_ago, author: author_display},
+      gettext("%(time_ago)s"),
+      {time_ago: time_ago},
       true
     ) %>
   </p>
+  <div class="response-body"><%- body %></div>
   <div class="post-labels">
     <span class="post-label post-label-reported">
       <span class="icon fa fa-flag" aria-hidden="true"></span><%- gettext("Reported") %>
