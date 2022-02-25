@@ -511,7 +511,7 @@
     <% } %>
     <div class="post-field group-visibility" id="wrapper-visibility-message"></div>
     <div>
-        <span class="field-label-text field-label-text-full" id="new-post-editor-description"><%- gettext('Your question or idea (required)') %></span>
+        <span class="field-label-text field-label-text-full" id="new-post-editor-description"><%- gettext('Body') %></span>
         <div class="js-post-body editor" aria-describedby="new-post-editor-description" name="body"></div>
     </div>
     <div class="post-options">
@@ -535,8 +535,8 @@
         <% } %>
     </div>
     <div>
-        <button type="submit" class="btn btn-primary submit"><%- gettext('Submit') %></button>
-        <button type="button" class="btn btn-outline-primary cancel"><%- gettext('Cancel') %></button>
+        <button type="submit" class="btn btn-primary submit"><%- gettext('Create Post') %></button>
+        <button type="button" class="btn btn-outline-primary cancel"><%- gettext('Cancel') %><span class="icon icon-Cancel"></span></button>
     </div>
 </form>
 </script>
@@ -577,7 +577,7 @@
 <% } %>
 </script>
 <script aria-hidden="true" type="text/template" id="topic-template">
-<div class="field-label">
+<!--<div class="field-label">
     <label for="topic" class="field-label-text">
         <%- gettext("Topic area") %>
     </label>
@@ -589,6 +589,69 @@
     <select id="topic" class="post-topic field-input" aria-describedby="field_help_topic_area wrapper-visibility-message" required>
         <%= edx.HtmlUtils.ensureHtml(topics_html) %>
     </select>
+</div>-->
+<div class="theme-selection">
+    <span class="theme-title">Theme</span>
+    <div class="theme-boxes">
+        <label class="theme-box">
+            <input type="radio" name="theme" checked>
+            <span class="icon-holder" style="background-color: #CADBDB;">
+                <span class="icon icon-Check"></span>
+            </span>
+            <span class="theme-title">
+                <span class="title-holder">General</span>
+            </span>
+        </label>
+        <label class="theme-box">
+            <input type="radio" name="theme">
+            <span class="icon-holder" style="background-color: #56B7F7;">
+                <span class="icon icon-Check"></span>
+            </span>
+            <span class="theme-title">
+                <span class="title-holder">Taking care of your mental wellbeing!</span>
+            </span>
+        </label>
+        <label class="theme-box">
+            <input type="radio" name="theme">
+            <span class="icon-holder" style="background-color: #EB7C7C;">
+                <span class="icon icon-Check"></span>
+            </span>
+            <span class="theme-title">
+                <span class="title-holder">Standardised Tests</span>
+            </span>
+        </label>
+        <label class="theme-box">
+            <input type="radio" name="theme">
+            <span class="icon-holder" style="background-color: #44CFC8;">
+                <span class="icon icon-Check"></span>
+            </span>
+            <span class="theme-title">
+                <span class="title-holder">Theme Name</span>
+            </span>
+        </label>
+        <label class="theme-box">
+            <input type="radio" name="theme">
+            <span class="icon-holder" style="background-color: #787FE3;">
+                <span class="icon icon-Check"></span>
+            </span>
+            <span class="theme-title">
+                <span class="title-holder">Theme Name</span>
+            </span>
+        </label>
+        <label class="theme-box">
+            <input type="radio" name="theme">
+            <span class="icon-holder" style="background-color: #EADA52;">
+                <span class="icon icon-Check"></span>
+            </span>
+            <span class="theme-title">
+                <span class="title-holder">Theme Name</span>
+            </span>
+        </label>
+    </div>
+    <div class="action-btns">
+        <a href="#" class="discard-link">Discard</a>
+        <a href="#" class="save-link">Save</a>
+    </div>
 </div>
 </script>
 <script aria-hidden="true" type="text/template" id="post-user-display-template">
@@ -770,24 +833,28 @@
             <%- gettext("Post type") %>
         </span>
     </legend>
-    <div class="field-help" id="field_help_post_type">
+    <!-- <div class="field-help" id="field_help_post_type">
         <%- gettext("Questions raise issues that need answers. Discussions share ideas and start conversations. (Required)") %>
-    </div>
+    </div>-->
     <div class="field-label">
-        <label for="<%- edx.StringUtils.interpolate(form_id) %>-post-type-question" class="post-type-label">
-            <input aria-describedby="field_help_post_type" type="radio" name="<%- edx.StringUtils.interpolate(form_id) %>-post-type" class="field-input input-radio" id="<%- edx.StringUtils.interpolate(form_id) %>-post-type-question" value="question">
-            <span class="field-input-label">
-                <span class="icon fa fa-question" aria-hidden="true"></span>
-                <% // Translators: This is a forum post type %>
-                <%- gettext("Question") %>
-            </span>
-        </label>
         <label for="<%- edx.StringUtils.interpolate(form_id) %>-post-type-discussion" class="post-type-label">
             <input aria-describedby="field_help_post_type" type="radio" name="<%- edx.StringUtils.interpolate(form_id) %>-post-type" class="field-input input-radio" id="<%- edx.StringUtils.interpolate(form_id) %>-post-type-discussion" value="discussion" checked>
-            <span class="field-input-label">
-                <span class="icon fa fa-comments" aria-hidden="true"></span>
-                <% // Translators: This is a forum post type %>
-                <%- gettext("Discussion") %>
+            <span class="field-input-label discussion">
+                <span class="title-holder">
+                    <span class="icon icon-Discussion" aria-hidden="true"></span>
+                    <% // Translators: This is a forum post type %>
+                    <%- gettext("Discussion") %>
+                </span>
+            </span>
+        </label>
+        <label for="<%- edx.StringUtils.interpolate(form_id) %>-post-type-question" class="post-type-label">
+            <input aria-describedby="field_help_post_type" type="radio" name="<%- edx.StringUtils.interpolate(form_id) %>-post-type" class="field-input input-radio" id="<%- edx.StringUtils.interpolate(form_id) %>-post-type-question" value="question">
+            <span class="field-input-label interrogation">
+                <span class="title-holder">
+                    <span class="icon icon-Interrogation" aria-hidden="true"></span>
+                    <% // Translators: This is a forum post type %>
+                    <%- gettext("Question") %>
+                <span/>
             </span>
         </label>
     </div>
