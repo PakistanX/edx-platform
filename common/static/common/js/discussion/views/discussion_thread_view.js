@@ -75,6 +75,7 @@
                 this.$('.post-response .wmd-input').css({
                     height: '80px'
                 });
+                this.$('.post-response .reply-holder').removeClass('open');
                 return this.$('.comment-post-control').hide();
             };
 
@@ -82,6 +83,7 @@
                 this.$('.post-response .wmd-button-row').show();
                 this.$('.post-response .wmd-preview-container').show();
                 this.$('.post-response .comment-post-control').show();
+                this.$('.post-response .reply-holder').addClass('open');
                 return this.$('.post-response .wmd-input').css({
                     height: '125px'
                 });
