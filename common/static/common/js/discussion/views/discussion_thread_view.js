@@ -73,8 +73,7 @@
                 this.$('.post-response .wmd-button-row').hide();
                 this.$('.post-response .wmd-preview-container').hide();
                 this.$('.post-response .wmd-input').css({
-                    height: '35px',
-                    padding: '5px'
+                    height: '80px'
                 });
                 return this.$('.comment-post-control').hide();
             };
@@ -84,8 +83,7 @@
                 this.$('.post-response .wmd-preview-container').show();
                 this.$('.post-response .comment-post-control').show();
                 return this.$('.post-response .wmd-input').css({
-                    height: '125px',
-                    padding: '10px'
+                    height: '125px'
                 });
             };
 
