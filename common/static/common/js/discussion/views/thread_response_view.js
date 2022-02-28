@@ -51,11 +51,17 @@
 
             ThreadResponseView.prototype.events = {
                 'click .discussion-submit-comment': 'submitComment',
-                'focus .wmd-input': 'showEditorChrome'
+                'focus .wmd-input': 'showEditorChrome',
+                'click div.post-comment-count': 'showReplies'
             };
 
             ThreadResponseView.prototype.$ = function(selector) {
                 return this.$el.find(selector);
+            };
+
+            ThreadResponseView.prototype.showReplies = function(){
+                var commentList = this.$('ol.comments');
+                commentList.is(':visible') ? commentList.hide() : commentList.show();
             };
 
             ThreadResponseView.prototype.initialize = function(options) {
@@ -90,6 +96,7 @@
                     this.hideCommentForm();
                 }
                 this.renderComments();
+                this.$el.find('ol.comments').hide();
                 return this;
             };
 
@@ -104,6 +111,7 @@
                 this.$('.wmd-input').css({
                     height: '45px'
                 });
+                this.$('.reply-holder').removeClass('open');
                 return this.$('.comment-post-control').hide();
             };
 
@@ -111,6 +119,7 @@
                 this.$('.wmd-button-row').show();
                 this.$('.wmd-preview-container').show();
                 this.$('.comment-post-control').show();
+                this.$('.reply-holder').addClass('open');
                 return this.$('.wmd-input').css({
                     height: '125px'
                 });
