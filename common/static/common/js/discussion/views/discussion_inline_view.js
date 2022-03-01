@@ -104,7 +104,8 @@
             this.threadListView = new DiscussionThreadListView({
                 el: this.$('.inline-threads'),
                 collection: self.discussion,
-                courseSettings: self.courseSettings
+                courseSettings: self.courseSettings,
+                supportsActiveThread: true,
             });
 
             this.threadListView.render();
