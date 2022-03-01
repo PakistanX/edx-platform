@@ -189,14 +189,14 @@
             };
 
             ThreadResponseView.prototype.submitComment = function(event) {
-                var body, comment, url, view;
+                var body, comment, url, view, self = this;
                 event.preventDefault();
-                url = this.model.urlFor('reply');
-                body = this.getWmdContent('comment-body');
+                url = self.model.urlFor('reply');
+                body = self.getWmdContent('comment-body');
                 if (!body.trim().length) {
                     return;
                 }
-                this.setWmdContent('comment-body', '');
+                self.setWmdContent('comment-body', '');
                 comment = new Comment({
                     body: body,
                     created_at: (new Date()).toISOString(),
@@ -205,9 +205,9 @@
                     user_id: window.user.get('id'),
                     id: 'unsaved'
                 });
-                view = this.renderComment(comment);
-                this.hideEditorChrome();
-                this.trigger('comment:add', comment);
+                view = self.renderComment(comment);
+                self.hideEditorChrome();
+                self.trigger('comment:add', comment);
                 return DiscussionUtil.safeAjax({
                     $elem: $(event.target),
                     url: url,
@@ -219,6 +219,7 @@
                     success: function(response) {
                         comment.set(response.content);
                         comment.updateInfo(response.annotated_content_info);
+                        self.$('span.comment-count-single').text(self.model.attributes.comments.length + 1);
                         return view.render();
                     }
                 });

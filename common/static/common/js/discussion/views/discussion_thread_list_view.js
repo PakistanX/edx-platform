@@ -157,7 +157,7 @@
             };
 
             DiscussionThreadListView.prototype.clearSearchAlerts = function() {
-                this.addTowCol = true;
+                this.twoColDiv.addClass('two-cols')
                 this.forumDiv.show();
                 return this.searchAlertCollection.reset();
             };

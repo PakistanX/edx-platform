@@ -286,7 +286,7 @@
 <div class="post-comment-count">
     <button class="btn-link action-show-replies">
         <i class="icon-Arrow-back"></i>
-        <%= comments.length %> replies
+        <span class="comment-count-single"><%= comments.length %></span> replies
     </button>
 </div>
 <div>
@@ -679,14 +679,12 @@
         </section>
 
         <div class="inline-thread">
-            <div class="forum-nav-bar">
+            <div class="forum-nav-bar is-hidden">
                 <button class="btn-link all-posts-btn">
                     <span class="icon fa fa-chevron-prev" aria-hidden="true"></span>
                     <span aria-hidden="true"><%- gettext('All Posts') %></span>
                     <span class="sr-only"><%- gettext('Return to all posts') %></span>
                 </button>
-            </div>
-            <div class="forum-content">
             </div>
         </div>
     </div>
