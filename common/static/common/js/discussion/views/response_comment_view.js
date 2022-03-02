@@ -129,7 +129,8 @@
             };
 
             ResponseCommentView.prototype.edit = function(event) {
-                this.trigger('comment:edit', event);
+                // We might need this later
+                // this.trigger('comment:edit', event);
                 return this.renderEditView();
             };
 
