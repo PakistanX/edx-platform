@@ -116,13 +116,13 @@
             };
 
             ThreadResponseView.prototype.showEditorChrome = function(event) {
-                var parent = $(event.target).parents('.discussion-response');
-                parent = parent.length ? '.discussion-response' : '.edit-post-form';
-                this.$(parent + ' .wmd-button-row').show();
-                this.$(parent + ' .wmd-preview-container').show();
-                this.$(parent + ' .comment-post-control').show();
-                this.$(parent + ' .reply-holder').addClass('open');
-                return this.$(parent + ' .wmd-input').css({
+                var selector = '.discussion-response';
+                selector = $(event.target).parents(selector).length ? selector : '.edit-post-form';
+                this.$(selector + ' .wmd-button-row').show();
+                this.$(selector + ' .wmd-preview-container').show();
+                this.$(selector + ' .comment-post-control').show();
+                this.$(selector + ' .reply-holder').addClass('open');
+                return this.$(selector + ' .wmd-input').css({
                     height: '125px'
                 });
             };
