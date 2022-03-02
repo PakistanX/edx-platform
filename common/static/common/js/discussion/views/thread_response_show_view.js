@@ -32,13 +32,19 @@
             };
 
             ThreadResponseShowView.prototype.renderTemplate = function() {
-                var template = edx.HtmlUtils.template($('#thread-response-show-template').html()),
-                    context = _.extend({
-                        cid: this.model.cid,
-                        author_display: this.getAuthorDisplay(),
-                        endorser_display: this.getEndorserDisplay(),
-                        readOnly: $('.discussion-module').data('read-only')
-                    }, this.model.attributes);
+                var template = edx.HtmlUtils.template($('#thread-response-show-template').html());
+                var $container = $('#discussion-container');
+                if (!$container.length) {
+                    $container = $('.discussion-module');
+                }
+                var context = _.extend({
+                    cid: this.model.cid,
+                    author_display: this.getAuthorDisplay(),
+                    endorser_display: this.getEndorserDisplay(),
+                    wmdId: typeof(this.model.id) !== 'undefined' ? this.model.id : (new Date()).getTime(),
+                    create_sub_comment: $container.data('user-create-subcomment'),
+                    readOnly: $container.data('read-only')
+                }, this.model.attributes);
                 return template(context);
             };
 

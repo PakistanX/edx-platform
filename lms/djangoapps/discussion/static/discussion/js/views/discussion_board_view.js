@@ -27,6 +27,7 @@
                 'click .forum-nav-browse-menu-wrapper': 'ignoreClick',
                 'keydown .search-input': 'performSearch',
                 'click .search-button': 'performSearch',
+                'click a.show-hide': 'hideShowElement',
                 'topic:selected': 'clearSearch'
             },
 
@@ -127,13 +128,33 @@
                 }
             },
 
+            hideShowElement: function(event) {
+              event.preventDefault();
+              var anchor = this.$('a.show-hide');
+              var itag = anchor.find('i'), elementToHideOrShow = anchor.parent().parent().find('table.home-helpgrid');
+              var text, className;
+              if(itag.hasClass('icon-Invisible-Outline-Color')){
+                  text = "Show ";
+                  className = "icon-Visible-Outline-Color";
+                  elementToHideOrShow.hide();
+              }
+              else{
+                  text = "Hide ";
+                  className = "icon-Invisible-Outline-Color";
+                  elementToHideOrShow.show();
+              }
+              itag.attr('class', className);
+              anchor.html(text);
+              anchor.append(itag);
+            },
+
             clearSearch: function() {
                 this.$('.search-input').val('');
                 this.discussionThreadListView.clearSearchAlerts();
             },
 
             goHome: function() {
-                HtmlUtils.append(this.$('.forum-content').empty(), HtmlUtils.template(discussionHomeTemplate)({}));
+                HtmlUtils.append(this.$('.discussion-helper').empty(), HtmlUtils.template(discussionHomeTemplate)({}));
                 this.$('.forum-nav-thread-list a').removeClass('is-active').find('.sr')
                   .remove();
                 this.setupForumDigestSettings(window.user.get('id'));
@@ -279,6 +300,7 @@
                 var $item = $(event.target).closest('.forum-nav-browse-menu-item');
                 event.preventDefault();
                 this.hideBrowseMenu();
+                $('a.back').show();
                 this.trigger('topic:selected', this.getBreadcrumbText($item));
                 return this.discussionThreadListView.selectTopic($(event.target));
             },

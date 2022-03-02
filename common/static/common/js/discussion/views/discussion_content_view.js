@@ -51,15 +51,25 @@
                     var action, selector, _ref, _results;
                     _ref = this.abilityRenderer;
                     _results = [];
+                    var hide_or_show = {
+                      editable: true,
+                      can_delete: true
+                    };
                     for (action in _ref) {
                         if (_ref.hasOwnProperty(action)) {
                             selector = _ref[action];
                             if (!ability[action]) {
                                 _results.push(selector.disable.apply(this));
+                              if (action === 'editable' || action === 'can_delete') {
+                                hide_or_show[action] = false;
+                              }
                             } else {
                                 _results.push(selector.enable.apply(this));
                             }
                         }
+                    }
+                    if(!hide_or_show.editable && !hide_or_show.can_delete){
+                      this.$el.find('.more-wrapper').hide();
                     }
                     return _results;
                 }
@@ -107,9 +117,11 @@
                 can_vote: {
                     enable: function() {
                         this.$('.action-vote').closest('.actions-item').removeClass('is-disabled');
+                        this.$('.action-downvote').closest('.actions-item').removeClass('is-disabled');
                     },
                     disable: function() {
                         this.$('.action-vote').closest('.actions-item').addClass('is-disabled');
+                        this.$('.action-downvote').closest('.actions-item').addClass('is-disabled');
                     }
                 }
             };
@@ -197,6 +209,9 @@
                 this.toggleVote = function() {
                     return DiscussionContentShowView.prototype.toggleVote.apply(self, arguments);
                 };
+                this.toggleDownVote = function() {
+                    return DiscussionContentShowView.prototype.toggleDownVote.apply(self, arguments);
+                };
                 this.toggleEndorse = function() {
                     return DiscussionContentShowView.prototype.toggleEndorse.apply(self, arguments);
                 };
@@ -224,6 +239,7 @@
                     ['.action-answer', 'toggleEndorse'],
                     ['.action-endorse', 'toggleEndorse'],
                     ['.action-vote', 'toggleVote'],
+                    ['.action-downvote', 'toggleDownVote'],
                     ['.action-more', 'toggleSecondaryActions'],
                     ['.action-pin', 'togglePin'],
                     ['.action-edit', 'edit'],
@@ -270,23 +286,31 @@
                         $button.closest('.actions-item').toggleClass('is-hidden', !this.model.canBeEndorsed());
                         return $button.toggleClass('is-checked', endorsed);
                     },
-                    votes: function(votes) {
-                        var button, numVotes, selector, votesText, votesCountMsg;
-                        selector = '.action-vote';
-                        this.updateButtonState(selector, window.user.voted(this.model));
-                        button = this.$el.find(selector);
-                        numVotes = votes.up_count;
+                    voteRender: function(selector, numVotes, mode, context) {
+                        var button, votesText, votesCountMsg;
+                        var displayClass = '.display-' + mode;
+                        var countClass = mode + '-count'
+                        button = context.$el.find(selector);
                         votesCountMsg = ngettext(
                             'there is currently {numVotes} vote', 'there are currently {numVotes} votes', numVotes
                         );
-                        button.find('.js-sr-vote-count').empty().text(
+                        button.find('.js-sr-' + countClass).empty().text(
                             edx.StringUtils.interpolate(votesCountMsg, {numVotes: numVotes})
                         );
                         votesText = edx.StringUtils.interpolate(
-                            ngettext('{numVotes} Vote', '{numVotes} Votes', numVotes),
+                            ngettext('{numVotes}', '{numVotes}', numVotes),
                             {numVotes: numVotes});
-                        button.find('.vote-count').empty().text(votesText);
-                        this.$el.find('.display-vote .vote-count').empty().text(votesText);
+                        button.find('.' + countClass).empty().text(votesText);
+                        context.$el.find(displayClass + countClass).empty().text(votesText);
+                    },
+                    votes: function(votes) {
+                        var selector;
+                        selector = '.action-vote';
+                        this.updateButtonState(selector, window.user.voted(this.model));
+                        this.attrRenderer.voteRender(selector, votes.up_count, 'vote', this);
+                        selector = '.action-downvote';
+                        this.updateButtonState(selector, window.user.downvoted(this.model));
+                        this.attrRenderer.voteRender(selector, votes.down_count, 'downvote', this);
                     },
                     pinned: function(pinned) {
                         this.updateButtonState('.action-pin', pinned);
@@ -425,6 +449,31 @@
                             return self.model.vote();
                         } else {
                             return self.model.unvote();
+                        }
+                    });
+                }
+            };
+
+            DiscussionContentShowView.prototype.toggleDownVote = function(event) {
+                var isVoting, updates, url, user,
+                    self = this;
+                event.preventDefault();
+                user = DiscussionUtil.getUser();
+                isVoting = !user.downvoted(this.model);
+                url = this.model.urlFor(isVoting ? 'downvote' : 'undownvote');
+                updates = {
+                    downvoted_ids: (isVoting ? _.union : _.difference)(user.get('downvoted_ids'), [this.model.id])
+                };
+                if (!$(event.target.closest('.actions-item')).hasClass('is-disabled')) {
+                    return DiscussionUtil.updateWithUndo(user, updates, {
+                        url: url,
+                        type: 'POST',
+                        $elem: $(event.currentTarget)
+                    }, gettext('This down vote could not be processed. Refresh the page and try again.')).done(function() {
+                        if (isVoting) {
+                            return self.model.downvote();
+                        } else {
+                            return self.model.undownvote();
                         }
                     });
                 }

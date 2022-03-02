@@ -51,11 +51,17 @@
 
             ThreadResponseView.prototype.events = {
                 'click .discussion-submit-comment': 'submitComment',
-                'focus .wmd-input': 'showEditorChrome'
+                'focus .wmd-input': 'showEditorChrome',
+                'click div.post-comment-count': 'showReplies'
             };
 
             ThreadResponseView.prototype.$ = function(selector) {
                 return this.$el.find(selector);
+            };
+
+            ThreadResponseView.prototype.showReplies = function(){
+                var commentList = this.$('ol.comments');
+                commentList.is(':visible') ? commentList.hide() : commentList.show();
             };
 
             ThreadResponseView.prototype.initialize = function(options) {
@@ -90,6 +96,7 @@
                     this.hideCommentForm();
                 }
                 this.renderComments();
+                this.$el.find('ol.comments').hide();
                 return this;
             };
 
@@ -102,19 +109,21 @@
                 this.$('.wmd-button-row').hide();
                 this.$('.wmd-preview-container').hide();
                 this.$('.wmd-input').css({
-                    height: '35px',
-                    padding: '5px'
+                    height: '45px'
                 });
+                this.$('.reply-holder').removeClass('open');
                 return this.$('.comment-post-control').hide();
             };
 
-            ThreadResponseView.prototype.showEditorChrome = function() {
-                this.$('.wmd-button-row').show();
-                this.$('.wmd-preview-container').show();
-                this.$('.comment-post-control').show();
-                return this.$('.wmd-input').css({
-                    height: '125px',
-                    padding: '10px'
+            ThreadResponseView.prototype.showEditorChrome = function(event) {
+                var selector = '.discussion-response';
+                selector = $(event.target).parents(selector).length ? selector : '.edit-post-form';
+                this.$(selector + ' .wmd-button-row').show();
+                this.$(selector + ' .wmd-preview-container').show();
+                this.$(selector + ' .comment-post-control').show();
+                this.$(selector + ' .reply-holder').addClass('open');
+                return this.$(selector + ' .wmd-input').css({
+                    height: '125px'
                 });
             };
 
@@ -182,14 +191,14 @@
             };
 
             ThreadResponseView.prototype.submitComment = function(event) {
-                var body, comment, url, view;
+                var body, comment, url, view, self = this;
                 event.preventDefault();
-                url = this.model.urlFor('reply');
-                body = this.getWmdContent('comment-body');
+                url = self.model.urlFor('reply');
+                body = self.getWmdContent('comment-body');
                 if (!body.trim().length) {
                     return;
                 }
-                this.setWmdContent('comment-body', '');
+                self.setWmdContent('comment-body', '');
                 comment = new Comment({
                     body: body,
                     created_at: (new Date()).toISOString(),
@@ -198,9 +207,9 @@
                     user_id: window.user.get('id'),
                     id: 'unsaved'
                 });
-                view = this.renderComment(comment);
-                this.hideEditorChrome();
-                this.trigger('comment:add', comment);
+                view = self.renderComment(comment);
+                self.hideEditorChrome();
+                self.trigger('comment:add', comment);
                 return DiscussionUtil.safeAjax({
                     $elem: $(event.target),
                     url: url,
@@ -212,6 +221,7 @@
                     success: function(response) {
                         comment.set(response.content);
                         comment.updateInfo(response.annotated_content_info);
+                        self.$('span.comment-count-single').text(self.model.attributes.comments.length + 1);
                         return view.render();
                     }
                 });

@@ -43,6 +43,20 @@
                 return thread.unvote();
             };
 
+            DiscussionUser.prototype.downvoted = function(thread) {
+                return _.include(this.get('downvoted_ids'), thread.id);
+            };
+
+            DiscussionUser.prototype.downvote = function(thread) {
+                this.get('downvoted_ids').push(thread.id);
+                return thread.downvote();
+            };
+
+            DiscussionUser.prototype.undownvote = function(thread) {
+                this.set('downvoted_ids', _.without(this.get('downvoted_ids'), thread.id));
+                return thread.undownvote();
+            };
+
             return DiscussionUser;
         }(Backbone.Model));
     }

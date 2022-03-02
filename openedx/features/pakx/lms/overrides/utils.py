@@ -21,9 +21,12 @@ from six import text_type
 from lms.djangoapps.course_api.blocks.serializers import BlockDictSerializer
 from lms.djangoapps.course_api.blocks.transformers.blocks_api import BlocksAPITransformer
 from lms.djangoapps.courseware.courses import get_courses, sort_by_announcement, sort_by_start_date
+from lms.djangoapps.courseware.model_data import FieldDataCache
+from lms.djangoapps.courseware.module_render import toc_for_course
 from openedx.core.djangoapps.content.block_structure.api import get_course_in_cache
 from openedx.core.djangoapps.content.block_structure.transformers import BlockStructureTransformers
 from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
+from openedx.core.djangoapps.crawlers.models import CrawlersConfig
 from openedx.core.djangoapps.site_configuration import helpers as configuration_helpers
 from openedx.core.lib.request_utils import get_request_or_stub
 from openedx.features.course_experience.utils import get_course_outline_block_tree, get_resume_block
@@ -524,3 +527,30 @@ def validate_text_for_emoji(text):
     )
     if text and findall(pattern, text):
         raise ValidationError(_('Invalid data! text should not contain any emoji.'))
+
+
+def create_accordion_for_sidebar(request, course, course_experience_mode):
+    """Create and render accordion to display in sidebar for discussion course and other templates."""
+
+    from lms.djangoapps.courseware.views.index import render_accordion
+
+    accordion = None
+    hide_course_navigation = settings.FEATURES.get('HIDE_COURSEWARE_NAVIGATION')
+    field_data_cache = FieldDataCache.cache_for_descriptor_descendents(
+        course.id,
+        request.user,
+        course,
+        depth=2,
+        read_only=CrawlersConfig.is_crawler(request),
+    )
+    table_of_contents = toc_for_course(request.user, request, course, None, None, field_data_cache)
+    if not hide_course_navigation:
+        if not request.user.is_authenticated:
+            course_block_tree = table_of_contents
+        else:
+            course_block_tree = get_course_outline_block_tree(
+                request, text_type(course.id), request.user, allow_start_dates_in_future=True
+            )
+        accordion = render_accordion(request, course, course_block_tree, None, None, course_experience_mode)
+
+    return accordion

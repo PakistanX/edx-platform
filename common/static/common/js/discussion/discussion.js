@@ -91,9 +91,12 @@
                 data = {
                     page: this.current_page + 1
                 };
-                if (_.contains(['unread', 'unanswered', 'flagged'], options.filter)) {
-                    data[options.filter] = true;
-                }
+                $.each(options.filters, function(index, value){
+                  if (_.contains(['unread', 'unanswered', 'flagged'], value)) {
+                    data[value] = true;
+                  }
+                });
+
                 switch (mode) {
                 case 'search':
                     url = DiscussionUtil.urlFor('search');

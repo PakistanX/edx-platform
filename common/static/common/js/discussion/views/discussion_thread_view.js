@@ -63,9 +63,30 @@
             DiscussionThreadView.prototype.events = {
                 'click .discussion-submit-post': 'submitComment',
                 'click .add-response-btn': 'scrollToAddResponse',
+                'click .post-response': 'showEditorChromeForPost',
                 'keydown .wmd-button': function(event) {
                     return DiscussionUtil.handleKeypressInToolbar(event);
                 }
+            };
+
+            DiscussionThreadView.prototype.hideEditorChromeForPost = function() {
+                this.$('.post-response .wmd-button-row').hide();
+                this.$('.post-response .wmd-preview-container').hide();
+                this.$('.post-response .wmd-input').css({
+                    height: '80px'
+                });
+                this.$('.post-response .reply-holder').removeClass('open');
+                return this.$('.comment-post-control').hide();
+            };
+
+            DiscussionThreadView.prototype.showEditorChromeForPost = function() {
+                this.$('.post-response .wmd-button-row').show();
+                this.$('.post-response .wmd-preview-container').show();
+                this.$('.post-response .comment-post-control').show();
+                this.$('.post-response .reply-holder').addClass('open');
+                return this.$('.post-response .wmd-input').css({
+                    height: '125px'
+                });
             };
 
             DiscussionThreadView.prototype.$ = function(selector) {
@@ -158,6 +179,7 @@
                     });
                 }
                 this.loadInitialResponses();
+                this.hideEditorChromeForPost();
             };
 
             DiscussionThreadView.prototype.attrRenderer = $.extend({}, DiscussionContentView.prototype.attrRenderer, {
@@ -165,6 +187,7 @@
                     this.$('.discussion-reply-new').toggle(!closed);
                     this.$('.comment-form').closest('li').toggle(!closed);
                     this.$('.action-vote').toggle(!closed);
+                    this.$('.action-downvote').toggle(!closed);
                     this.$('.display-vote').toggle(closed);
                     return this.renderAddResponseButton();
                 }
@@ -258,6 +281,7 @@
                 this.$el.find('.response-count').text(
                     edx.StringUtils.interpolate(responseCountFormat, {numResponses: responseTotal}, true)
                 );
+                this.$el.find('#post-comment-count').text(responseTotal);
 
                 responsePagination = this.$el.find('.response-pagination');
                 responsePagination.empty();
@@ -360,7 +384,8 @@
                     created_at: (new Date()).toISOString(),
                     username: window.user.get('username'),
                     votes: {
-                        up_count: 0
+                        up_count: 0,
+                        down_count: 0
                     },
                     abuse_flaggers: [],
                     endorsed: false,
