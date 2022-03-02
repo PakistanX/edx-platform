@@ -313,7 +313,7 @@
         <div class="edit-post-body" name="body" data-id="<%- id %>"><%- body %></div>
     </div>
     <button type="submit" id="edit-response-submit"class="btn btn-primary post-update"><%- gettext("Update response") %></button>
-    <button class="btn btn-outline-primary post-cancel"><%- gettext("Cancel") %></button>
+    <button class="btn btn-outline-primary post-cancel"><%- gettext("Cancel") %> <span class="icon icon-Cancel"></span></button>
 </div>
 </script>
 <script aria-hidden="true" type="text/template" id="response-comment-show-template">
