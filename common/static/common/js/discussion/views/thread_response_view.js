@@ -115,12 +115,14 @@
                 return this.$('.comment-post-control').hide();
             };
 
-            ThreadResponseView.prototype.showEditorChrome = function() {
-                this.$('.wmd-button-row').show();
-                this.$('.wmd-preview-container').show();
-                this.$('.comment-post-control').show();
-                this.$('.reply-holder').addClass('open');
-                return this.$('.wmd-input').css({
+            ThreadResponseView.prototype.showEditorChrome = function(event) {
+                var selector = '.discussion-response';
+                selector = $(event.target).parents(selector).length ? selector : '.edit-post-form';
+                this.$(selector + ' .wmd-button-row').show();
+                this.$(selector + ' .wmd-preview-container').show();
+                this.$(selector + ' .comment-post-control').show();
+                this.$(selector + ' .reply-holder').addClass('open');
+                return this.$(selector + ' .wmd-input').css({
                     height: '125px'
                 });
             };

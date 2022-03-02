@@ -257,7 +257,7 @@
                     contentId: cid,
                     contentType: 'response',
                     primaryActions: [thread.get('thread_type') == 'question' ? 'answer' : 'endorse'],
-                    secondaryActions: [],
+                    secondaryActions: ['edit', 'delete'],
                     readOnly: readOnly,
                     comments: false,
                 }
