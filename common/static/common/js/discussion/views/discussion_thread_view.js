@@ -469,6 +469,8 @@
                 this.createShowView();
                 this.renderShowView();
                 this.renderAttrs();
+                DiscussionUtil.makeWmdEditor(this.$el, $.proxy(this.$, this), 'reply-body');
+                this.hideEditorChromeForPost();
                 return this.$el.find('.post-extended-content').show();
             };
 
