@@ -1,11 +1,11 @@
 """ Overrides app util functions """
 
+from collections import OrderedDict
 from datetime import datetime
 from logging import getLogger
 from re import compile as re_compile
 from re import findall
 
-from collections import OrderedDict
 from completion.models import BlockCompletion
 from django.conf import settings
 from django.contrib.auth.models import User
