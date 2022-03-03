@@ -10,7 +10,7 @@
             },
 
             attributes: {
-                class: 'discussion-post edit-post-form'
+                class: 'forum-new-post-form discussion-post edit-post-form'
             },
 
             initialize: function(options) {

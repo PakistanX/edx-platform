@@ -171,7 +171,6 @@
 <script aria-hidden="true" type="text/template" id="thread-edit-template">
 <h<%- startHeader%> class="thread-title"><%- gettext("Editing post") %></h<%- startHeader%>>
 <ul class="post-errors"></ul>
-<div class="forum-edit-post-form-wrapper"></div>
 <div class="post-field">
     <label class="field-label" for='edit-discussion-forum-title'>
         <span class="field-label-text"><%- gettext("Title") %></span>
@@ -181,6 +180,7 @@
         <input id='edit-discussion-forum-title' aria-describedby="field_help_title" type="text" class="edit-post-title field-input" name="title" value="<%- title %>">
     </label>
 </div>
+<div class="forum-edit-post-form-wrapper"></div>
 <div class="form-row post-field">
     <p class="sr-only field-help" id="edit-post-editor-description"><%- gettext('Edit your post below.') %></p>
     <div class="edit-post-body" aria-describedby="edit-post-editor-description" name="body"><%- body %></div>
@@ -313,7 +313,7 @@
         <div class="edit-post-body" name="body" data-id="<%- id %>"><%- body %></div>
     </div>
     <button type="submit" id="edit-response-submit"class="btn btn-primary post-update"><%- gettext("Update response") %></button>
-    <button class="btn btn-outline-primary post-cancel"><%- gettext("Cancel") %></button>
+    <button class="btn btn-outline-primary post-cancel"><%- gettext("Cancel") %> <span class="icon icon-Cancel"></span></button>
 </div>
 </script>
 <script aria-hidden="true" type="text/template" id="response-comment-show-template">

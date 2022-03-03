@@ -320,6 +320,7 @@
                 this.createShowView();
                 this.renderShowView();
                 DiscussionUtil.typesetMathJax(this.$el.find('.response-body'));
+                this.afterInsert();
                 return this.showCommentForm();
             };
 
