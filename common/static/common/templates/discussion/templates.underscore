@@ -58,7 +58,7 @@
                         primaryActions: ['follow'],
                         secondaryActions: ['pin', 'edit', 'delete', 'close'],
                         readOnly: readOnly,
-                        comments: true,
+                        comment_count: comments_count,
                     }
                 )
                 %>
@@ -145,7 +145,7 @@
                         primaryActions: ['vote', 'report'],
                         secondaryActions: [],
                         readOnly: readOnly,
-                        comments: false,
+                        comment_count: -1,
                     }
                 )
             %>
@@ -259,7 +259,7 @@
                     primaryActions: [thread.get('thread_type') == 'question' ? 'answer' : 'endorse'],
                     secondaryActions: ['edit', 'delete'],
                     readOnly: readOnly,
-                    comments: false,
+                    comment_count: -1,
                 }
             )
         %>
@@ -278,7 +278,7 @@
                 primaryActions: ['vote', 'report'],
                 secondaryActions: [],
                 readOnly: readOnly,
-                comments: false,
+                comment_count: -1,
             }
         )
     %>
@@ -327,7 +327,7 @@
               primaryActions: [],
               secondaryActions: ['edit', 'delete'],
               readOnly: readOnly,
-              comments: false,
+              comment_count: -1,
           }
       )
   %>
@@ -365,7 +365,7 @@
                 primaryActions: ['vote', 'report'],
                 secondaryActions: [],
                 readOnly: readOnly,
-                comments: false,
+                comment_count: -1,
             }
         )
     %>
@@ -415,7 +415,7 @@
       <% if(typeof(subscribed) === "undefined") { var subscribed = null; } %>
       <ul class="forum-nav-thread-labels">
         <li>
-            <%- gettext(comments_count + 1) %>
+            <%- gettext(comments_count) %>
             <i class="icon-Round-Chat-6-Outline-Color"></i>
         </li>
         <li>
@@ -1003,10 +1003,9 @@
             </li>
         <% } %>
         <% _.each(primaryActions, function(action) { print(_.template($('#forum-action-' + action).html())({})) }) %>
-        <% if (comments) { %>
+        <% if (comment_count > -1) { %>
             <li class="post-comments">
-                <span id="post-comment-count""></span>
-                <span class="icon fa fa-comment" aria-hidden="true"></span>
+                <span id="post-comment-count"><%- gettext(comment_count) %></span>
             </li>
         <% } %>
     </ul>
