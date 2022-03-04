@@ -370,7 +370,7 @@
             };
 
             DiscussionThreadView.prototype.submitComment = function(event) {
-                var body, comment, url, view;
+                var body, comment, url, view, self = this;
                 event.preventDefault();
                 url = this.model.urlFor('reply');
                 body = this.getWmdContent('reply-body');
@@ -407,7 +407,11 @@
                     success: function(data) {
                         comment.updateInfo(data.annotated_content_info);
                         comment.set(data.content);
+                        if( view.$('.comment-body').is(':empty') ) {
+                          view.afterInsert();
+                        }
                         DiscussionUtil.typesetMathJax(view.$el.find('.response-body'));
+                        self.hideEditorChromeForPost();
                     }
                 });
             };
