@@ -104,6 +104,7 @@
                         is_commentable_divided: this.discussion.is_commentable_divided
                     });
                     this.main.render();
+                    this.discussionBoardView.discussionThreadListView.addRemoveTwoCol();
                     return this.thread.on('thread:thread_type_updated', this.showMain);
                 },
 
@@ -132,10 +133,12 @@
                 },
 
                 hideNewPost: function() {
+                    var self = this;
                     return this.newPostView.$el.fadeOut({
                         duration: 200,
                         complete: function() {
                             $('aside.forum-nav').show();
+                            self.discussionBoardView.discussionThreadListView.addRemoveTwoCol();
                             return $('.forum-content').fadeIn(200).find('.thread-wrapper')
                                 .focus();
                         }

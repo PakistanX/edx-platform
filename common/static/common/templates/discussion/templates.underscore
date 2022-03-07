@@ -541,12 +541,24 @@
 </form>
 </script>
 <script aria-hidden="true" type="text/template" id="new-post-menu-entry-template">
-<option class="topic-title" data-discussion-id="<%- id %>" data-divided="<%- is_divided %>"><%- text %></option>
+<label class="theme-box radio-theme-input">
+    <input
+        type="radio" name="create-post-theme"
+        data-discussion-id="<%- id %>"
+        data-divided="<%- is_divided %>"
+        label="<%- label %>"
+        value="<%- text %>"
+    >
+    <span class="icon-holder" style="background-color: #CADBDB;">
+        <span class="icon icon-Check"></span>
+    </span>
+    <span class="theme-title">
+        <span class="title-holder"><%- text %></span>
+    </span>
+</label>
 </script>
 <script aria-hidden="true" type="text/template" id="new-post-menu-category-template">
-<optgroup label="<%- text %>">
-    <%= edx.HtmlUtils.ensureHtml(entries) %>
-</optgroup>
+<%= edx.HtmlUtils.ensureHtml(entries) %>
 </script>
 <script aria-hidden="true" type="text/template" id="new-post-alert-template">
 <div class="alert alert-error pattern-library-shim" role="alert" aria-labelledby="alert-title-error-<%- alertId %>" tabindex="-1">
@@ -593,60 +605,7 @@
 <div class="theme-selection">
     <span class="theme-title">Theme</span>
     <div class="theme-boxes">
-        <label class="theme-box">
-            <input type="radio" name="theme" checked>
-            <span class="icon-holder" style="background-color: #CADBDB;">
-                <span class="icon icon-Check"></span>
-            </span>
-            <span class="theme-title">
-                <span class="title-holder">General</span>
-            </span>
-        </label>
-        <label class="theme-box">
-            <input type="radio" name="theme">
-            <span class="icon-holder" style="background-color: #56B7F7;">
-                <span class="icon icon-Check"></span>
-            </span>
-            <span class="theme-title">
-                <span class="title-holder">Taking care of your mental wellbeing!</span>
-            </span>
-        </label>
-        <label class="theme-box">
-            <input type="radio" name="theme">
-            <span class="icon-holder" style="background-color: #EB7C7C;">
-                <span class="icon icon-Check"></span>
-            </span>
-            <span class="theme-title">
-                <span class="title-holder">Standardised Tests</span>
-            </span>
-        </label>
-        <label class="theme-box">
-            <input type="radio" name="theme">
-            <span class="icon-holder" style="background-color: #44CFC8;">
-                <span class="icon icon-Check"></span>
-            </span>
-            <span class="theme-title">
-                <span class="title-holder">Theme Name</span>
-            </span>
-        </label>
-        <label class="theme-box">
-            <input type="radio" name="theme">
-            <span class="icon-holder" style="background-color: #787FE3;">
-                <span class="icon icon-Check"></span>
-            </span>
-            <span class="theme-title">
-                <span class="title-holder">Theme Name</span>
-            </span>
-        </label>
-        <label class="theme-box">
-            <input type="radio" name="theme">
-            <span class="icon-holder" style="background-color: #EADA52;">
-                <span class="icon icon-Check"></span>
-            </span>
-            <span class="theme-title">
-                <span class="title-holder">Theme Name</span>
-            </span>
-        </label>
+        <%= edx.HtmlUtils.ensureHtml(topics_html) %>
     </div>
     <div class="action-btns">
         <a href="#" class="discard-link">Discard</a>
@@ -1028,7 +987,7 @@
 </div>
 </script>
 <script aria-hidden="true" type="text/template" id="nav-load-more-link">
-<li class='forum-nav-load-more'>
+<li class='forum-nav-load-more is-hidden'>
     <button class='btn-link forum-nav-load-more-link'>
         <%- gettext("Load more") %>
     </button>

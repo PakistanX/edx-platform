@@ -18,6 +18,7 @@
         var DiscussionBoardView = Backbone.View.extend({
             events: {
                 'click .forum-nav-browse-title': 'selectTopicHandler',
+                'click a.back': 'selectAll',
                 'click .all-topics': 'toggleBrowseMenu',
                 'keypress .forum-nav-browse-filter-input': function(event) {
                     return DiscussionUtil.ignoreEnterKey(event);
@@ -331,7 +332,18 @@
                 }
 
                 return crumbs;
-            }
+            },
+
+            selectAll: function(event) {
+                var $item = $('ul.forum-nav-browse-menu').find('#all_discussions');
+                event.preventDefault();
+                $('a.back').hide();
+                this.trigger('topic:selected', this.getBreadcrumbText($item));
+                this.discussionThreadListView.selectTopic($item.find('span.forum-nav-browse-title'));
+                $('.forum-nav-browse-menu-item').each(function(index, element) {
+                    $(element).show();
+                });
+            },
 
         });
 
