@@ -174,10 +174,10 @@
 <div class="post-field">
     <label class="field-label" for='edit-discussion-forum-title'>
         <span class="field-label-text"><%- gettext("Title") %></span>
+        <input id='edit-discussion-forum-title' aria-describedby="field_help_title" type="text" class="edit-post-title field-input" name="title" value="<%- title %>">
         <div class="field-help" id="field_help_title">
             <%- gettext("Add a clear and descriptive title to encourage participation. (Required)") %>
         </div>
-        <input id='edit-discussion-forum-title' aria-describedby="field_help_title" type="text" class="edit-post-title field-input" name="title" value="<%- title %>">
     </label>
 </div>
 <div class="forum-edit-post-form-wrapper"></div>
@@ -186,7 +186,7 @@
     <div class="edit-post-body" aria-describedby="edit-post-editor-description" name="body"><%- body %></div>
 </div>
 <button type="submit" id="edit-post-submit" class="btn btn-primary submit post-update"><%- gettext("Update post") %></button>
-<button class="btn btn-outline-primary post-cancel"><%- gettext("Cancel") %></button>
+<button class="btn btn-outline-primary post-cancel"><%- gettext("Cancel") %> <span class="icon icon-Cancel"></span></button>
 </script>
 <script aria-hidden="true" type="text/template" id="thread-response-template">
 <div class="discussion-response"></div>
@@ -1034,3 +1034,4 @@
     </button>
 </li>
 </script>
+
