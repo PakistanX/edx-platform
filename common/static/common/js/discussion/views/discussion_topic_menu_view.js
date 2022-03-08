@@ -34,7 +34,7 @@
                 var $general,
                     context = _.clone(this.course_settings.attributes);
 
-                context.topics_html = this.renderCategoryMap(this.course_settings.get('category_map'), 0);
+                context.topics_html = this.renderCategoryMap(this.course_settings.get('category_map'), 0, null);
                 edx.HtmlUtils.setHtml(this.$el, edx.HtmlUtils.template($('#topic-template').html())(context));
 
                 $general = this.$('label.radio-theme-input:contains(General)').find('input[name="create-post-theme"]');  // always return array.
@@ -51,7 +51,7 @@
                 return this.$el;
             },
 
-            renderCategoryMap: function(map, index, label = null) {
+            renderCategoryMap: function(map, index, label) {
                 var categoryTemplate = edx.HtmlUtils.template($('#new-post-menu-category-template').html()),
                     entryTemplate = edx.HtmlUtils.template($('#new-post-menu-entry-template').html()),
                     mappedCategorySnippets = _.map(map.children, function(child) {
