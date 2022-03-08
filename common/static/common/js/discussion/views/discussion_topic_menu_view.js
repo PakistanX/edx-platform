@@ -16,6 +16,14 @@
                 this.course_settings = options.course_settings;
                 this.currentTopicId = options.topicId;
                 this.group_name = options.group_name;
+                this.themeValues = [
+                  'CADBDB',
+                  '56B7F7',
+                  'EB7C7C',
+                  '44CFC8',
+                  '787FE3',
+                  'EADA52'
+                ]
                 _.bindAll(this,
                     'handleTopicEvent'
                 );
@@ -26,7 +34,7 @@
                 var $general,
                     context = _.clone(this.course_settings.attributes);
 
-                context.topics_html = this.renderCategoryMap(this.course_settings.get('category_map'));
+                context.topics_html = this.renderCategoryMap(this.course_settings.get('category_map'), 0);
                 edx.HtmlUtils.setHtml(this.$el, edx.HtmlUtils.template($('#topic-template').html())(context));
 
                 $general = this.$('label.radio-theme-input:contains(General)').find('input[name="create-post-theme"]');  // always return array.
@@ -43,7 +51,7 @@
                 return this.$el;
             },
 
-            renderCategoryMap: function(map, label = null) {
+            renderCategoryMap: function(map, index, label = null) {
                 var categoryTemplate = edx.HtmlUtils.template($('#new-post-menu-category-template').html()),
                     entryTemplate = edx.HtmlUtils.template($('#new-post-menu-entry-template').html()),
                     mappedCategorySnippets = _.map(map.children, function(child) {
@@ -57,13 +65,15 @@
                                 text: name,
                                 label: label,
                                 id: entry.id,
-                                is_divided: entry.is_divided
+                                is_divided: entry.is_divided,
+                                theme_color: this.themeValues[index%this.themeValues.length],
                             });
+                            index ++;
                         }
                         else { // subcategory
                             html = categoryTemplate({
                                 text: name,
-                                entries: this.renderCategoryMap(map.subcategories[name], name)
+                                entries: this.renderCategoryMap(map.subcategories[name], index, name)
                             });
                         }
                         return html;
