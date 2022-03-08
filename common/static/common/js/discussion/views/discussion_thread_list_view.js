@@ -85,6 +85,13 @@
                 'change .forum-nav-filter-cohort-control': 'chooseGroup',
             };
 
+            DiscussionThreadListView.prototype.loadMoreDiscussions = function(event){
+                var ul = $('ul.forum-nav-thread-list'), sidebar = $('.discussion-sidebar');
+                if($('li.forum-nav-load-more').length && ul.offset().top + sidebar.height() < ul.scrollTop()) {
+                    this.loadMorePages(event)
+                }
+            };
+
             DiscussionThreadListView.prototype.initialize = function(options) {
                 var self = this;
                 this.courseSettings = options.courseSettings;
@@ -107,7 +114,6 @@
                 this.current_search = '';
                 this.mode = options.mode || 'commentables';
                 this.showThreadPreview = true;
-                this.addTowCol = true;
                 this.twoColDiv = null;
                 this.forumDiv = null;
                 this.searchAlertCollection = new Backbone.Collection([], {
@@ -146,9 +152,8 @@
             DiscussionThreadListView.prototype.addSearchAlert = function(message, cssClass) {
                 var searchAlertModel = new Backbone.Model({message: message, css_class: cssClass || ''});
                 this.searchAlertCollection.add(searchAlertModel);
-                this.twoColDiv.removeClass('two-cols');
                 this.forumDiv.hide();
-                this.addTowCol = false;
+                this.addRemoveTwoCol()
                 return searchAlertModel;
             };
 
@@ -157,8 +162,8 @@
             };
 
             DiscussionThreadListView.prototype.clearSearchAlerts = function() {
-                this.twoColDiv.addClass('two-cols')
                 this.forumDiv.show();
+                this.addRemoveTwoCol()
                 return this.searchAlertCollection.reset();
             };
 
@@ -215,6 +220,9 @@
                     if (self.mode === 'commentables') {
                         self.retrieveDiscussions(self.discussionIds.split(','));
                     }
+                });
+                $('ul.forum-nav-thread-list').scroll(function(event) {
+                    self.loadMoreDiscussions(event);
                 });
                 this.twoColDiv = $('div.discussion-cols');
                 this.forumDiv = $('div.forum-content');
@@ -397,10 +405,7 @@
                 this.$(".forum-nav-thread[data-id='" + threadId + "'] .forum-nav-thread-link")
                     .addClass('is-active').find('.forum-nav-thread-wrapper-1')
                     .prepend($srElem);
-                if(this.addTowCol) {
-                  this.twoColDiv.addClass('two-cols');
-                }
-                this.addTowCol = true;
+                this.addRemoveTwoCol()
             };
 
             DiscussionThreadListView.prototype.selectTopic = function($target) {
@@ -486,6 +491,7 @@
             DiscussionThreadListView.prototype.retrieveFirstPage = function(event) {
                 this.collection.current_page = 0;
                 this.$('.forum-nav-thread-list').empty();
+                this.addRemoveTwoCol();
                 this.collection.models = [];
                 return this.loadMorePages(event);
             };
@@ -637,6 +643,18 @@
                         $checkbox.prop('checked', !checked);
                     }
                 });
+            };
+
+            DiscussionThreadListView.prototype.addRemoveTwoCol = function()  {
+                if(
+                  !this.forumDiv.is(':empty')
+                  && this.forumDiv.is(':visible')
+                  && !this.forumDiv.hasClass('two-cols')
+                  && !this.$('.forum-nav-thread-list').is(':empty')
+                ){
+                    this.twoColDiv.addClass('two-cols');
+                }
+                else this.twoColDiv.removeClass('two-cols');
             };
 
             return DiscussionThreadListView;
