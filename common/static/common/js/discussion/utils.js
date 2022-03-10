@@ -328,7 +328,7 @@
         DiscussionUtil.makeWmdEditor = function($content, $local, cls_identifier) {
             var appended_id, editor, elem, id, imageUploadUrl, placeholder, _processor;
             elem = $local('.' + cls_identifier);
-            placeholder = elem.data('placeholder');
+            // placeholder = elem.data('placeholder');
             id = elem.data('id');
             appended_id = '-' + cls_identifier + '-' + id;
             imageUploadUrl = this.urlFor('upload');
@@ -340,9 +340,11 @@
             };
             editor = Markdown.makeWmdEditor(elem, appended_id, imageUploadUrl, _processor(this));
             this.wmdEditors['' + cls_identifier + '-' + id] = editor;
-            if (placeholder) {
-                elem.find('#wmd-input' + appended_id).attr('placeholder', placeholder);
-            }
+            var input = elem.find('#wmd-input' + appended_id);
+            input.attr('placeholder', 'Add a reply ...');
+            // if (placeholder) {
+            //     input.attr('placeholder', placeholder);
+            // }
             return editor;
         };
 

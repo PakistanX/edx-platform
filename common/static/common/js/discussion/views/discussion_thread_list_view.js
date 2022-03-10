@@ -197,6 +197,20 @@
                 return event.stopPropagation();
             };
 
+            DiscussionThreadListView.prototype.checkAndActivateThread = function(event) {
+                var link = window.location.href.split("/");
+                var threadId = '';
+                while(!threadId){
+                  threadId = link.pop();
+                }
+                var $thread = this.$(".forum-nav-thread[data-id='" + threadId + "'] .forum-nav-thread-link");
+                if(!$thread.length){
+                    return false;
+                }
+                $thread.click();
+                return true;
+            };
+
             DiscussionThreadListView.prototype.render = function() {
                 var self = this;
                 this.timer = 0;
@@ -438,17 +452,21 @@
 
             DiscussionThreadListView.prototype.loadSelectedFilter = function() {
                 this.clearSearchAlerts();
-                var filters = []
+                var filters = [], isFilterSelected = false, self = this;
                 $('input[name="filter"]:checked').each(function(index, filter) {
                     var filter_val = filter.value;
                     if(filter_val === 'following'){
-                      this.mode = 'followed';
+                      self.mode = 'followed';
                     }
                     else{
                       filters.push(filter_val);
                     }
+                    isFilterSelected = true;
                 });
-                filters = filters.length ? filters : ['all'];
+                if(!isFilterSelected && this.mode === 'followed'){
+                  filters.push('all');
+                  this.mode = 'all';
+                }
                 this.filters = filters;
                 return this.retrieveFirstPage();
             };
