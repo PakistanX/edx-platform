@@ -19,7 +19,7 @@
         <td class="row-item">
           <div class="holder">
             <i class="icon-Search-2-Outline-Color" aria-hidden="true"></i>
-            <span class="row-description"><%- gettext("Search all posts") %></span>
+            <span class="row-description"><%- gettext("Search All Posts") %></span>
           </div>
         </td>
         <td class="row-item">

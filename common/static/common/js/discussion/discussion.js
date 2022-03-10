@@ -40,11 +40,17 @@
                 this.bind('add', function(item) {
                     item.discussion = self;
                 });
+                this.setTimeAgoParams();
                 this.setSortComparator(this.sort_preference);
                 return this.on('thread:remove', function(thread) {
                     self.remove(thread);
                 });
             };
+
+            Discussion.prototype.setTimeAgoParams = function() {
+                $.timeago.settings.strings.seconds = 'about a minute';
+                $.timeago.settings.strings.hours = '%d hours';
+            }
 
             Discussion.prototype.find = function(id) {
                 return _.first(this.where({

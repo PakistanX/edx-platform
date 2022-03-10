@@ -478,7 +478,7 @@
 </script>
 <script aria-hidden="true" type="text/template" id="new-post-template">
 <form class="forum-new-post-form">
-    <h<%- startHeader %> class="thread-title"><%- gettext("Add a Post") %></h<%- startHeader %>>
+    <h<%- startHeader %> class="thread-title"><%- gettext("Add Post") %></h<%- startHeader %>>
 
     <% if (mode === 'inline') { %>
         <button class="btn btn-outline-primary btn-default add-post-cancel">
@@ -628,7 +628,7 @@
 <script aria-hidden="true" type="text/template" id="inline-discussion-template">
 <section class="discussion inline-discussion" data-discussion-id="<%- discussionId %>">
     <div class="add_post_btn_container <% if (read_only) { %> is-hidden <% } %>">
-        <button class="btn-link new-post-btn"><%- gettext("Add a Post") %></button>
+        <button class="btn-link new-post-btn"><%- gettext("Add Post") %></button>
     </div>
 
     <article class="new-post-article is-hidden"></article>
@@ -776,7 +776,7 @@
                 <input id='discussion-forum-title' aria-describedby="field_help_title" type="text" class="js-post-title field-input" name="title">
             </div>
             <div class="field-help" id="field_help_title">
-                <%- gettext("Add a clear and descriptive title to encourage participation. (Required)") %>
+                <%- gettext("Add a clear and descriptive title to encourage participation.") %>
             </div>
         </label>
     </div>

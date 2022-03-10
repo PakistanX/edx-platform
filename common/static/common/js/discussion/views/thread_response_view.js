@@ -222,6 +222,8 @@
                         comment.set(response.content);
                         comment.updateInfo(response.annotated_content_info);
                         self.$('span.comment-count-single').text(self.model.attributes.comments.length + 1);
+                        var commentCountSpan = $('#post-comment-count');
+                        commentCountSpan.text(parseInt(commentCountSpan.text()) + 1);
                         return view.render();
                     }
                 });

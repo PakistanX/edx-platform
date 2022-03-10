@@ -427,6 +427,8 @@
                         if( view.$('.comment-body').is(':empty') ) {
                           view.afterInsert();
                         }
+                        var commentCountSpan = $('#post-comment-count');
+                        commentCountSpan.text(parseInt(commentCountSpan.text()) + 1);
                         DiscussionUtil.typesetMathJax(view.$el.find('.response-body'));
                         self.hideEditorChromeForPost();
                     }

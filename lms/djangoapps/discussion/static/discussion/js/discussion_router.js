@@ -64,7 +64,9 @@
                 },
 
                 allThreads: function() {
-                    return this.discussionBoardView.goHome();
+                    if(!this.discussionBoardView.discussionThreadListView.checkAndActivateThread()){
+                        return this.discussionBoardView.goHome();
+                    }
                 },
 
                 setActiveThread: function() {
@@ -138,9 +140,9 @@
                         duration: 200,
                         complete: function() {
                             $('aside.forum-nav').show();
-                            self.discussionBoardView.discussionThreadListView.addRemoveTwoCol();
-                            return $('.forum-content').fadeIn(200).find('.thread-wrapper')
-                                .focus();
+                            self.discussionBoardView.discussionThreadListView.forumDiv
+                              .fadeIn(200).find('.thread-wrapper').focus();
+                            return self.discussionBoardView.discussionThreadListView.addRemoveTwoCol();
                         }
                     });
                 }
