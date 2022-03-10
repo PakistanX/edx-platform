@@ -456,13 +456,9 @@ def get_and_save_course_progress(course_key, user_id):
 
     progress_percentage = float(get_course_progress_percentage(request, course_key))
 
-    try:
-        course_progress_stats = CourseProgressStats.objects.get(enrollment__user=user, enrollment__course=course_key)
-        if course_progress_stats.progress < progress_percentage:
-            course_progress_stats.progress = progress_percentage
-            course_progress_stats.save()
-    except CourseProgressStats.DoesNotExist:
-        pass
+    CourseProgressStats.objects.filter(enrollment__user=user, enrollment__course=course_key).update(
+        progress=progress_percentage
+    )
 
     return progress_percentage
 
