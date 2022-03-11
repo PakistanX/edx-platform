@@ -474,11 +474,8 @@
                         type: 'POST',
                         $elem: $(event.currentTarget)
                     }, gettext('This down vote could not be processed. Refresh the page and try again.')).done(function() {
-                        if (isVoting) {
-                            return self.model.downvote();
-                        } else {
-                            return self.model.undownvote();
-                        }
+                        isVoting ? self.model.downvote() : self.model.undownvote();
+                        return self.showCommentBox();
                     });
                 }
             };
