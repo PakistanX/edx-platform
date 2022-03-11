@@ -123,7 +123,7 @@
                         this.$('.action-vote').closest('.actions-item').addClass('is-disabled');
                         this.$('.action-downvote').closest('.actions-item').addClass('is-disabled');
                     }
-                }
+                },
             };
 
             DiscussionContentView.prototype.renderPartialAttrs = function() {
@@ -429,6 +429,13 @@
                 ).always(this.trigger('comment:endorse'));
             };
 
+            DiscussionContentShowView.prototype.showCommentBox = function() {
+                if( this.$el.find('.comment-body').is(':empty') ) {
+                    this.makeWmdEditor('comment-body');
+                    DiscussionUtil.hideEditorChrome('.comment-body');
+                }
+            }
+
             DiscussionContentShowView.prototype.toggleVote = function(event) {
                 var isVoting, updates, url, user,
                     self = this;
@@ -445,11 +452,8 @@
                         type: 'POST',
                         $elem: $(event.currentTarget)
                     }, gettext('This vote could not be processed. Refresh the page and try again.')).done(function() {
-                        if (isVoting) {
-                            return self.model.vote();
-                        } else {
-                            return self.model.unvote();
-                        }
+                        isVoting ? self.model.vote() : self.model.unvote();
+                        return self.showCommentBox();
                     });
                 }
             };

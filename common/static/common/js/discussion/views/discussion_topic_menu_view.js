@@ -1,4 +1,4 @@
-/* globals Backbone, _ */
+/* globals Backbone, _, DiscussionUtil */
 
 (function() {
     'use strict';
@@ -16,14 +16,6 @@
                 this.course_settings = options.course_settings;
                 this.currentTopicId = options.topicId;
                 this.group_name = options.group_name;
-                this.themeValues = [
-                  'CADBDB',
-                  '56B7F7',
-                  'EB7C7C',
-                  '44CFC8',
-                  '787FE3',
-                  'EADA52'
-                ]
                 _.bindAll(this,
                     'handleTopicEvent'
                 );
@@ -61,12 +53,13 @@
                             type = child[1]; // child[1] is the type (i.e. 'entry' or 'subcategory')
                         if (_.has(map.entries, name) && type === 'entry') {
                             entry = map.entries[name];
+                            var themeIndex = index%DiscussionUtil.themeValues.length;
                             html = entryTemplate({
                                 text: name,
                                 label: label,
                                 id: entry.id,
                                 is_divided: entry.is_divided,
-                                theme_color: this.themeValues[index%this.themeValues.length],
+                                theme_color: DiscussionUtil.assignTheme(themeIndex, name),
                             });
                             index ++;
                         }

@@ -88,6 +88,7 @@
             Discussion.prototype.retrieveAnotherPage = function(mode, options, sort_options, error) {
                 var data, url,
                     self = this;
+                DiscussionUtil.showLoader();
                 if (!options) {
                     options = {};
                 }
@@ -147,6 +148,9 @@
                                 return _results;
                             }())
                         ][0];
+                        if(!new_threads.length){
+                            DiscussionUtil.showEmptyMsg();
+                        }
                         new_collection = _.union(models, new_threads);
                         Content.loadContentInfos(response.annotated_content_info);
                         self.pages = response.num_pages;

@@ -868,8 +868,8 @@
         </span>
 
     </button>
-    </li>
-    <li>
+</li>
+<li class="actions-item">
     <span aria-hidden="true" class="display-downvote is-hidden" >
       <span class="downvvote-count"></span>
     </span>

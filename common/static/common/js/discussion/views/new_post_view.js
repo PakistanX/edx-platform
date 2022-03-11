@@ -218,8 +218,8 @@
                             if (discussionBreadcrumbsModel.get('contents').length) {
                                 discussionBreadcrumbsModel.set('contents', self.topicView.topicText.split('/'));
                             }
-                            self.discussionBoardView.discussionThreadListView.discussionIds =
-                                self.topicView.currentTopicId;
+                            // self.discussionBoardView.discussionThreadListView.discussionIds =
+                            //     self.topicView.currentTopicId;
                         }
                         else self.trigger('newPost:createPost');
                         self.$el.addClass('is-hidden');

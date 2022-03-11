@@ -209,7 +209,7 @@
                 var newVotes;
                 newVotes = _.clone(this.get('votes'));
                 newVotes[count_mode] = newVotes[count_mode] + increment;
-                return this.set('votes', newVotes);
+                this.set('votes', newVotes);
             };
 
             Content.prototype.vote = function() {

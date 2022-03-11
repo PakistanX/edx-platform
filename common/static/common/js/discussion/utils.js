@@ -9,6 +9,43 @@
 
         DiscussionUtil.leftKey = 37;
         DiscussionUtil.rightKey = 39;
+        DiscussionUtil.loader = null;
+        DiscussionUtil.emptyMessage = null;
+        DiscussionUtil.forumDiv = null;
+        DiscussionUtil.assignedThemes = {};
+        DiscussionUtil.themeValues = [
+            'CADBDB',
+            'EB7C7C',
+            '44CFC8',
+            '56B7F7',
+            '787FE3',
+            'EADA52'
+        ]
+
+        DiscussionUtil.assignTheme = function(index, key){
+            if(!this.assignedThemes.hasOwnProperty(key)){
+                this.assignedThemes[key] = this.themeValues[index];
+            }
+            return this.assignedThemes[key];
+        }
+
+        DiscussionUtil.initializeEmptyDiv = function(){
+            this.loader = $('div.loader');
+            this.emptyMessage = $('div.no-results');
+            this.showLoader();
+        }
+
+        DiscussionUtil.showEmptyMsg = function(){
+            this.loader.hide();
+            this.emptyMessage.show();
+            this.forumDiv.hide();
+        }
+
+        DiscussionUtil.showLoader = function(){
+            this.emptyMessage.hide();
+            this.loader.show();
+            this.forumDiv.hide();
+        }
 
         DiscussionUtil.getTemplate = function(id) {
             return $('script#' + id).html();
@@ -158,6 +195,16 @@
                 this.$_loading.focus();
             }
         };
+
+        DiscussionUtil.hideEditorChrome = function(selector) {
+            $(selector + ' .wmd-button-row').hide();
+            $(selector + ' .wmd-preview-container').hide();
+            $(selector + ' .wmd-input').css({
+                height: '45px'
+            });
+            $(selector + ' .reply-holder').removeClass('open');
+            return $(selector + ' .comment-post-control').hide();
+        }
 
         DiscussionUtil.hideLoadingIndicator = function() {
             return this.$_loading.remove();
