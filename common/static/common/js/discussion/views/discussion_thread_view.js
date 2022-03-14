@@ -64,12 +64,16 @@
                 'click .discussion-submit-post': 'submitComment',
                 'click .add-response-btn': 'scrollToAddResponse',
                 'click .post-response': 'showEditorChromeForPost',
+                'blur .post-response .wmd-input': 'hideEditorChromeForPost',
                 'keydown .wmd-button': function(event) {
                     return DiscussionUtil.handleKeypressInToolbar(event);
                 }
             };
 
             DiscussionThreadView.prototype.hideEditorChromeForPost = function() {
+                if($(event.relatedTarget).hasClass('discussion-submit-post')){
+                    return;
+                }
                 this.$('.post-response .wmd-button-row').hide();
                 this.$('.post-response .wmd-preview-container').hide();
                 this.$('.post-response .wmd-input').css({
@@ -120,7 +124,6 @@
                 this.createShowView();
                 this.responses = new Comments();
                 this.loadedResponses = false;
-                this.$LoadMoreBtn = null;
                 this.showingResponsesText = '';
                 this.responselimit = null;
                 if (this.isQuestion()) {
@@ -334,7 +337,7 @@
                 if(
                   this.showingResponsesText
                   && this.showingResponsesText !== 'Showing all responses'
-                  && ! this.$('div.forum-content').is(':empty')
+                  && ! DiscussionUtil.forumDiv.is(':empty')
                   && $(window).scrollTop() !== 0
                   && $(window).scrollTop() + 10 >= $(document).height() - $(window).height()
                   ) {

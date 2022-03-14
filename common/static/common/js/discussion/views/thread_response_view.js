@@ -52,6 +52,7 @@
             ThreadResponseView.prototype.events = {
                 'click .discussion-submit-comment': 'submitComment',
                 'focus .wmd-input': 'showEditorChrome',
+                'blur .wmd-input': 'hideEditorChrome',
                 'click div.post-comment-count': 'showReplies'
             };
 
@@ -106,6 +107,9 @@
             };
 
             ThreadResponseView.prototype.hideEditorChrome = function() {
+                if($(event.relatedTarget).hasClass('discussion-submit-comment')){
+                    return;
+                }
                 this.$('.wmd-button-row').hide();
                 this.$('.wmd-preview-container').hide();
                 this.$('.wmd-input').css({
@@ -221,8 +225,9 @@
                     success: function(response) {
                         comment.set(response.content);
                         comment.updateInfo(response.annotated_content_info);
-                        self.$('span.comment-count-single').text(self.model.attributes.comments.length + 1);
-                        var commentCountSpan = $('#post-comment-count');
+                        var commentCountSpan = $('#post-comment-count'),
+                          commentReplyCountSpan = self.$('span.comment-count-single');
+                        commentReplyCountSpan.text(parseInt(commentReplyCountSpan.text()) + 1);
                         commentCountSpan.text(parseInt(commentCountSpan.text()) + 1);
                         return view.render();
                     }

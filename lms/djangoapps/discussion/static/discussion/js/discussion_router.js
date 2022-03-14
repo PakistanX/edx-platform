@@ -91,14 +91,14 @@
                         this.main.cleanup();
                         this.main.undelegateEvents();
                     }
-                    if (!($('.forum-content').is(':visible'))) {
-                        $('.forum-content').fadeIn();
+                    if (!(DiscussionUtil.forumDiv.is(':visible'))) {
+                        DiscussionUtil.forumDiv.fadeIn();
                     }
                     if ($('.new-post-article').is(':visible')) {
                         $('.new-post-article').fadeOut();
                     }
                     this.main = new DiscussionThreadView({
-                        el: $('.forum-content'),
+                        el: DiscussionUtil.forumDiv,
                         model: this.thread,
                         mode: 'tab',
                         startHeader: this.startHeader,
@@ -125,7 +125,7 @@
 
                 showNewPost: function() {
                     var self = this;
-                    return $('.forum-content').fadeOut({
+                    return DiscussionUtil.forumDiv.fadeOut({
                         duration: 200,
                         complete: function() {
                             $('aside.forum-nav').hide();
@@ -140,8 +140,7 @@
                         duration: 200,
                         complete: function() {
                             $('aside.forum-nav').show();
-                            self.discussionBoardView.discussionThreadListView.forumDiv
-                              .fadeIn(200).find('.thread-wrapper').focus();
+                            DiscussionUtil.forumDiv.fadeIn(200).find('.thread-wrapper').focus();
                             return self.discussionBoardView.discussionThreadListView.addRemoveTwoCol();
                         }
                     });
