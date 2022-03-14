@@ -13,18 +13,10 @@
         DiscussionUtil.emptyMessage = null;
         DiscussionUtil.forumDiv = null;
         DiscussionUtil.assignedThemes = {};
-        DiscussionUtil.themeValues = [
-            'CADBDB',
-            'EB7C7C',
-            '44CFC8',
-            '56B7F7',
-            '787FE3',
-            'EADA52'
-        ]
 
-        DiscussionUtil.assignTheme = function(index, key){
+        DiscussionUtil.assignTheme = function(theme, key){
             if(!this.assignedThemes.hasOwnProperty(key)){
-                this.assignedThemes[key] = this.themeValues[index];
+                this.assignedThemes[key] = theme;
             }
             return this.assignedThemes[key];
         }

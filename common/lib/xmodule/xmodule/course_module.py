@@ -393,10 +393,10 @@ class CourseFields(object):
         display_name=_("Discussion Topic Mapping"),
         help=_(
             'Enter discussion categories in the following format: "CategoryName": '
-            '{"id": "i4x-InstitutionName-CourseNumber-course-CourseRun"}. For example, one discussion '
-            'category may be "Lydian Mode": {"id": "i4x-UniversityX-MUS101-course-2015_T1"}. The "id" '
-            'value for each category must be unique. In "id" values, the only special characters that are '
-            'supported are underscore, hyphen, and period. You can also specify a category as the default '
+            '{"id": "i4x-InstitutionName-CourseNumber-course-CourseRun", "color": "#ECF0F4"}. For example, one '
+            'discussion category may be "Lydian Mode": {"id": "i4x-UniversityX-MUS101-course-2015_T1", "color": '
+            '"#ECF0F4"}. The "id" value for each category must be unique. In "id" values, the only special characters '
+            'that are supported are underscore, hyphen, and period. You can also specify a category as the default '
             'for new posts in the Discussion page by setting its "default" attribute to true. For example, '
             '"Lydian Mode": {"id": "i4x-UniversityX-MUS101-course-2015_T1", "default": true}.'
 
@@ -1074,7 +1074,7 @@ class CourseDescriptor(CourseFields, SequenceDescriptor, LicenseMixin):
         self.set_grading_policy(self.grading_policy)
 
         if self.discussion_topics == {}:
-            self.discussion_topics = {_('General'): {'id': self.location.html_id()}}
+            self.discussion_topics = {_('General'): {'id': self.location.html_id(), 'color': '#ECF0F4'}}
 
         try:
             if not getattr(self, "tabs", []):

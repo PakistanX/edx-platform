@@ -12,10 +12,12 @@ from django.urls import reverse
 from django.utils.translation import get_language_bidi
 from xblock.completable import XBlockCompletionMode
 from xblock.core import XBlock
-from xblock.fields import Scope, String, UNIQUE_ID
+from xblock.exceptions import JsonHandlerError
+from xblock.fields import JSONField, Scope, String, UNIQUE_ID
+from xblock.validation import Validation
 from web_fragments.fragment import Fragment
 from xblockutils.resources import ResourceLoader
-from xblockutils.studio_editable import StudioEditableXBlockMixin
+from xblockutils.studio_editable import FutureFields, StudioEditableXBlockMixin
 
 from openedx.core.djangolib.markup import HTML, Text
 from openedx.core.lib.xblock_builtin import get_css_dependencies, get_js_dependencies
@@ -67,9 +69,18 @@ class DiscussionXBlock(XBlock, StudioEditableXBlockMixin, XmlParserMixin):
         ),
         scope=Scope.settings
     )
+    discussion_theme = String(
+        display_name=_("Color"),
+        default="#ECF0F4",
+        help=_(
+            "A theme color for the discussion. "
+            "This theme color appears as filters in board view."
+        ),
+        scope=Scope.settings
+    )
     sort_key = String(scope=Scope.settings)
 
-    editable_fields = ["display_name", "discussion_category", "discussion_target"]
+    editable_fields = ["display_name", "discussion_category", "discussion_theme"]
 
     has_author_view = True  # Tells Studio to use author_view
 
@@ -196,6 +207,7 @@ class DiscussionXBlock(XBlock, StudioEditableXBlockMixin, XmlParserMixin):
         context = {
             'discussion_id': self.discussion_id,
             'display_name': self.display_name if self.display_name else _("Discussion"),
+            'discussion_theme': self.discussion_theme,
             'user': self.django_user,
             'course_id': self.course_key,
             'discussion_category': self.discussion_category,
@@ -281,3 +293,34 @@ class DiscussionXBlock(XBlock, StudioEditableXBlockMixin, XmlParserMixin):
         for field_name, value in six.iteritems(metadata):
             if field_name in block.fields:
                 setattr(block, field_name, value)
+
+    @XBlock.json_handler
+    def submit_studio_edits(self, data, suffix=''): # pylint: disable=unused-argument
+        values = {}
+        to_reset = []
+        for field_name in self.editable_fields:
+            field = self.fields[field_name]
+            if field_name in data['values']:
+                if isinstance(field, JSONField):
+                    values[field_name] = field.from_json(data['values'][field_name])
+                else:
+                    raise JsonHandlerError(400, "Unsupported field type: {}".format(field_name))
+            elif field_name in data['defaults'] and field.is_set_on(self):
+                to_reset.append(field_name)
+        self.clean_studio_edits(values)
+        validation = Validation(self.scope_ids.usage_id)
+        preview_data = FutureFields(
+            new_fields_dict=values,
+            newly_removed_fields=to_reset,
+            fallback_obj=self
+        )
+        self.validate_field_data(validation, preview_data)
+        if validation:
+            for field_name, value in six.iteritems(values):
+                setattr(self, field_name, value)
+            for field_name in to_reset:
+                self.fields[field_name].delete_from(self)
+            self.discussion_target = self.discussion_category
+            return {'result': 'success'}
+        else:
+            raise JsonHandlerError(400, validation.to_json())
