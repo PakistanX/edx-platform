@@ -69,7 +69,7 @@
                                 label: label,
                                 id: entry.id,
                                 is_divided: entry.is_divided,
-                                theme_color: DiscussionUtil.assignTheme(entry.theme, name),
+                                theme_color: DiscussionUtil.assignTheme(entry.color, name),
                             });
                         }
                         else { // subcategory

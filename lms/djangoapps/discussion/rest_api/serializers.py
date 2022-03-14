@@ -211,7 +211,7 @@ class ThreadSerializer(_ContentSerializer):
     pinned = serializers.SerializerMethodField(read_only=True)
     closed = serializers.BooleanField(read_only=True)
     following = serializers.SerializerMethodField()
-    theme = serializers.CharField()
+    color = serializers.CharField()
     comment_count = serializers.SerializerMethodField(read_only=True)
     unread_comment_count = serializers.SerializerMethodField(read_only=True)
     comment_list_url = serializers.SerializerMethodField()
@@ -230,12 +230,12 @@ class ThreadSerializer(_ContentSerializer):
         if self.instance and self.instance.get("pinned") is None:
             self.instance["pinned"] = False
 
-    def get_theme(self, obj):
+    def get_color(self, obj):
         """
         Returns theme set for thread.
         """
-        theme_color = obj.get('theme', '#ECF0F4')
-        return theme_color if theme_color.startswith('#') else '#{}'.format(theme_color)
+        color = obj.get('color', '#ECF0F4')
+        return color if color.startswith('#') else '#{}'.format(color)
 
     def get_pinned(self, obj):
         """

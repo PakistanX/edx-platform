@@ -69,7 +69,7 @@ class DiscussionXBlock(XBlock, StudioEditableXBlockMixin, XmlParserMixin):
         ),
         scope=Scope.settings
     )
-    discussion_theme = String(
+    discussion_color = String(
         display_name=_("Color"),
         default="#ECF0F4",
         help=_(
@@ -80,7 +80,7 @@ class DiscussionXBlock(XBlock, StudioEditableXBlockMixin, XmlParserMixin):
     )
     sort_key = String(scope=Scope.settings)
 
-    editable_fields = ["display_name", "discussion_category", "discussion_theme"]
+    editable_fields = ["display_name", "discussion_category", "discussion_color"]
 
     has_author_view = True  # Tells Studio to use author_view
 
@@ -207,7 +207,7 @@ class DiscussionXBlock(XBlock, StudioEditableXBlockMixin, XmlParserMixin):
         context = {
             'discussion_id': self.discussion_id,
             'display_name': self.display_name if self.display_name else _("Discussion"),
-            'discussion_theme': self.discussion_theme,
+            'discussion_color': self.discussion_color,
             'user': self.django_user,
             'course_id': self.course_key,
             'discussion_category': self.discussion_category,
