@@ -361,6 +361,7 @@
                         });
                         self.createShowView();
                         self.renderShowView();
+                        self.afterInsert();
                         DiscussionUtil.typesetMathJax(self.$el.find('.response-body'));
                         return self.showCommentForm();
                     }
