@@ -500,7 +500,7 @@
             };
 
             DiscussionContentShowView.prototype.toggleReport = function(event) {
-                var isFlagging, msg, updates, url;
+                var isFlagging, msg, updates, url, self = this;
                 event.preventDefault();
                 if (this.model.isFlagged()) {
                     isFlagging = false;
@@ -519,7 +519,9 @@
                     url: url,
                     type: 'POST',
                     $elem: $(event.currentTarget)
-                }, msg);
+                }, msg).done(function() {
+                        return self.showCommentBox();
+                });
             };
 
             DiscussionContentShowView.prototype.toggleClose = function(event) {

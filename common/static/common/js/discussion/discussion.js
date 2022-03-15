@@ -85,10 +85,12 @@
                 }
             };
 
-            Discussion.prototype.retrieveAnotherPage = function(mode, options, sort_options, error) {
+            Discussion.prototype.retrieveAnotherPage = function(mode, options, sort_options, error, skip_loader) {
                 var data, url,
                     self = this;
-                DiscussionUtil.showLoader();
+                if(!skip_loader){
+                    DiscussionUtil.showLoader();
+                }
                 if (!options) {
                     options = {};
                 }
@@ -148,7 +150,7 @@
                                 return _results;
                             }())
                         ][0];
-                        if(!new_threads.length){
+                        if(!new_threads.length && !skip_loader){
                             DiscussionUtil.showEmptyMsg();
                         }
                         new_collection = _.union(models, new_threads);

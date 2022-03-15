@@ -88,7 +88,7 @@
             DiscussionThreadListView.prototype.loadMoreDiscussions = function(event){
                 var ul = $('ul.forum-nav-thread-list'), sidebar = $('.discussion-sidebar');
                 if($('li.forum-nav-load-more').length && ul.offset().top + sidebar.height() < ul.scrollTop()) {
-                    this.loadMorePages(event)
+                    this.loadMorePages(event, true);
                 }
             };
 
@@ -113,8 +113,10 @@
                 this.boardName = null;
                 this.current_search = '';
                 this.mode = options.mode || 'commentables';
+                this.is_inline = options.is_inline;
                 this.showThreadPreview = true;
                 this.twoColDiv = null;
+                this.activeThreadId = null;
                 this.searchAlertCollection = new Backbone.Collection([], {
                     model: Backbone.Model
                 });
@@ -260,6 +262,29 @@
                 this.showMetadataAccordingToSort();
                 this.renderMorePages();
                 this.trigger('threads:rendered');
+                if(this.activeThreadId){
+                    DiscussionUtil.forumDiv.show();
+                    this.setActiveThread(this.activeThreadId);
+                }
+            };
+
+            DiscussionThreadListView.prototype.renderAdditionalThreads = function(threadList, context) {
+                var $content, thread, i, len, context;
+                var $list = context.$('.forum-nav-thread-list');
+                for (i = 0, len = threadList.length; i < len; i++) {
+                    thread = threadList[i];
+                    $content = context.renderThread(thread);
+                    $content.find('span.timeago').timeago();
+                    $list.append($content);
+                }
+                if (context.$('.forum-nav-thread-list li').length === 0) {
+                    context.clearSearchAlerts();
+                    context.addSearchAlert(gettext('There are no posts in this topic yet.'));
+                }
+                context.showMetadataAccordingToSort();
+                context.renderMorePages();
+                // context.trigger('threads:rendered');
+                context.displayedCollection.models = _.union(context.displayedCollection.models, threadList);
             };
 
             DiscussionThreadListView.prototype.showMetadataAccordingToSort = function() {
@@ -292,7 +317,7 @@
                 return edx.HtmlUtils.template($('#nav-loading-template').html())({srText: srText});
             };
 
-            DiscussionThreadListView.prototype.loadMorePages = function(event) {
+            DiscussionThreadListView.prototype.loadMorePages = function(event, skip_loader) {
                 var error, lastThread, loadMoreElem, loadingElem, options, ref,
                     self = this;
                 if (event) {
@@ -362,7 +387,7 @@
                 */
                 return this.collection.retrieveAnotherPage(this.mode, options, {
                     sort_key: this.$('.forum-nav-sort-control').val()
-                }, error);
+                }, error, skip_loader);
             };
 
             DiscussionThreadListView.prototype.containsMarkup = function(threadBody) {
@@ -396,6 +421,9 @@
                 var threadId;
                 threadId = $(e.target).closest('.forum-nav-thread').attr('data-id');
                 if (this.supportsActiveThread) {
+                    if(this.is_inline){
+                        DiscussionUtil.forumDiv.show();
+                    }
                     this.setActiveThread(threadId);
                 }
                 this.trigger('thread:selected', threadId);
@@ -408,6 +436,7 @@
 
             DiscussionThreadListView.prototype.setActiveThread = function(threadId) {
                 var $srElem;
+                this.activeThreadId = threadId;
                 this.$('.forum-nav-thread-link').find('.sr').remove();
                 this.$(".forum-nav-thread[data-id!='" + threadId + "'] .forum-nav-thread-link")
                     .removeClass('is-active');
@@ -424,6 +453,7 @@
 
             DiscussionThreadListView.prototype.selectTopic = function($target) {
                 var allItems, discussionIds, $item, selector = '.forum-nav-browse-menu-item';
+                this.activeThreadId = null;
                 $item = $target.closest('.forum-nav-browse-menu-item');
                 this.clearSearchAlerts();
                 $(selector).each(function(index, element) {
@@ -443,6 +473,7 @@
 
             DiscussionThreadListView.prototype.loadSelectedFilter = function() {
                 this.clearSearchAlerts();
+                this.activeThreadId = null;
                 var filters = [], isFilterSelected = false, self = this;
                 $('input[name="filter"]:checked').each(function(index, filter) {
                     var filter_val = filter.value;
