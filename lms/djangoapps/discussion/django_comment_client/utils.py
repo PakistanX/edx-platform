@@ -368,6 +368,7 @@ def get_discussion_category_map(course, user, divided_only_if_explicit=False, ex
     for xblock in xblocks:
         discussion_id = xblock.discussion_id
         title = xblock.discussion_target
+        color = xblock.discussion_color
         sort_key = xblock.sort_key
         category = " / ".join([x.strip() for x in xblock.discussion_category.split("/")])
         # Handle case where xblock.start is None
@@ -375,7 +376,8 @@ def get_discussion_category_map(course, user, divided_only_if_explicit=False, ex
         unexpanded_category_map[category].append({"title": title,
                                                   "id": discussion_id,
                                                   "sort_key": sort_key,
-                                                  "start_date": entry_start_date})
+                                                  "start_date": entry_start_date,
+                                                  "color": color})
 
     category_map = {"entries": defaultdict(dict), "subcategories": defaultdict(dict)}
     for category_path, entries in unexpanded_category_map.items():
@@ -429,7 +431,8 @@ def get_discussion_category_map(course, user, divided_only_if_explicit=False, ex
             node[level]["entries"][title] = {"id": entry["id"],
                                              "sort_key": entry["sort_key"],
                                              "start_date": entry["start_date"],
-                                             "is_divided": is_entry_divided}
+                                             "is_divided": is_entry_divided,
+                                             "color": entry["color"]}
 
     # TODO.  BUG! : course location is not unique across multiple course runs!
     # (I think Kevin already noticed this)  Need to send course_id with requests, store it
@@ -439,6 +442,7 @@ def get_discussion_category_map(course, user, divided_only_if_explicit=False, ex
             "id": entry["id"],
             "sort_key": entry.get("sort_key", topic),
             "start_date": datetime.now(UTC),
+            "color": entry.get("color", "#EB7C7C"),
             "is_divided": (
                 discussion_division_enabled and entry["id"] in divided_discussion_ids
             )

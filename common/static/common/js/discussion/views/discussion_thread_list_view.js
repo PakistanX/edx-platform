@@ -210,16 +210,6 @@
                 return true;
             };
 
-            DiscussionThreadListView.prototype.assignThemeToFilters = function(){
-                $('li.forum-nav-browse-menu-item').each(function(index, item){
-                    var $item = $(item);
-                    var text = $item.find('span.subcategory-text').text().trim();
-                    $item.find('span.theme-color').css(
-                      'background-color', '#' + DiscussionUtil.assignTheme(index, text)
-                    );
-                });
-            }
-
             DiscussionThreadListView.prototype.render = function() {
                 var self = this;
                 this.timer = 0;
@@ -251,7 +241,6 @@
                 DiscussionUtil.forumDiv = $('div.forum-content');
                 this.renderThreads();
                 DiscussionUtil.initializeEmptyDiv();
-                this.assignThemeToFilters();
                 return this;
             };
 
