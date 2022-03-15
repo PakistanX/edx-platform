@@ -549,7 +549,7 @@
         label="<%- label %>"
         value="<%- text %>"
     >
-    <span class="icon-holder" style="background-color: #<%- theme_color %>;">
+    <span class="icon-holder" style="background-color: <%- theme_color %>;">
         <span class="icon icon-Check"></span>
     </span>
     <span class="theme-title">
@@ -991,4 +991,3 @@
     </button>
 </li>
 </script>
-

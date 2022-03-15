@@ -211,6 +211,7 @@ class ThreadSerializer(_ContentSerializer):
     pinned = serializers.SerializerMethodField(read_only=True)
     closed = serializers.BooleanField(read_only=True)
     following = serializers.SerializerMethodField()
+    color = serializers.CharField()
     comment_count = serializers.SerializerMethodField(read_only=True)
     unread_comment_count = serializers.SerializerMethodField(read_only=True)
     comment_list_url = serializers.SerializerMethodField()
@@ -228,6 +229,13 @@ class ThreadSerializer(_ContentSerializer):
         # not have the pinned field set
         if self.instance and self.instance.get("pinned") is None:
             self.instance["pinned"] = False
+
+    def get_color(self, obj):
+        """
+        Returns theme set for thread.
+        """
+        color = obj.get('color', '#ECF0F4')
+        return color if color.startswith('#') else '#{}'.format(color)
 
     def get_pinned(self, obj):
         """
@@ -438,6 +446,7 @@ class DiscussionTopicSerializer(serializers.Serializer):
     """
     id = serializers.CharField(read_only=True)  # pylint: disable=invalid-name
     name = serializers.CharField(read_only=True)
+    color = serializers.CharField()
     thread_list_url = serializers.CharField(read_only=True)
     children = serializers.SerializerMethodField()
 
@@ -448,6 +457,13 @@ class DiscussionTopicSerializer(serializers.Serializer):
         if not obj.children:
             return []
         return [DiscussionTopicSerializer(child).data for child in obj.children]
+
+    def get_color(self, obj):
+        """
+        Returns theme set for thread.
+        """
+        theme_color = obj.get('color', '#ECF0F4')
+        return theme_color if theme_color.startswith('#') else '#{}'.format(theme_color)
 
     def create(self, validated_data):
         """

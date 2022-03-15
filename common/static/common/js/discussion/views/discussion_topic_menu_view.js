@@ -26,7 +26,8 @@
                 var $general,
                     context = _.clone(this.course_settings.attributes);
 
-                context.topics_html = this.renderCategoryMap(this.course_settings.get('category_map'), 0, null);
+                context.topics_html = this.renderCategoryMap(this.course_settings.get('category_map'), null);
+                this.renderFilterColors()
                 edx.HtmlUtils.setHtml(this.$el, edx.HtmlUtils.template($('#topic-template').html())(context));
 
                 $general = this.$('label.radio-theme-input:contains(General)').find('input[name="create-post-theme"]');  // always return array.
@@ -43,7 +44,17 @@
                 return this.$el;
             },
 
-            renderCategoryMap: function(map, index, label) {
+            renderFilterColors: function(){
+                $('li.forum-nav-browse-menu-item').each(function(index, item){
+                    var $item = $(item);
+                    var text = $item.find('span.subcategory-text').text().trim();
+                    $item.find('span.theme-color').css(
+                      'background-color', DiscussionUtil.assignTheme(index, text)
+                    );
+                });
+            },
+
+            renderCategoryMap: function(map, label) {
                 var categoryTemplate = edx.HtmlUtils.template($('#new-post-menu-category-template').html()),
                     entryTemplate = edx.HtmlUtils.template($('#new-post-menu-entry-template').html()),
                     mappedCategorySnippets = _.map(map.children, function(child) {
@@ -53,20 +64,18 @@
                             type = child[1]; // child[1] is the type (i.e. 'entry' or 'subcategory')
                         if (_.has(map.entries, name) && type === 'entry') {
                             entry = map.entries[name];
-                            var themeIndex = index%DiscussionUtil.themeValues.length;
                             html = entryTemplate({
                                 text: name,
                                 label: label,
                                 id: entry.id,
                                 is_divided: entry.is_divided,
-                                theme_color: DiscussionUtil.assignTheme(themeIndex, name),
+                                theme_color: DiscussionUtil.assignTheme(entry.color, name),
                             });
-                            index ++;
                         }
                         else { // subcategory
                             html = categoryTemplate({
                                 text: name,
-                                entries: this.renderCategoryMap(map.subcategories[name], index, name)
+                                entries: this.renderCategoryMap(map.subcategories[name], name)
                             });
                         }
                         return html;
