@@ -268,25 +268,6 @@
                 }
             };
 
-            DiscussionThreadListView.prototype.renderAdditionalThreads = function(threadList, context) {
-                var $content, thread, i, len, context;
-                var $list = context.$('.forum-nav-thread-list');
-                for (i = 0, len = threadList.length; i < len; i++) {
-                    thread = threadList[i];
-                    $content = context.renderThread(thread);
-                    $content.find('span.timeago').timeago();
-                    $list.append($content);
-                }
-                if (context.$('.forum-nav-thread-list li').length === 0) {
-                    context.clearSearchAlerts();
-                    context.addSearchAlert(gettext('There are no posts in this topic yet.'));
-                }
-                context.showMetadataAccordingToSort();
-                context.renderMorePages();
-                // context.trigger('threads:rendered');
-                context.displayedCollection.models = _.union(context.displayedCollection.models, threadList);
-            };
-
             DiscussionThreadListView.prototype.showMetadataAccordingToSort = function() {
                 var voteCounts = this.$('.forum-nav-thread-votes-count'),
                     unreadCommentCounts = this.$('.forum-nav-thread-unread-comments-count'),
