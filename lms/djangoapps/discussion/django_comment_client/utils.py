@@ -442,7 +442,7 @@ def get_discussion_category_map(course, user, divided_only_if_explicit=False, ex
             "id": entry["id"],
             "sort_key": entry.get("sort_key", topic),
             "start_date": datetime.now(UTC),
-            "color": entry.get("color", "#EB7C7C"),
+            "color": entry.get("color", "#ECF0F4"),
             "is_divided": (
                 discussion_division_enabled and entry["id"] in divided_discussion_ids
             )
