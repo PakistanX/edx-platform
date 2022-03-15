@@ -70,8 +70,8 @@
                 }
             };
 
-            DiscussionThreadView.prototype.hideEditorChromeForPost = function() {
-                if($(event.relatedTarget).hasClass('discussion-submit-post')){
+            DiscussionThreadView.prototype.hideEditorChromeForPost = function(event) {
+                if(event && $(event.relatedTarget).hasClass('discussion-submit-post')){
                     return;
                 }
                 this.$('.post-response .wmd-button-row').hide();

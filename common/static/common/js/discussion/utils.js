@@ -379,7 +379,9 @@
             editor = Markdown.makeWmdEditor(elem, appended_id, imageUploadUrl, _processor(this));
             this.wmdEditors['' + cls_identifier + '-' + id] = editor;
             var input = elem.find('#wmd-input' + appended_id);
-            input.attr('placeholder', gettext('Add a reply ...'));
+            if(cls_identifier !== 'js-post-body') {
+              input.attr('placeholder', gettext('Add a reply ...'));
+            }
             return editor;
         };
 
