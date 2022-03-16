@@ -64,12 +64,16 @@
                 'click .discussion-submit-post': 'submitComment',
                 'click .add-response-btn': 'scrollToAddResponse',
                 'click .post-response': 'showEditorChromeForPost',
+                'blur .post-response .wmd-input': 'hideEditorChromeForPost',
                 'keydown .wmd-button': function(event) {
                     return DiscussionUtil.handleKeypressInToolbar(event);
                 }
             };
 
-            DiscussionThreadView.prototype.hideEditorChromeForPost = function() {
+            DiscussionThreadView.prototype.hideEditorChromeForPost = function(event) {
+                if(event && $(event.relatedTarget).hasClass('discussion-submit-post')){
+                    return;
+                }
                 this.$('.post-response .wmd-button-row').hide();
                 this.$('.post-response .wmd-preview-container').hide();
                 this.$('.post-response .wmd-input').css({
@@ -120,9 +124,14 @@
                 this.createShowView();
                 this.responses = new Comments();
                 this.loadedResponses = false;
+                this.showingResponsesText = '';
+                this.responselimit = null;
                 if (this.isQuestion()) {
                     this.markedAnswers = new Comments();
                 }
+                $(window).bind('scroll', function (event) {
+                    self.scrollCheck(event);
+                });
             };
 
             DiscussionThreadView.prototype.rerender = function() {
@@ -263,9 +272,8 @@
             };
 
             DiscussionThreadView.prototype.renderResponseCountAndPagination = function(responseTotal) {
-                var buttonText, $loadMoreButton, responseCountFormat, responseLimit, responsePagination,
-                    responsesRemaining, showingResponsesText,
-                    self = this;
+                var buttonText, responseCountFormat, responsePagination, responsesRemaining,
+                  self = this;
                 if (this.isQuestion() && this.markedAnswers.length !== 0) {
                     responseCountFormat = ngettext(
                         '{numResponses} other response', '{numResponses} other responses', responseTotal
@@ -281,16 +289,15 @@
                 this.$el.find('.response-count').text(
                     edx.StringUtils.interpolate(responseCountFormat, {numResponses: responseTotal}, true)
                 );
-                this.$el.find('#post-comment-count').text(responseTotal);
 
                 responsePagination = this.$el.find('.response-pagination');
                 responsePagination.empty();
                 if (responseTotal > 0) {
                     responsesRemaining = responseTotal - this.responses.size();
                     if (responsesRemaining === 0) {
-                        showingResponsesText = gettext('Showing all responses');
+                        this.showingResponsesText = gettext('Showing all responses');
                     } else {
-                        showingResponsesText = edx.StringUtils.interpolate(
+                        this.showingResponsesText = edx.StringUtils.interpolate(
                             ngettext(
                                 'Showing first response', 'Showing first {numResponses} responses',
                                 this.responses.size()
@@ -301,28 +308,40 @@
                     }
 
                     responsePagination.append($('<span>')
-                        .addClass('response-display-count').text(showingResponsesText));
+                        .addClass('response-display-count').text(this.showingResponsesText));
                     if (responsesRemaining > 0) {
                         if (responsesRemaining < SUBSEQUENT_RESPONSE_PAGE_SIZE) {
-                            responseLimit = null;
+                            this.responseLimit = null;
                             buttonText = gettext('Load all responses');
                         } else {
-                            responseLimit = SUBSEQUENT_RESPONSE_PAGE_SIZE;
+                            this.responseLimit = SUBSEQUENT_RESPONSE_PAGE_SIZE;
                             buttonText = edx.StringUtils.interpolate(gettext('Load next {numResponses} responses'), {
-                                numResponses: responseLimit
+                                numResponses: self.responseLimit
                             }, true);
                         }
-                        $loadMoreButton = $('<button>')
+                        this.$loadMoreButton = $('<button>')
                             .addClass('btn-neutral')
                             .addClass('load-response-button')
                             .text(buttonText);
-                        $loadMoreButton.click(function() {
-                            return self.loadResponses(responseLimit, $loadMoreButton);
+                        this.$loadMoreButton.click(function() {
+                            return self.loadResponses(self.responseLimit, self.$loadMoreButton);
                         });
-                        return responsePagination.append($loadMoreButton);
+                        return responsePagination.append(this.$loadMoreButton);
                     }
                 } else {
                     this.$el.find('.add-response').hide();
+                }
+            };
+
+            DiscussionThreadView.prototype.scrollCheck = function(event) {
+                if(
+                  this.showingResponsesText
+                  && this.showingResponsesText !== 'Showing all responses'
+                  && ! DiscussionUtil.forumDiv.is(':empty')
+                  && $(window).scrollTop() !== 0
+                  && $(window).scrollTop() + 10 >= $(document).height() - $(window).height()
+                  ) {
+                      this.loadResponses(this.responseLimit, this.$loadMoreButton);
                 }
             };
 
@@ -371,7 +390,7 @@
             };
 
             DiscussionThreadView.prototype.submitComment = function(event) {
-                var body, comment, url, view;
+                var body, comment, url, view, self = this;
                 event.preventDefault();
                 url = this.model.urlFor('reply');
                 body = this.getWmdContent('reply-body');
@@ -408,7 +427,13 @@
                     success: function(data) {
                         comment.updateInfo(data.annotated_content_info);
                         comment.set(data.content);
+                        if( view.$('.comment-body').is(':empty') ) {
+                          view.afterInsert();
+                        }
+                        var commentCountSpan = $('#post-comment-count');
+                        commentCountSpan.text(parseInt(commentCountSpan.text()) + 1);
                         DiscussionUtil.typesetMathJax(view.$el.find('.response-body'));
+                        self.hideEditorChromeForPost();
                     }
                 });
             };

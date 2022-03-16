@@ -9,6 +9,35 @@
 
         DiscussionUtil.leftKey = 37;
         DiscussionUtil.rightKey = 39;
+        DiscussionUtil.loader = null;
+        DiscussionUtil.emptyMessage = null;
+        DiscussionUtil.forumDiv = null;
+        DiscussionUtil.assignedThemes = {};
+
+        DiscussionUtil.assignTheme = function(theme, key){
+            if(!this.assignedThemes.hasOwnProperty(key)){
+                this.assignedThemes[key] = theme;
+            }
+            return this.assignedThemes[key];
+        }
+
+        DiscussionUtil.initializeEmptyDiv = function(){
+            this.loader = $('div.loader');
+            this.emptyMessage = $('div.no-results');
+            this.showLoader();
+        }
+
+        DiscussionUtil.showEmptyMsg = function(){
+            this.loader.hide();
+            this.emptyMessage.show();
+            this.forumDiv.hide();
+        }
+
+        DiscussionUtil.showLoader = function(){
+            this.emptyMessage.hide();
+            this.loader.show();
+            this.forumDiv.hide();
+        }
 
         DiscussionUtil.getTemplate = function(id) {
             return $('script#' + id).html();
@@ -158,6 +187,16 @@
                 this.$_loading.focus();
             }
         };
+
+        DiscussionUtil.hideEditorChrome = function(selector) {
+            $(selector + ' .wmd-button-row').hide();
+            $(selector + ' .wmd-preview-container').hide();
+            $(selector + ' .wmd-input').css({
+                height: '45px'
+            });
+            $(selector + ' .reply-holder').removeClass('open');
+            return $(selector + ' .comment-post-control').hide();
+        }
 
         DiscussionUtil.hideLoadingIndicator = function() {
             return this.$_loading.remove();
@@ -326,9 +365,8 @@
         };
 
         DiscussionUtil.makeWmdEditor = function($content, $local, cls_identifier) {
-            var appended_id, editor, elem, id, imageUploadUrl, placeholder, _processor;
+            var appended_id, editor, elem, id, imageUploadUrl, _processor;
             elem = $local('.' + cls_identifier);
-            placeholder = elem.data('placeholder');
             id = elem.data('id');
             appended_id = '-' + cls_identifier + '-' + id;
             imageUploadUrl = this.urlFor('upload');
@@ -340,8 +378,9 @@
             };
             editor = Markdown.makeWmdEditor(elem, appended_id, imageUploadUrl, _processor(this));
             this.wmdEditors['' + cls_identifier + '-' + id] = editor;
-            if (placeholder) {
-                elem.find('#wmd-input' + appended_id).attr('placeholder', placeholder);
+            var input = elem.find('#wmd-input' + appended_id);
+            if(cls_identifier !== 'js-post-body') {
+              input.attr('placeholder', gettext('Add a reply ...'));
             }
             return editor;
         };

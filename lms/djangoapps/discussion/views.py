@@ -5,6 +5,7 @@ Views handling read (GET) requests for the Discussion tab and inline discussions
 
 import logging
 from functools import wraps
+import json
 
 import six
 from django.conf import settings
@@ -205,6 +206,12 @@ def inline_discussion(request, course_key, discussion_id):
     """
     Renders JSON for DiscussionModules
     """
+
+    try:
+        discussion_id = json.loads(discussion_id)['value']
+    except json.JSONDecodeError:
+        pass
+
     with function_trace('get_course_and_user_info'):
         course = get_course_with_access(request.user, 'load', course_key, check_if_enrolled=True)
         cc_user = cc.User.from_django_user(request.user)
@@ -727,18 +734,18 @@ class DiscussionBoardFragmentView(EdxFragmentView):
             #   (yes, this is something to fix). Because of this, we pass in
             #   raise_event=False to _load_thread_for_viewing avoid duplicate
             #   tracking events.
-            thread = (
-                _load_thread_for_viewing(
-                    request,
-                    base_context['course'],
-                    discussion_id=discussion_id,
-                    thread_id=thread_id,
-                    raise_event=False,
-                )
-                if thread_id
-                else None
-            )
-            context = _create_discussion_board_context(request, base_context, thread=thread)
+            # thread = (
+            #     _load_thread_for_viewing(
+            #         request,
+            #         base_context['course'],
+            #         discussion_id=discussion_id,
+            #         thread_id=thread_id,
+            #         raise_event=False,
+            #     )
+            #     if thread_id
+            #     else None
+            # )
+            context = _create_discussion_board_context(request, base_context)
             course_expiration_fragment = generate_course_expired_fragment(request.user, context['course'])
             context.update({
                 'course_expiration_fragment': course_expiration_fragment,

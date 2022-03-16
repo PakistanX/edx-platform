@@ -58,7 +58,7 @@
                         primaryActions: ['follow'],
                         secondaryActions: ['pin', 'edit', 'delete', 'close'],
                         readOnly: readOnly,
-                        comments: true,
+                        comment_count: comments_count,
                     }
                 )
                 %>
@@ -145,7 +145,7 @@
                         primaryActions: ['vote', 'report'],
                         secondaryActions: [],
                         readOnly: readOnly,
-                        comments: false,
+                        comment_count: -1,
                     }
                 )
             %>
@@ -174,10 +174,10 @@
 <div class="post-field">
     <label class="field-label" for='edit-discussion-forum-title'>
         <span class="field-label-text"><%- gettext("Title") %></span>
+        <input id='edit-discussion-forum-title' aria-describedby="field_help_title" type="text" class="edit-post-title field-input" name="title" value="<%- title %>">
         <div class="field-help" id="field_help_title">
             <%- gettext("Add a clear and descriptive title to encourage participation. (Required)") %>
         </div>
-        <input id='edit-discussion-forum-title' aria-describedby="field_help_title" type="text" class="edit-post-title field-input" name="title" value="<%- title %>">
     </label>
 </div>
 <div class="forum-edit-post-form-wrapper"></div>
@@ -186,7 +186,7 @@
     <div class="edit-post-body" aria-describedby="edit-post-editor-description" name="body"><%- body %></div>
 </div>
 <button type="submit" id="edit-post-submit" class="btn btn-primary submit post-update"><%- gettext("Update post") %></button>
-<button class="btn btn-outline-primary post-cancel"><%- gettext("Cancel") %></button>
+<button class="btn btn-outline-primary post-cancel"><%- gettext("Cancel") %> <span class="icon icon-Cancel"></span></button>
 </script>
 <script aria-hidden="true" type="text/template" id="thread-response-template">
 <div class="discussion-response"></div>
@@ -259,7 +259,7 @@
                     primaryActions: [thread.get('thread_type') == 'question' ? 'answer' : 'endorse'],
                     secondaryActions: ['edit', 'delete'],
                     readOnly: readOnly,
-                    comments: false,
+                    comment_count: -1,
                 }
             )
         %>
@@ -278,7 +278,7 @@
                 primaryActions: ['vote', 'report'],
                 secondaryActions: [],
                 readOnly: readOnly,
-                comments: false,
+                comment_count: -1,
             }
         )
     %>
@@ -327,7 +327,7 @@
               primaryActions: [],
               secondaryActions: ['edit', 'delete'],
               readOnly: readOnly,
-              comments: false,
+              comment_count: -1,
           }
       )
   %>
@@ -365,7 +365,7 @@
                 primaryActions: ['vote', 'report'],
                 secondaryActions: [],
                 readOnly: readOnly,
-                comments: false,
+                comment_count: -1,
             }
         )
     %>
@@ -415,7 +415,7 @@
       <% if(typeof(subscribed) === "undefined") { var subscribed = null; } %>
       <ul class="forum-nav-thread-labels">
         <li>
-            <%- gettext(comments_count + 1) %>
+            <%- gettext(comments_count) %>
             <i class="icon-Round-Chat-6-Outline-Color"></i>
         </li>
         <li>
@@ -478,7 +478,7 @@
 </script>
 <script aria-hidden="true" type="text/template" id="new-post-template">
 <form class="forum-new-post-form">
-    <h<%- startHeader %> class="thread-title"><%- gettext("Add a Post") %></h<%- startHeader %>>
+    <h<%- startHeader %> class="thread-title"><%- gettext("Add Post") %></h<%- startHeader %>>
 
     <% if (mode === 'inline') { %>
         <button class="btn btn-outline-primary btn-default add-post-cancel">
@@ -541,12 +541,24 @@
 </form>
 </script>
 <script aria-hidden="true" type="text/template" id="new-post-menu-entry-template">
-<option class="topic-title" data-discussion-id="<%- id %>" data-divided="<%- is_divided %>"><%- text %></option>
+<label class="theme-box radio-theme-input">
+    <input
+        type="radio" name="create-post-theme"
+        data-discussion-id="<%- id %>"
+        data-divided="<%- is_divided %>"
+        label="<%- label %>"
+        value="<%- text %>"
+    >
+    <span class="icon-holder" style="background-color: <%- theme_color %>;">
+        <span class="icon icon-Check"></span>
+    </span>
+    <span class="theme-title">
+        <span class="title-holder"><%- text %></span>
+    </span>
+</label>
 </script>
 <script aria-hidden="true" type="text/template" id="new-post-menu-category-template">
-<optgroup label="<%- text %>">
-    <%= edx.HtmlUtils.ensureHtml(entries) %>
-</optgroup>
+<%= edx.HtmlUtils.ensureHtml(entries) %>
 </script>
 <script aria-hidden="true" type="text/template" id="new-post-alert-template">
 <div class="alert alert-error pattern-library-shim" role="alert" aria-labelledby="alert-title-error-<%- alertId %>" tabindex="-1">
@@ -593,60 +605,7 @@
 <div class="theme-selection">
     <span class="theme-title">Theme</span>
     <div class="theme-boxes">
-        <label class="theme-box">
-            <input type="radio" name="theme" checked>
-            <span class="icon-holder" style="background-color: #CADBDB;">
-                <span class="icon icon-Check"></span>
-            </span>
-            <span class="theme-title">
-                <span class="title-holder">General</span>
-            </span>
-        </label>
-        <label class="theme-box">
-            <input type="radio" name="theme">
-            <span class="icon-holder" style="background-color: #56B7F7;">
-                <span class="icon icon-Check"></span>
-            </span>
-            <span class="theme-title">
-                <span class="title-holder">Taking care of your mental wellbeing!</span>
-            </span>
-        </label>
-        <label class="theme-box">
-            <input type="radio" name="theme">
-            <span class="icon-holder" style="background-color: #EB7C7C;">
-                <span class="icon icon-Check"></span>
-            </span>
-            <span class="theme-title">
-                <span class="title-holder">Standardised Tests</span>
-            </span>
-        </label>
-        <label class="theme-box">
-            <input type="radio" name="theme">
-            <span class="icon-holder" style="background-color: #44CFC8;">
-                <span class="icon icon-Check"></span>
-            </span>
-            <span class="theme-title">
-                <span class="title-holder">Theme Name</span>
-            </span>
-        </label>
-        <label class="theme-box">
-            <input type="radio" name="theme">
-            <span class="icon-holder" style="background-color: #787FE3;">
-                <span class="icon icon-Check"></span>
-            </span>
-            <span class="theme-title">
-                <span class="title-holder">Theme Name</span>
-            </span>
-        </label>
-        <label class="theme-box">
-            <input type="radio" name="theme">
-            <span class="icon-holder" style="background-color: #EADA52;">
-                <span class="icon icon-Check"></span>
-            </span>
-            <span class="theme-title">
-                <span class="title-holder">Theme Name</span>
-            </span>
-        </label>
+        <%= edx.HtmlUtils.ensureHtml(topics_html) %>
     </div>
     <div class="action-btns">
         <a href="#" class="discard-link">Discard</a>
@@ -669,7 +628,7 @@
 <script aria-hidden="true" type="text/template" id="inline-discussion-template">
 <section class="discussion inline-discussion" data-discussion-id="<%- discussionId %>">
     <div class="add_post_btn_container <% if (read_only) { %> is-hidden <% } %>">
-        <button class="btn-link new-post-btn"><%- gettext("Add a Post") %></button>
+        <button class="btn-link new-post-btn"><%- gettext("Add Post") %></button>
     </div>
 
     <article class="new-post-article is-hidden"></article>
@@ -817,7 +776,7 @@
                 <input id='discussion-forum-title' aria-describedby="field_help_title" type="text" class="js-post-title field-input" name="title">
             </div>
             <div class="field-help" id="field_help_title">
-                <%- gettext("Add a clear and descriptive title to encourage participation. (Required)") %>
+                <%- gettext("Add a clear and descriptive title to encourage participation.") %>
             </div>
         </label>
     </div>
@@ -909,8 +868,8 @@
         </span>
 
     </button>
-    </li>
-    <li>
+</li>
+<li class="actions-item">
     <span aria-hidden="true" class="display-downvote is-hidden" >
       <span class="downvvote-count"></span>
     </span>
@@ -1003,10 +962,9 @@
             </li>
         <% } %>
         <% _.each(primaryActions, function(action) { print(_.template($('#forum-action-' + action).html())({})) }) %>
-        <% if (comments) { %>
+        <% if (comment_count > -1) { %>
             <li class="post-comments">
-                <span id="post-comment-count""></span>
-                <span class="icon fa fa-comment" aria-hidden="true"></span>
+                <span id="post-comment-count"><%- gettext(comment_count) %></span>
             </li>
         <% } %>
     </ul>
@@ -1016,20 +974,18 @@
 <div class='modal' role='alertdialog' id='discussion-alert' aria-describedby='discussion-alert-message'>
     <div class='inner-wrapper discussion-alert-wrapper'>
         <button class='btn close-modal dismiss' title='<%- gettext("Close") %>''>
-            <span class='icon fa fa-times' aria-hidden='true'></span>
+            <span class='icon icon-Cancel' aria-hidden='true'></span>
         </button>
         <header>
             <h2/></h2>
-            <hr/>
         </header>
         <p id='discussion-alert-message'></p>
-        <hr/>
-        <button class='btn dismiss'><%- gettext("OK") %></button>
+        <button class='btn dismiss ok'><%- gettext("OK") %></button>
     </div>
 </div>
 </script>
 <script aria-hidden="true" type="text/template" id="nav-load-more-link">
-<li class='forum-nav-load-more'>
+<li class='forum-nav-load-more is-hidden'>
     <button class='btn-link forum-nav-load-more-link'>
         <%- gettext("Load more") %>
     </button>

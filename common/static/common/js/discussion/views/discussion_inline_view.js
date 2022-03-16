@@ -103,6 +103,7 @@
 
             this.threadListView = new DiscussionThreadListView({
                 el: this.$('.inline-threads'),
+                is_inline: true,
                 collection: self.discussion,
                 courseSettings: self.courseSettings,
                 supportsActiveThread: true,

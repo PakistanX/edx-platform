@@ -3,7 +3,7 @@
     type="search"
     name="search"
     id="search"
-    placeholder="<%- gettext("Search all posts") %>"
+    placeholder="<%- gettext("Search All Posts") %>"
 />
-<label class="field-label" for="search" id="search-hint" aria-label='<%- gettext("Search all posts") %>'><%- gettext("Search all posts") %></label>
+<label class="field-label" for="search" id="search-hint" aria-label='<%- gettext("Search All Posts") %>'><%- gettext("Search All Posts") %></label>
 <button class="btn btn-outline-primary btn-small search-button" type="button"><%- gettext("Search") %></button>

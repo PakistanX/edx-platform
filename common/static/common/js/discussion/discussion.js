@@ -40,11 +40,17 @@
                 this.bind('add', function(item) {
                     item.discussion = self;
                 });
+                this.setTimeAgoParams();
                 this.setSortComparator(this.sort_preference);
                 return this.on('thread:remove', function(thread) {
                     self.remove(thread);
                 });
             };
+
+            Discussion.prototype.setTimeAgoParams = function() {
+                $.timeago.settings.strings.seconds = 'about a minute';
+                $.timeago.settings.strings.hours = '%d hours';
+            }
 
             Discussion.prototype.find = function(id) {
                 return _.first(this.where({
@@ -79,9 +85,12 @@
                 }
             };
 
-            Discussion.prototype.retrieveAnotherPage = function(mode, options, sort_options, error) {
+            Discussion.prototype.retrieveAnotherPage = function(mode, options, sort_options, error, skip_loader) {
                 var data, url,
                     self = this;
+                if(!skip_loader){
+                    DiscussionUtil.showLoader();
+                }
                 if (!options) {
                     options = {};
                 }
@@ -141,6 +150,9 @@
                                 return _results;
                             }())
                         ][0];
+                        if(!new_threads.length && !skip_loader){
+                            DiscussionUtil.showEmptyMsg();
+                        }
                         new_collection = _.union(models, new_threads);
                         Content.loadContentInfos(response.annotated_content_info);
                         self.pages = response.num_pages;

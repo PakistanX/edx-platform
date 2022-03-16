@@ -218,13 +218,14 @@
                             if (discussionBreadcrumbsModel.get('contents').length) {
                                 discussionBreadcrumbsModel.set('contents', self.topicView.topicText.split('/'));
                             }
-                            self.discussionBoardView.discussionThreadListView.discussionIds =
-                                self.topicView.currentTopicId;
+                            // self.discussionBoardView.discussionThreadListView.discussionIds =
+                            //     self.topicView.currentTopicId;
                         }
+                        else self.trigger('newPost:createPost');
                         self.$el.addClass('is-hidden');
                         self.resetForm();
-                        self.trigger('newPost:createPost');
-                        return self.collection.add(thread);
+                        self.collection.add(thread);
+                        return self.cancel()
                     }
                 });
             };
@@ -236,7 +237,9 @@
             };
 
             NewPostView.prototype.cancel = function(event) {
-                event.preventDefault();
+                if(event){
+                    event.preventDefault();
+                }
                 if (this.formModified()) {
                     if (!confirm(gettext('Your post will be discarded.'))) {  // eslint-disable-line no-alert
                         return;
@@ -252,7 +255,8 @@
                 DiscussionUtil.clearFormErrors(this.$('.post-errors'));
                 this.$('.wmd-preview').html('');
                 if (this.isTabMode()) {
-                    $general = this.$('.post-topic option:contains(General)');
+                    $general = this.$('label.radio-theme-input:contains(General)')
+                      .find('input[name="create-post-theme"]');
                     this.topicView.setTopic($general || this.$('button.topic-title').first());
                 }
             };

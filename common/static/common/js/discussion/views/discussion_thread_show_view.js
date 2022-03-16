@@ -38,7 +38,11 @@
             };
 
             DiscussionThreadShowView.prototype.renderTemplate = function() {
+                var $discussionModule = $('.discussion-module')
                 var $container = $('#discussion-container');
+                if (!$container.length) {
+                    $container = $discussionModule;
+                }
                 var context = $.extend({
                     mode: this.mode,
                     startHeader: this.startHeader,
@@ -46,7 +50,7 @@
                     is_commentable_divided: this.is_commentable_divided,
                     author_display: this.getAuthorDisplay(),
                     cid: this.model.cid,
-                    readOnly: $('.discussion-module').data('read-only'),
+                    readOnly: $discussionModule.data('read-only'),
                     can_create_comment: $container.data('user-create-comment')
                 }, this.model.attributes);
                 return edx.HtmlUtils.template($('#thread-show-template').html())(context);
