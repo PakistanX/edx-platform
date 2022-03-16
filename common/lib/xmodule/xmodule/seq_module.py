@@ -213,6 +213,8 @@ class SequenceModule(SequenceFields, ProctoringFields, XModule):
 
     def handle_ajax(self, dispatch, data):  # TODO: bounds checking
         ''' get = request.POST instance '''
+        from openedx.features.pakx.lms.overrides.utils import get_and_save_course_progress
+
         if dispatch == 'goto_position':
             # set position to default value if either 'position' argument not
             # found in request or it is a non-positive integer
@@ -224,9 +226,9 @@ class SequenceModule(SequenceFields, ProctoringFields, XModule):
             return json.dumps({'success': True})
 
         if dispatch == 'get_completion':
-            from openedx.features.pakx.lms.overrides.utils import get_and_save_course_progress
-
             completion_service = self.runtime.service(self, 'completion')
+            progress = get_and_save_course_progress(text_type(self.course_id), self.runtime.user_id)
+
             usage_key = data.get('usage_key', None)
             if not usage_key:
                 return None
@@ -237,8 +239,11 @@ class SequenceModule(SequenceFields, ProctoringFields, XModule):
             complete = completion_service.vertical_is_complete(item)
             return json.dumps({
                 'complete': complete,
-                'progress': get_and_save_course_progress(text_type(self.course_id), self.runtime.user_id)
+                'progress': progress
             })
+        elif dispatch == 'update_progress':
+            get_and_save_course_progress(text_type(self.course_id), self.runtime.user_id)
+            return json.dumps({'complete': True})
         elif dispatch == 'metadata':
             context = {'exclude_units': True}
             prereq_met = True

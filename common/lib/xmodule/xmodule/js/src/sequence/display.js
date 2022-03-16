@@ -212,6 +212,8 @@
         Sequence.prototype.toggleArrows = function() {
             var isFirstTab, isLastTab, nextButtonClass, previousButtonClass;
 
+            this.update_progress();
+
             this.$('.sequence-nav-button').unbind('click');
 
             // previous button
@@ -474,6 +476,11 @@
                     }
                 });
             }
+        };
+
+        Sequence.prototype.update_progress = function() {
+            var progressUrl = this.ajaxUrl + '/update_progress';
+            $.postWithPrefix(progressUrl);
         };
 
         Sequence.prototype.mark_active = function(position) {
