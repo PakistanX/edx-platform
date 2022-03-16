@@ -446,15 +446,18 @@ def get_course_progress_percentage(request, course_key):
     return _calculate_progress_for_block(get_progress_information(request, course_key))
 
 
-def get_and_save_course_progress(course_key, user_id):
+def get_and_save_course_progress(course_key, user_id=None, request=None):
     """Calculate and save a learner's progress"""
     from .models import CourseProgressStats
 
-    user = User.objects.get(id=user_id)
-    request = RequestFactory().request()
-    request.user = user
+    if request:
+        user = request.user
+    else:
+        user = User.objects.get(id=user_id)
+        request = RequestFactory().request()
+        request.user = user
 
-    progress_percentage = float(get_course_progress_percentage(request, course_key))
+    progress_percentage = get_course_progress_percentage(request, course_key)
 
     CourseProgressStats.objects.filter(enrollment__user=user, enrollment__course=course_key).update(
         progress=progress_percentage
