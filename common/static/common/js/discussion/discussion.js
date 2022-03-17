@@ -48,7 +48,9 @@
             };
 
             Discussion.prototype.setTimeAgoParams = function() {
-                $.timeago.settings.strings.seconds = 'about a minute';
+                $.timeago.settings.strings.seconds = 'right now';
+                $.timeago.settings.strings.minute = 'right now';
+                $.timeago.settings.strings.hour = 'an hour';
                 $.timeago.settings.strings.hours = '%d hours';
             }
 
@@ -101,7 +103,7 @@
                     page: this.current_page + 1
                 };
                 $.each(options.filters, function(index, value){
-                  if (_.contains(['unread', 'unanswered', 'flagged'], value)) {
+                  if (_.contains(['unread', 'unanswered', 'flagged', 'following'], value)) {
                     data[value] = true;
                   }
                 });

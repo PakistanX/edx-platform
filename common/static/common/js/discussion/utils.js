@@ -287,6 +287,7 @@
             if (typeof beforeSend === 'function') {
                 beforeSend();
             }
+            $('.forum-nav-thread-list').find('span.timeago').timeago();
             return this.safeAjax(safeAjaxParams).fail(function() {
                 return model.set(undo);
             });
@@ -379,6 +380,7 @@
             editor = Markdown.makeWmdEditor(elem, appended_id, imageUploadUrl, _processor(this));
             this.wmdEditors['' + cls_identifier + '-' + id] = editor;
             var input = elem.find('#wmd-input' + appended_id);
+            input.css('resize', 'none');
             if(cls_identifier !== 'js-post-body') {
               input.attr('placeholder', gettext('Add a reply ...'));
             }

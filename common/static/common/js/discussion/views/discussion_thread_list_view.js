@@ -117,6 +117,7 @@
                 this.showThreadPreview = true;
                 this.twoColDiv = null;
                 this.activeThreadId = null;
+                this.helperTemplate = options.helperTemplate
                 this.searchAlertCollection = new Backbone.Collection([], {
                     model: Backbone.Model
                 });
@@ -246,6 +247,16 @@
                 return this;
             };
 
+            DiscussionThreadListView.prototype.deselectActiveThread = function (){
+                this.activeThreadId = null;
+                this.$('.forum-nav-thread-link').find('.sr').remove();
+                this.$(".forum-nav-thread .forum-nav-thread-link").removeClass('is-active');
+                this.addRemoveTwoCol();
+                if($('.discussion-helper').is(':empty')){
+                    edx.HtmlUtils.append($('.discussion-helper'), edx.HtmlUtils.template(this.helperTemplate)({}));
+                }
+            }
+
             DiscussionThreadListView.prototype.renderThreads = function() {
                 var $content, thread, i, len;
                 this.$('.forum-nav-thread-list').empty();
@@ -262,10 +273,11 @@
                 this.showMetadataAccordingToSort();
                 this.renderMorePages();
                 this.trigger('threads:rendered');
-                if(this.activeThreadId){
+                if(this.activeThreadId && this.mode === 'all' && this.filters[0] === 'all'){
                     DiscussionUtil.forumDiv.show();
                     this.setActiveThread(this.activeThreadId);
                 }
+                else this.deselectActiveThread();
             };
 
             DiscussionThreadListView.prototype.showMetadataAccordingToSort = function() {
@@ -402,7 +414,7 @@
                 var threadId;
                 threadId = $(e.target).closest('.forum-nav-thread').attr('data-id');
                 if (this.supportsActiveThread) {
-                    if(this.is_inline){
+                    if(this.is_inline || this.mode === 'commentables'){
                         DiscussionUtil.forumDiv.show();
                     }
                     this.setActiveThread(threadId);
@@ -430,10 +442,15 @@
                     .addClass('is-active').find('.forum-nav-thread-wrapper-1')
                     .prepend($srElem);
                 this.addRemoveTwoCol()
+                if($('.discussion-helper').is(':empty')){
+                    edx.HtmlUtils.append($('.discussion-helper'), edx.HtmlUtils.template(this.helperTemplate)({}));
+                }
             };
 
             DiscussionThreadListView.prototype.selectTopic = function($target) {
                 var allItems, discussionIds, $item, selector = '.forum-nav-browse-menu-item';
+                $('input[name="filter"]').removeAttr('checked');
+                this.filters = ['all'];
                 this.activeThreadId = null;
                 $item = $target.closest('.forum-nav-browse-menu-item');
                 this.clearSearchAlerts();
@@ -454,24 +471,16 @@
 
             DiscussionThreadListView.prototype.loadSelectedFilter = function() {
                 this.clearSearchAlerts();
-                this.activeThreadId = null;
                 var filters = [], isFilterSelected = false, self = this;
                 $('input[name="filter"]:checked').each(function(index, filter) {
-                    var filter_val = filter.value;
-                    if(filter_val === 'following'){
-                      self.mode = 'followed';
-                    }
-                    else{
-                      filters.push(filter_val);
-                    }
+                    filters.push(filter.value);
                     isFilterSelected = true;
                 });
-                if(!isFilterSelected && this.mode === 'followed'){
+                if(!isFilterSelected){
                   filters.push('all');
-                  this.mode = 'all';
                 }
                 this.filters = filters;
-                return this.retrieveFirstPage();
+                this.retrieveFirstPage();
             };
 
             DiscussionThreadListView.prototype.chooseGroup = function() {

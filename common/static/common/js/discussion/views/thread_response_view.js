@@ -106,8 +106,8 @@
                 return this.hideEditorChrome();
             };
 
-            ThreadResponseView.prototype.hideEditorChrome = function() {
-                if($(event.relatedTarget).hasClass('discussion-submit-comment')){
+            ThreadResponseView.prototype.hideEditorChrome = function(event) {
+                if(event && $(event.relatedTarget).parents('.discussion-response').length){
                     return;
                 }
                 this.$('.wmd-button-row').hide();
@@ -239,7 +239,7 @@
             };
 
             ThreadResponseView.prototype._delete = function(event) {
-                var $elem, url;
+                var $elem, url, commentCount, discussionCommentCount = $('#post-comment-count');
                 event.preventDefault();
                 if (!this.model.can('can_delete')) {
                     return;
@@ -248,9 +248,12 @@
                     return;
                 }
                 url = this.model.urlFor('_delete');
+                $elem = $(event.target);
+                commentCount = parseInt($elem.parents('.discussion-response').find('.comment-count-single').text());
+                commentCount = commentCount + 1;
+                discussionCommentCount.text(parseInt(discussionCommentCount.text()) - commentCount);
                 this.model.remove();
                 this.$el.remove();
-                $elem = $(event.target);
                 return DiscussionUtil.safeAjax({
                     $elem: $elem,
                     url: url,

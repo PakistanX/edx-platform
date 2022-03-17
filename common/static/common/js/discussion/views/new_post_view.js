@@ -255,10 +255,11 @@
                 DiscussionUtil.clearFormErrors(this.$('.post-errors'));
                 this.$('.wmd-preview').html('');
                 if (this.isTabMode()) {
-                    $general = this.$('label.radio-theme-input:contains(General)')
+                    $general = this.$('label.radio-theme-input:contains(General)').first()
                       .find('input[name="create-post-theme"]');
                     this.topicView.setTopic($general || this.$('button.topic-title').first());
                 }
+                $('input[name="filter"]').removeAttr('checked');
             };
 
             NewPostView.prototype.updateStyles = function() {
