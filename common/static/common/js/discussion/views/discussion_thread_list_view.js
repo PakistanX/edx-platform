@@ -471,6 +471,7 @@
 
             DiscussionThreadListView.prototype.loadSelectedFilter = function() {
                 this.clearSearchAlerts();
+                this.activeThreadId = null;
                 var filters = [], isFilterSelected = false, self = this;
                 $('input[name="filter"]:checked').each(function(index, filter) {
                     filters.push(filter.value);
