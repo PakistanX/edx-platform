@@ -480,7 +480,7 @@
                   filters.push('all');
                 }
                 this.filters = filters;
-                this.retrieveFirstPage();
+                return this.retrieveFirstPage();
             };
 
             DiscussionThreadListView.prototype.chooseGroup = function() {

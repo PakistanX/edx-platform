@@ -116,7 +116,7 @@
                         currentCount.text(parseInt(currentCount.text()) - 1);
                         postHeader.text(parseInt(postHeader.text()) - 1);
                         self.model.remove();
-                       return self.$el.remove();
+                        return self.$el.remove();
                     },
                     error: function() {
                         return DiscussionUtil.discussionAlert(
