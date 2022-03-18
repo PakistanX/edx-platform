@@ -454,7 +454,7 @@ def get_and_save_course_progress(course_key, user_id):
     request = RequestFactory().request()
     request.user = user
 
-    progress_percentage = float(get_course_progress_percentage(request, course_key))
+    progress_percentage = get_course_progress_percentage(request, course_key)
 
     CourseProgressStats.objects.filter(enrollment__user=user, enrollment__course=course_key).update(
         progress=progress_percentage
