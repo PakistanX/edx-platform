@@ -211,9 +211,7 @@
 
         Sequence.prototype.toggleArrows = function() {
             var isFirstTab, isLastTab, nextButtonClass, previousButtonClass;
-
             this.$('.sequence-nav-button').unbind('click');
-
             // previous button
             isFirstTab = this.position === 1;
             previousButtonClass = '.sequence-nav-button.button-previous';
@@ -458,8 +456,6 @@
             var completionUrl = this.ajaxUrl + '/get_completion';
             var usageKey = element[0].attributes['data-id'].value;
             var completionIndicators = element.find('.check-circle');
-            var progressPercentage = $('#progress-percentage');
-            var progressSpan = $('#progress-percentage-span');
             // Add completion marker class on Accordion Item
             var accordionElement = getAccordionElement(element[0]);
             if (completionIndicators.length) {
@@ -469,11 +465,19 @@
                     if (data.complete === true) {
                         completionIndicators.removeClass('is-hidden');
                         accordionElement.addClass('complete');
-                        progressPercentage.html(data.progress + '% complete');
-                        progressSpan.css('width', data.progress + '%');
                     }
                 });
             }
+        };
+
+        Sequence.prototype.update_progress = function() {
+            var progressUrl = this.ajaxUrl + '/update_progress';
+            $.postWithPrefix(progressUrl, function(data) {
+                if (data.progress) {
+                    $('#progress-percentage').html(data.progress + '% complete');
+                    $('#progress-percentage-span').css('width', data.progress + '%');
+                }
+            });
         };
 
         Sequence.prototype.mark_active = function(position) {
@@ -482,6 +486,7 @@
             if (element[0]) {
               update_unit_title(element[0], true);
             }
+            this.update_progress()
             element.attr({tabindex: '0', 'aria-selected': 'true', 'aria-expanded': 'true'})
                 .removeClass('inactive')
                 .removeClass('visited')
