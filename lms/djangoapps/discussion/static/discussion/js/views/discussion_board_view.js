@@ -49,7 +49,8 @@
                     el: this.$('.discussion-thread-list-container'),
                     courseSettings: this.courseSettings,
                     supportsActiveThread: true,
-                    mode: this.mode
+                    mode: this.mode,
+                    helperTemplate: discussionHomeTemplate
                 }).render();
                 this.searchView = new DiscussionSearchView({
                     el: this.$('.forum-search')

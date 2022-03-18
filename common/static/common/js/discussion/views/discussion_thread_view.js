@@ -71,7 +71,7 @@
             };
 
             DiscussionThreadView.prototype.hideEditorChromeForPost = function(event) {
-                if(event && $(event.relatedTarget).hasClass('discussion-submit-post')){
+                if(event && $(event.relatedTarget).parents('.post-context').length){
                     return;
                 }
                 this.$('.post-response .wmd-button-row').hide();

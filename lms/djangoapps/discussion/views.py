@@ -165,6 +165,11 @@ def get_threads(request, course, user_info, discussion_id=None, per_page=THREADS
     paginated_results = cc.Thread.search(query_params)
     threads = paginated_results.collection
 
+    following_threads = []
+    if request.GET.get('following', False):
+        profiled_user = cc.User(id=user_info.get('id', None), course_id=six.text_type(course.id))
+        following_threads = profiled_user.subscribed_threads(query_params).collection
+
     # If not provided with a discussion id, filter threads by commentable ids
     # which are accessible to the current user.
     if discussion_id is None:
@@ -174,16 +179,28 @@ def get_threads(request, course, user_info, discussion_id=None, per_page=THREADS
             if thread.get('commentable_id') in discussion_category_ids
         ]
 
+    returning_threads = []
     for thread in threads:
         # patch for backward compatibility to comments service
-        if 'pinned' not in thread:
-            thread['pinned'] = False
+        thread_to_append = None
+        if following_threads:
+            for followed_thread in following_threads:
+                if followed_thread['id'] == thread['id']:
+                    thread_to_append = thread
+                    break
+        else:
+            thread_to_append = thread
+
+        if thread_to_append:
+            if 'pinned' not in thread_to_append:
+                thread_to_append['pinned'] = False
+            returning_threads.append(thread_to_append)
 
     query_params['page'] = paginated_results.page
     query_params['num_pages'] = paginated_results.num_pages
     query_params['corrected_text'] = paginated_results.corrected_text
 
-    return threads, query_params
+    return returning_threads, query_params
 
 
 def use_bulk_ops(view_func):
@@ -620,6 +637,8 @@ def user_profile(request, course_key, user_id):
         raise Http404
     except ValueError:
         return HttpResponseServerError("Invalid group_id")
+
+
 
 
 @login_required

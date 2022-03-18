@@ -111,6 +111,10 @@
                     url: url,
                     type: 'POST',
                     success: function() {
+                        var currentCount = this.$elem.parents('.forum-response').find('span.comment-count-single'),
+                          postHeader = $('#post-comment-count');
+                        currentCount.text(parseInt(currentCount.text()) - 1);
+                        postHeader.text(parseInt(postHeader.text()) - 1);
                         self.model.remove();
                         return self.$el.remove();
                     },

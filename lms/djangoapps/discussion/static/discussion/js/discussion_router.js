@@ -129,7 +129,7 @@
                         duration: 200,
                         complete: function() {
                             $('aside.forum-nav').hide();
-                            return self.newPostView.$el.fadeIn(200).focus();
+                            return self.newPostView.$el.fadeIn(200);
                         }
                     });
                 },
