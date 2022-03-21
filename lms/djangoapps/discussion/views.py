@@ -165,8 +165,10 @@ def get_threads(request, course, user_info, discussion_id=None, per_page=THREADS
     paginated_results = cc.Thread.search(query_params)
     threads = paginated_results.collection
 
+    get_following = request.GET.get('following', False)
     following_threads = []
-    if request.GET.get('following', False):
+
+    if get_following:
         profiled_user = cc.User(id=user_info.get('id', None), course_id=six.text_type(course.id))
         following_threads = profiled_user.subscribed_threads(query_params).collection
 
@@ -183,7 +185,7 @@ def get_threads(request, course, user_info, discussion_id=None, per_page=THREADS
     for thread in threads:
         # patch for backward compatibility to comments service
         thread_to_append = None
-        if following_threads:
+        if get_following:
             for followed_thread in following_threads:
                 if followed_thread['id'] == thread['id']:
                     thread_to_append = thread

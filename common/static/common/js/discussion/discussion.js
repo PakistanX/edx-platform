@@ -48,8 +48,8 @@
             };
 
             Discussion.prototype.setTimeAgoParams = function() {
-                $.timeago.settings.strings.seconds = 'right now';
-                $.timeago.settings.strings.minute = 'right now';
+                $.timeago.settings.strings.seconds = 'a minute';
+                $.timeago.settings.strings.minute = 'a minute';
                 $.timeago.settings.strings.hour = 'an hour';
                 $.timeago.settings.strings.hours = '%d hours';
             }

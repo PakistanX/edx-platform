@@ -107,7 +107,10 @@
             };
 
             ThreadResponseView.prototype.hideEditorChrome = function(event) {
-                if(event && $(event.relatedTarget).parents('.discussion-response').length){
+                if(event
+                  && ($(event.relatedTarget).parents('.discussion-response').length
+                    || $(event.relatedTarget).parents('.edit-post-form').length)
+                ){
                     return;
                 }
                 this.$('.wmd-button-row').hide();

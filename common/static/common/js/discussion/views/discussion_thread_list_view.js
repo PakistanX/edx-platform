@@ -86,8 +86,13 @@
             };
 
             DiscussionThreadListView.prototype.loadMoreDiscussions = function(event){
-                var ul = $('ul.forum-nav-thread-list'), sidebar = $('.discussion-sidebar');
-                if($('li.forum-nav-load-more').length && ul.offset().top + sidebar.height() < ul.scrollTop()) {
+                var ul = $('ul.forum-nav-thread-list'), sidebar = $('.discussion-sidebar'),
+                  loadMore = $('li.forum-nav-load-more');
+                if(
+                  loadMore.length
+                  && !loadMore.is(':empty')
+                  && ul.offset().top + sidebar.height() < ul.scrollTop()
+                ) {
                     this.loadMorePages(event, true);
                 }
             };
@@ -273,7 +278,10 @@
                 this.showMetadataAccordingToSort();
                 this.renderMorePages();
                 this.trigger('threads:rendered');
-                if(this.activeThreadId && this.mode === 'all' && this.filters[0] === 'all'){
+                if(
+                  this.activeThreadId && this.mode === 'all'
+                  && this.filters &&this.filters.length && this.filters[0] === 'all')
+                {
                     DiscussionUtil.forumDiv.show();
                     this.setActiveThread(this.activeThreadId);
                 }
@@ -318,7 +326,6 @@
                 }
                 loadMoreElem = this.$('.forum-nav-load-more');
                 loadMoreElem.empty();
-                edx.HtmlUtils.append(loadMoreElem, this.getLoadingContent(gettext('Loading more threads')));
                 loadingElem = loadMoreElem.find('.forum-nav-loading');
                 DiscussionUtil.makeFocusTrap(loadingElem);
                 loadingElem.focus();
@@ -445,6 +452,7 @@
                 if($('.discussion-helper').is(':empty')){
                     edx.HtmlUtils.append($('.discussion-helper'), edx.HtmlUtils.template(this.helperTemplate)({}));
                 }
+                DiscussionUtil.setTimeago();
             };
 
             DiscussionThreadListView.prototype.selectTopic = function($target) {
@@ -472,7 +480,7 @@
             DiscussionThreadListView.prototype.loadSelectedFilter = function() {
                 this.clearSearchAlerts();
                 this.activeThreadId = null;
-                var filters = [], isFilterSelected = false, self = this;
+                var filters = [], isFilterSelected = false;
                 $('input[name="filter"]:checked').each(function(index, filter) {
                     filters.push(filter.value);
                     isFilterSelected = true;
@@ -481,6 +489,9 @@
                   filters.push('all');
                 }
                 this.filters = filters;
+                if(!$('a.back').is(':visible')){
+                    this.mode = 'all';
+                }
                 return this.retrieveFirstPage();
             };
 
@@ -545,6 +556,7 @@
                 this.clearFilters();
                 this.mode = 'search';
                 this.current_search = text;
+                DiscussionUtil.showLoader();
                 /*
                  TODO: This might be better done by setting discussion.current_page=0 and
                  calling discussion.loadMorePages
@@ -608,7 +620,9 @@
                             } else if (response.discussion_data.length === 0) {
                                 self.addSearchAlert(gettext('No posts matched your query.'));
                                 self.displayedCollection.models = [];
+                                DiscussionUtil.showEmptyMsg('No results found');
                             }
+                            DiscussionUtil.loader.hide();
                             if (self.collection.models.length !== 0) {
                                 self.displayedCollection.reset(self.collection.models);
                             }

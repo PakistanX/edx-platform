@@ -147,6 +147,7 @@
                         }
                     }
                 }
+                DiscussionUtil.setTimeago();
                 $('.forum-nav-thread-list').find('span.timeago').timeago();
                 return _results;
             };
@@ -541,8 +542,7 @@
                 };
                 return DiscussionUtil.updateWithUndo(this.model, updates, {
                     url: url,
-                    type: 'POST',
-                    $elem: $(event.currentTarget)
+                    type: 'POST'
                 }, msg).done(function() {
                         return self.showCommentBox();
                 });
