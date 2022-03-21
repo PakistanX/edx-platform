@@ -27,9 +27,14 @@
             this.showLoader();
         }
 
-        DiscussionUtil.showEmptyMsg = function(){
-            this.loader.hide();
+        DiscussionUtil.showEmptyMsg = function(msg){
+            var msgPara = this.emptyMessage.find('p').first();
+            msg ? msgPara.text(msg) : msgPara.text('There are no posts in this theme yet.');
             this.emptyMessage.show();
+            if(!this.emptyMessage.is(':visible')){
+                this.emptyMessage.parent().show();
+            }
+            this.loader.hide();
             this.forumDiv.hide();
         }
 
@@ -202,6 +207,13 @@
             return this.$_loading.remove();
         };
 
+        DiscussionUtil.setTimeago = function(span) {
+            if(!span){
+                span = $('.forum-nav-thread-list').find('span.timeago')
+            }
+            span.timeago();
+        }
+
         DiscussionUtil.discussionAlert = function(header, body) {
             var $alertDiv, $alertTrigger;
             // Prevents "text" is undefined in underscore.js in tests - looks like some tests use
@@ -287,7 +299,7 @@
             if (typeof beforeSend === 'function') {
                 beforeSend();
             }
-            $('.forum-nav-thread-list').find('span.timeago').timeago();
+            this.setTimeago();
             return this.safeAjax(safeAjaxParams).fail(function() {
                 return model.set(undo);
             });

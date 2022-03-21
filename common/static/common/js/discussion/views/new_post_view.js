@@ -223,9 +223,9 @@
                         }
                         else self.trigger('newPost:createPost');
                         self.$el.addClass('is-hidden');
-                        self.resetForm();
                         self.collection.add(thread);
-                        return self.cancel()
+                        self.resetForm();
+                        return self.cancel(null, true);
                     }
                 });
             };
@@ -236,7 +236,7 @@
                 return postBodyHasContent || titleHasContent;
             };
 
-            NewPostView.prototype.cancel = function(event) {
+            NewPostView.prototype.cancel = function(event, clearTopicsAndFilters) {
                 if(event){
                     event.preventDefault();
                 }
@@ -246,10 +246,10 @@
                     }
                 }
                 this.trigger('newPost:cancel');
-                this.resetForm();
+                this.resetForm(clearTopicsAndFilters);
             };
 
-            NewPostView.prototype.resetForm = function() {
+            NewPostView.prototype.resetForm = function(clearTopicsAndFilters) {
                 var $general;
                 this.$('.forum-new-post-form')[0].reset();
                 DiscussionUtil.clearFormErrors(this.$('.post-errors'));
@@ -259,7 +259,11 @@
                       .find('input[name="create-post-theme"]');
                     this.topicView.setTopic($general || this.$('button.topic-title').first());
                 }
-                $('input[name="filter"]').removeAttr('checked');
+                if(clearTopicsAndFilters){
+                    $('a.back').click();
+                    $('input[name="filter"]').removeAttr('checked');
+                    this.discussionBoardView.discussionThreadListView.loadSelectedFilter();
+                }
             };
 
             NewPostView.prototype.updateStyles = function() {

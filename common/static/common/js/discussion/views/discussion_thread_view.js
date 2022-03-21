@@ -508,10 +508,10 @@
                 if (!confirm(gettext('Are you sure you want to delete this post?'))) {
                     return;
                 }
+                this.$el.empty();
                 this.model.remove();
                 this.showView.undelegateEvents();
                 this.undelegateEvents();
-                this.$el.empty();
                 $elem = $(event.target);
                 return DiscussionUtil.safeAjax({
                     $elem: $elem,
