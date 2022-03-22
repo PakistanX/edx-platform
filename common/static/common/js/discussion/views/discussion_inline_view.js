@@ -237,6 +237,8 @@
         onNewPostCreated: function() {
             this.navigateToAllPosts();
             this.hideNewPost();
+            $('input[name="filter"]').removeAttr('checked');
+            this.threadListView.loadSelectedFilter();
         },
 
         hideNewPost: function() {
