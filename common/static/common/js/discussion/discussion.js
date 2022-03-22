@@ -48,10 +48,11 @@
             };
 
             Discussion.prototype.setTimeAgoParams = function() {
-                $.timeago.settings.strings.seconds = 'a minute';
-                $.timeago.settings.strings.minute = 'a minute';
-                $.timeago.settings.strings.hour = 'an hour';
-                $.timeago.settings.strings.hours = '%d hours';
+                $.timeago.settings.strings.seconds = gettext('a minute');
+                $.timeago.settings.strings.minute = gettext('a minute');
+                $.timeago.settings.strings.hour = gettext('an hour');
+                $.timeago.settings.strings.hours = gettext('%d hours');
+                $.timeago.settings.month = gettext('a month');
             }
 
             Discussion.prototype.find = function(id) {

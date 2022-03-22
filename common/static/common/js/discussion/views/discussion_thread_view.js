@@ -516,7 +516,12 @@
                 return DiscussionUtil.safeAjax({
                     $elem: $elem,
                     url: url,
-                    type: 'POST'
+                    type: 'POST',
+                    success: function () {
+                        if($('.forum-nav-thread-list').is(':empty')){
+                            DiscussionUtil.showEmptyMsg();
+                        }
+                    }
                 });
             };
 

@@ -218,14 +218,14 @@
                             if (discussionBreadcrumbsModel.get('contents').length) {
                                 discussionBreadcrumbsModel.set('contents', self.topicView.topicText.split('/'));
                             }
-                            // self.discussionBoardView.discussionThreadListView.discussionIds =
-                            //     self.topicView.currentTopicId;
                         }
-                        else self.trigger('newPost:createPost');
                         self.$el.addClass('is-hidden');
                         self.collection.add(thread);
                         self.resetForm();
-                        return self.cancel(null, true);
+                        self.cancel(null, true);
+                        if (!self.discussionBoardView) {
+                            self.trigger('newPost:createPost');
+                        }
                     }
                 });
             };
@@ -258,11 +258,11 @@
                     $general = this.$('label.radio-theme-input:contains(General)').first()
                       .find('input[name="create-post-theme"]');
                     this.topicView.setTopic($general || this.$('button.topic-title').first());
-                }
-                if(clearTopicsAndFilters){
-                    $('a.back').click();
-                    $('input[name="filter"]').removeAttr('checked');
-                    this.discussionBoardView.discussionThreadListView.loadSelectedFilter();
+                    if(clearTopicsAndFilters){
+                        $('a.back').click();
+                        $('input[name="filter"]').removeAttr('checked');
+                        this.discussionBoardView.discussionThreadListView.loadSelectedFilter();
+                    }
                 }
             };
 

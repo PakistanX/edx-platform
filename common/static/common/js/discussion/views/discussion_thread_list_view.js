@@ -489,7 +489,7 @@
                   filters.push('all');
                 }
                 this.filters = filters;
-                if(!$('a.back').is(':visible')){
+                if(!this.is_inline && !$('a.back').is(':visible')){
                     this.mode = 'all';
                 }
                 return this.retrieveFirstPage();
@@ -501,7 +501,8 @@
             };
 
             DiscussionThreadListView.prototype.retrieveDiscussion = function(discussionId, callback) {
-                var url = DiscussionUtil.urlFor('retrieve_discussion', '{"value": null}'),
+                var param = this.is_inline ? discussionId : '{"value": null}'
+                var url = DiscussionUtil.urlFor('retrieve_discussion', param),
                     self = this;
                 return DiscussionUtil.safeAjax({
                     url: url,
@@ -521,7 +522,7 @@
 
             DiscussionThreadListView.prototype.retrieveDiscussions = function(discussionIds) {
                 this.discussionIds = discussionIds.join(',');
-                this.mode = 'commentables';
+                this.mode = discussionIds && discussionIds.length ? 'commentables' : 'all';
                 return this.retrieveFirstPage();
             };
 
@@ -553,7 +554,7 @@
                 var url = DiscussionUtil.urlFor('search'),
                     self = this;
                 this.clearSearchAlerts();
-                this.clearFilters();
+                this.clearTopicsAndFilters();
                 this.mode = 'search';
                 this.current_search = text;
                 DiscussionUtil.showLoader();
@@ -670,6 +671,14 @@
                 this.$('.forum-nav-filter-main-control').val('all');
                 return this.$('.forum-nav-filter-cohort-control').val('all');
             };
+
+            DiscussionThreadListView.prototype.clearTopicsAndFilters = function () {
+                $('.forum-nav-browse-menu-item').each(function(index, element) {
+                  $(element).show();
+                });
+                $('a.back').hide();
+                $('input[name="filter"]').removeAttr('checked');
+            }
 
             DiscussionThreadListView.prototype.retrieveFollowed = function() {
                 this.mode = 'followed';
