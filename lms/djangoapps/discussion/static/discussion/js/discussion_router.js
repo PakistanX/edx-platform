@@ -129,7 +129,7 @@
                         duration: 200,
                         complete: function() {
                             $('aside.forum-nav').hide();
-                            return self.newPostView.$el.fadeIn(200).focus();
+                            return self.newPostView.$el.fadeIn(200);
                         }
                     });
                 },
@@ -140,7 +140,9 @@
                         duration: 200,
                         complete: function() {
                             $('aside.forum-nav').show();
-                            DiscussionUtil.forumDiv.fadeIn(200).find('.thread-wrapper').focus();
+                            if(!DiscussionUtil.emptyMessage.is(':visible')) {
+                                DiscussionUtil.forumDiv.fadeIn(200).find('.thread-wrapper').focus();
+                            }
                             return self.discussionBoardView.discussionThreadListView.addRemoveTwoCol();
                         }
                     });

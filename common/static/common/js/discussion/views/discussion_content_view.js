@@ -60,16 +60,23 @@
                             selector = _ref[action];
                             if (!ability[action]) {
                                 _results.push(selector.disable.apply(this));
-                              if (action === 'editable' || action === 'can_delete') {
-                                hide_or_show[action] = false;
-                              }
+                                if (action === 'editable' || action === 'can_delete') {
+                                    hide_or_show[action] = false;
+                                }
                             } else {
                                 _results.push(selector.enable.apply(this));
+                                var upvote = this.$el.find('.action-vote'), downvote = this.$el.find('.action-downvote')
+                                if(upvote.hasClass('is-checked')){
+                                    downvote.parent().addClass('is-disabled');
+                                }
+                                else if(downvote.hasClass('is-checked')){
+                                    upvote.parent().addClass('is-disabled');
+                                }
                             }
                         }
                     }
                     if(!hide_or_show.editable && !hide_or_show.can_delete){
-                      this.$el.find('.more-wrapper').hide();
+                        this.$el.find('.more-wrapper').hide();
                     }
                     return _results;
                 }
@@ -140,6 +147,8 @@
                         }
                     }
                 }
+                DiscussionUtil.setTimeago();
+                $('.forum-nav-thread-list').find('span.timeago').timeago();
                 return _results;
             };
 
@@ -434,7 +443,7 @@
                     this.makeWmdEditor('comment-body');
                     DiscussionUtil.hideEditorChrome('.comment-body');
                 }
-            }
+            };
 
             DiscussionContentShowView.prototype.toggleVote = function(event) {
                 var isVoting, updates, url, user,
@@ -452,7 +461,15 @@
                         type: 'POST',
                         $elem: $(event.currentTarget)
                     }, gettext('This vote could not be processed. Refresh the page and try again.')).done(function() {
-                        isVoting ? self.model.vote() : self.model.unvote();
+                        var voteUnvote = isVoting ? 1 : -1, selector = '.action-downvote';
+                        if(voteUnvote == 1){
+                            self.model.vote();
+                            self.$el.find(selector).parent().addClass('is-disabled');
+                        }
+                        else{
+                            self.model.unvote();
+                            self.$el.find(selector).parent().removeClass('is-disabled');
+                        }
                         return self.showCommentBox();
                     });
                 }
@@ -474,7 +491,15 @@
                         type: 'POST',
                         $elem: $(event.currentTarget)
                     }, gettext('This down vote could not be processed. Refresh the page and try again.')).done(function() {
-                        isVoting ? self.model.downvote() : self.model.undownvote();
+                        var downvoteUndownvote = isVoting ? 1 : -1, selector = '.action-vote';
+                        if(downvoteUndownvote == 1){
+                            self.model.downvote();
+                            self.$el.find(selector).parent().addClass('is-disabled');
+                        }
+                        else{
+                            self.model.undownvote();
+                            self.$el.find(selector).parent().removeClass('is-disabled');
+                        }
                         return self.showCommentBox();
                     });
                 }
@@ -517,8 +542,7 @@
                 };
                 return DiscussionUtil.updateWithUndo(this.model, updates, {
                     url: url,
-                    type: 'POST',
-                    $elem: $(event.currentTarget)
+                    type: 'POST'
                 }, msg).done(function() {
                         return self.showCommentBox();
                 });

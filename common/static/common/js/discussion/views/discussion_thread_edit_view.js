@@ -74,7 +74,7 @@
 
                 return DiscussionUtil.safeAjax({
                     $elem: this.$submitBtn,
-                    $loading: this.$submitBtn,
+                    $loading: this.$('button.post-cancel'),
                     url: DiscussionUtil.urlFor('update_thread', this.model.id),
                     type: 'POST',
                     dataType: 'json',

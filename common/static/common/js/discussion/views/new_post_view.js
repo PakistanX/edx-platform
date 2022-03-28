@@ -218,14 +218,14 @@
                             if (discussionBreadcrumbsModel.get('contents').length) {
                                 discussionBreadcrumbsModel.set('contents', self.topicView.topicText.split('/'));
                             }
-                            // self.discussionBoardView.discussionThreadListView.discussionIds =
-                            //     self.topicView.currentTopicId;
                         }
-                        else self.trigger('newPost:createPost');
                         self.$el.addClass('is-hidden');
-                        self.resetForm();
                         self.collection.add(thread);
-                        return self.cancel()
+                        self.resetForm();
+                        self.cancel(null, true);
+                        if (!self.discussionBoardView) {
+                            self.trigger('newPost:createPost');
+                        }
                     }
                 });
             };
@@ -236,7 +236,7 @@
                 return postBodyHasContent || titleHasContent;
             };
 
-            NewPostView.prototype.cancel = function(event) {
+            NewPostView.prototype.cancel = function(event, clearTopicsAndFilters) {
                 if(event){
                     event.preventDefault();
                 }
@@ -246,18 +246,23 @@
                     }
                 }
                 this.trigger('newPost:cancel');
-                this.resetForm();
+                this.resetForm(clearTopicsAndFilters);
             };
 
-            NewPostView.prototype.resetForm = function() {
+            NewPostView.prototype.resetForm = function(clearTopicsAndFilters) {
                 var $general;
                 this.$('.forum-new-post-form')[0].reset();
                 DiscussionUtil.clearFormErrors(this.$('.post-errors'));
                 this.$('.wmd-preview').html('');
                 if (this.isTabMode()) {
-                    $general = this.$('label.radio-theme-input:contains(General)')
+                    $general = this.$('label.radio-theme-input:contains(General)').first()
                       .find('input[name="create-post-theme"]');
                     this.topicView.setTopic($general || this.$('button.topic-title').first());
+                    if(clearTopicsAndFilters){
+                        $('a.back').click();
+                        $('input[name="filter"]').removeAttr('checked');
+                        this.discussionBoardView.discussionThreadListView.loadSelectedFilter();
+                    }
                 }
             };
 

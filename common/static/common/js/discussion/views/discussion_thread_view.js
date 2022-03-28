@@ -64,16 +64,16 @@
                 'click .discussion-submit-post': 'submitComment',
                 'click .add-response-btn': 'scrollToAddResponse',
                 'click .post-response': 'showEditorChromeForPost',
-                'blur .post-response .wmd-input': 'hideEditorChromeForPost',
+                // 'blur .post-response .wmd-input': 'hideEditorChromeForPost',
                 'keydown .wmd-button': function(event) {
                     return DiscussionUtil.handleKeypressInToolbar(event);
                 }
             };
 
-            DiscussionThreadView.prototype.hideEditorChromeForPost = function(event) {
-                if(event && $(event.relatedTarget).hasClass('discussion-submit-post')){
-                    return;
-                }
+            DiscussionThreadView.prototype.hideEditorChromeForPost = function() {
+                // if(event && $(event.relatedTarget).parents('.post-context').length){
+                //     return;
+                // }
                 this.$('.post-response .wmd-button-row').hide();
                 this.$('.post-response .wmd-preview-container').hide();
                 this.$('.post-response .wmd-input').css({
@@ -508,15 +508,20 @@
                 if (!confirm(gettext('Are you sure you want to delete this post?'))) {
                     return;
                 }
+                this.$el.empty();
                 this.model.remove();
                 this.showView.undelegateEvents();
                 this.undelegateEvents();
-                this.$el.empty();
                 $elem = $(event.target);
                 return DiscussionUtil.safeAjax({
                     $elem: $elem,
                     url: url,
-                    type: 'POST'
+                    type: 'POST',
+                    success: function () {
+                        if($('.forum-nav-thread-list').is(':empty')){
+                            DiscussionUtil.showEmptyMsg();
+                        }
+                    }
                 });
             };
 

@@ -48,8 +48,11 @@
             };
 
             Discussion.prototype.setTimeAgoParams = function() {
-                $.timeago.settings.strings.seconds = 'about a minute';
-                $.timeago.settings.strings.hours = '%d hours';
+                $.timeago.settings.strings.seconds = gettext('a minute');
+                $.timeago.settings.strings.minute = gettext('a minute');
+                $.timeago.settings.strings.hour = gettext('an hour');
+                $.timeago.settings.strings.hours = gettext('%d hours');
+                $.timeago.settings.month = gettext('a month');
             }
 
             Discussion.prototype.find = function(id) {
@@ -101,7 +104,7 @@
                     page: this.current_page + 1
                 };
                 $.each(options.filters, function(index, value){
-                  if (_.contains(['unread', 'unanswered', 'flagged'], value)) {
+                  if (_.contains(['unread', 'unanswered', 'flagged', 'following'], value)) {
                     data[value] = true;
                   }
                 });

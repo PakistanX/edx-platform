@@ -469,8 +469,14 @@
                 });
             }
         };
+        Sequence.prototype.isStudioMode = function() {
+          return typeof $(".nav-item.nav-course-tools")[0] !== 'undefined'
+        };
 
         Sequence.prototype.update_progress = function() {
+            if (this.isStudioMode()) {
+              return
+            }
             var progressUrl = this.ajaxUrl + '/update_progress';
             $.postWithPrefix(progressUrl, function(data) {
                 if (data.progress) {
