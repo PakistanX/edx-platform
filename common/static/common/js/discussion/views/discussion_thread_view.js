@@ -64,16 +64,16 @@
                 'click .discussion-submit-post': 'submitComment',
                 'click .add-response-btn': 'scrollToAddResponse',
                 'click .post-response': 'showEditorChromeForPost',
-                'blur .post-response .wmd-input': 'hideEditorChromeForPost',
+                // 'blur .post-response .wmd-input': 'hideEditorChromeForPost',
                 'keydown .wmd-button': function(event) {
                     return DiscussionUtil.handleKeypressInToolbar(event);
                 }
             };
 
-            DiscussionThreadView.prototype.hideEditorChromeForPost = function(event) {
-                if(event && $(event.relatedTarget).parents('.post-context').length){
-                    return;
-                }
+            DiscussionThreadView.prototype.hideEditorChromeForPost = function() {
+                // if(event && $(event.relatedTarget).parents('.post-context').length){
+                //     return;
+                // }
                 this.$('.post-response .wmd-button-row').hide();
                 this.$('.post-response .wmd-preview-container').hide();
                 this.$('.post-response .wmd-input').css({

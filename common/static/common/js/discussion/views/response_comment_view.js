@@ -145,7 +145,7 @@
                 url = DiscussionUtil.urlFor('update_comment', this.model.id);
                 return DiscussionUtil.safeAjax({
                     $elem: $(event.target),
-                    $loading: $(event.target),
+                    $loading: self.$('.edit-post-form'),
                     url: url,
                     type: 'POST',
                     dataType: 'json',

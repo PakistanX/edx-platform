@@ -247,8 +247,9 @@
                 });
                 this.twoColDiv = $('div.discussion-cols');
                 DiscussionUtil.forumDiv = $('div.forum-content');
-                this.renderThreads();
                 DiscussionUtil.initializeEmptyDiv();
+                DiscussionUtil.showEmptyMsg();
+                this.renderThreads();
                 return this;
             };
 
