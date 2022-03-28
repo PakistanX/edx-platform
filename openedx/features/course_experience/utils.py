@@ -208,6 +208,7 @@ def get_course_outline_block_tree(request, course_id, user=None, allow_start_dat
         'pakx_feedback',
         'pakx_video',
         'pakx_grid_dropdown',
+        'pakx_video_quiz',
         'pakx_completion'
     ]
     all_blocks = get_blocks(
