@@ -52,7 +52,7 @@
             ThreadResponseView.prototype.events = {
                 'click .discussion-submit-comment': 'submitComment',
                 'focus .wmd-input': 'showEditorChrome',
-                'blur .wmd-input': 'hideEditorChrome',
+                // 'blur .wmd-input': 'hideEditorChrome',
                 'click div.post-comment-count': 'showReplies'
             };
 
@@ -106,13 +106,13 @@
                 return this.hideEditorChrome();
             };
 
-            ThreadResponseView.prototype.hideEditorChrome = function(event) {
-                if(event
-                  && ($(event.relatedTarget).parents('.discussion-response').length
-                    || $(event.relatedTarget).parents('.edit-post-form').length)
-                ){
-                    return;
-                }
+            ThreadResponseView.prototype.hideEditorChrome = function() {
+                // if(event
+                //   && ($(event.relatedTarget).parents('.discussion-response').length
+                //     || $(event.relatedTarget).parents('.edit-post-form').length)
+                // ){
+                //     return;
+                // }
                 this.$('.wmd-button-row').hide();
                 this.$('.wmd-preview-container').hide();
                 this.$('.wmd-input').css({

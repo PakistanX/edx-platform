@@ -506,11 +506,12 @@ def _create_discussion_board_context(request, base_context, thread=None):
         threads, query_params = get_threads(request, course, user_info)   # This might process a search query
         thread_pages = query_params['num_pages']
         root_url = request.path
-    is_staff = has_permission(user, 'openclose_thread', course.id)
-    threads = [utils.prepare_content(thread, course_key, is_staff) for thread in threads]
 
     with function_trace("get_metadata_for_threads"):
         annotated_content_info = utils.get_metadata_for_threads(course_key, threads, user, user_info)
+
+    is_staff = has_permission(user, 'openclose_thread', course.id)
+    threads = [utils.prepare_content(thread, course_key, is_staff) for thread in threads]
 
     with function_trace("add_courseware_context"):
         add_courseware_context(threads, course, user)
