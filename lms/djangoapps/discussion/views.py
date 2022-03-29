@@ -301,7 +301,7 @@ def forum_form_discussion(request, course_key):
             return HttpResponseServerError("Invalid group_id")
 
         with function_trace("get_metadata_for_threads"):
-            annotated_content_info = utils.get_metadata_for_threads(course_key, threads, request.user, user_info)
+            annotated_content_info = utils.get_metadata_for_threads(course_key, unsafethreads, request.user, user_info)
 
         with function_trace("add_courseware_context"):
             add_courseware_context(threads, course, request.user)
