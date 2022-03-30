@@ -110,6 +110,11 @@ def get_threads(request, course, user_info, discussion_id=None, per_page=THREADS
             query parameters used for the search.
 
     """
+
+    def get_pages_parameters(results):
+        """return page parameters based on results."""
+        return results.page, results.num_pages, results.corrected_text
+
     default_query_params = {
         'page': 1,
         'per_page': per_page,
@@ -167,10 +172,13 @@ def get_threads(request, course, user_info, discussion_id=None, per_page=THREADS
 
     get_following = request.GET.get('following', False)
     following_threads = []
+    page, num_pages, corrected_text = get_pages_parameters(paginated_results)
 
     if get_following:
         profiled_user = cc.User(id=user_info.get('id', None), course_id=six.text_type(course.id))
-        following_threads = profiled_user.subscribed_threads(query_params).collection
+        following_results = profiled_user.subscribed_threads(query_params)
+        following_threads = following_results.collection
+        page, num_pages, corrected_text = get_pages_parameters(following_results)
 
     # If not provided with a discussion id, filter threads by commentable ids
     # which are accessible to the current user.
@@ -198,9 +206,9 @@ def get_threads(request, course, user_info, discussion_id=None, per_page=THREADS
                 thread_to_append['pinned'] = False
             returning_threads.append(thread_to_append)
 
-    query_params['page'] = paginated_results.page
-    query_params['num_pages'] = paginated_results.num_pages
-    query_params['corrected_text'] = paginated_results.corrected_text
+    query_params['page'] = page
+    query_params['num_pages'] = num_pages
+    query_params['corrected_text'] = corrected_text
 
     return returning_threads, query_params
 

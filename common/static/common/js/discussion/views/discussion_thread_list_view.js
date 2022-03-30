@@ -401,19 +401,17 @@
             };
 
             DiscussionThreadListView.prototype.renderThread = function(thread) {
-                var threadCommentCount = thread.get('comments_count'),
-                    threadUnreadCommentCount = thread.get('unread_comments_count'),
-                    neverRead = !thread.get('read') && threadUnreadCommentCount === threadCommentCount,
-                    threadPreview = this.containsMarkup(thread.get('body')) ? '' : thread.get('body'),
-                    context = _.extend(
-                        {
-                            neverRead: neverRead,
-                            threadUrl: thread.urlFor('retrieve'),
-                            threadPreview: threadPreview,
-                            showThreadPreview: this.showThreadPreview,
-                            hideReadState: this.hideReadState
-                        },
-                        thread.toJSON()
+                var neverRead = !thread.get('read'),
+                  threadPreview = this.containsMarkup(thread.get('body')) ? '' : thread.get('body'),
+                  context = _.extend(
+                    {
+                      neverRead: neverRead,
+                      threadUrl: thread.urlFor('retrieve'),
+                      threadPreview: threadPreview,
+                      showThreadPreview: this.showThreadPreview,
+                      hideReadState: this.hideReadState
+                    },
+                      thread.toJSON()
                     );
                 return $(this.threadListItemTemplate(context).toString());
             };
@@ -422,7 +420,7 @@
                 var threadId;
                 threadId = $(e.target).closest('.forum-nav-thread').attr('data-id');
                 if (this.supportsActiveThread) {
-                    if(this.is_inline || this.mode === 'commentables'){
+                    if(this.is_inline || this.mode === 'commentables' || this.mode === 'user'){
                         DiscussionUtil.forumDiv.show();
                     }
                     this.setActiveThread(threadId);
@@ -480,6 +478,7 @@
 
             DiscussionThreadListView.prototype.loadSelectedFilter = function() {
                 this.clearSearchAlerts();
+                $('ul.filter-list').addClass('disabled');
                 this.activeThreadId = null;
                 var filters = [], isFilterSelected = false;
                 $('input[name="filter"]:checked').each(function(index, filter) {
@@ -493,7 +492,8 @@
                 if(!this.is_inline && !$('a.back').is(':visible')){
                     this.mode = 'all';
                 }
-                return this.retrieveFirstPage();
+                this.retrieveFirstPage();
+                $('ul.filter-list').removeClass('disabled');
             };
 
             DiscussionThreadListView.prototype.chooseGroup = function() {
