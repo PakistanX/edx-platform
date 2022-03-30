@@ -392,6 +392,10 @@
             DiscussionThreadView.prototype.submitComment = function(event) {
                 var body, comment, url, view, self = this;
                 event.preventDefault();
+                if(this.mode === 'inline'){
+                    var id = $('a.forum-nav-thread-link.is-active').parent().data('id');
+                    this.model = this.model.collection.get(id);
+                }
                 url = this.model.urlFor('reply');
                 body = this.getWmdContent('reply-body');
                 if (!body.trim().length) {
