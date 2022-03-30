@@ -493,7 +493,6 @@
                     this.mode = 'all';
                 }
                 this.retrieveFirstPage();
-                $('ul.filter-list').removeClass('disabled');
             };
 
             DiscussionThreadListView.prototype.chooseGroup = function() {

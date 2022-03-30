@@ -124,7 +124,13 @@
                 },
 
                 showNewPost: function() {
-                    var self = this;
+                    var self = this, theme = 'General';
+                    if ($('a.back').is(':visible')){
+                        theme = $('.forum-nav-browse-menu-item:visible').find('span.subcategory-text').text().trim();
+                    }
+                    var $general = $('label.radio-theme-input:contains(' + theme + ')').first()
+                      .find('input[name="create-post-theme"]');
+                    this.newPostView.topicView.setTopic($general || this.$('button.topic-title').first());
                     return DiscussionUtil.forumDiv.fadeOut({
                         duration: 200,
                         complete: function() {
