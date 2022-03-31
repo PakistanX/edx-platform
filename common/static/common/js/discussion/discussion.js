@@ -161,7 +161,8 @@
                         self.pages = response.num_pages;
                         self.current_page = response.page;
                         self.is_commentable_divided = response.is_commentable_divided;
-                        return self.reset(new_collection);
+                        self.reset(new_collection);
+                        $('ul.filter-list').removeClass('disabled');
                     },
                     error: error
                 });

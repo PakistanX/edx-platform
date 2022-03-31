@@ -19,13 +19,13 @@
                 this.assignedThemes[key] = theme;
             }
             return this.assignedThemes[key];
-        }
+        };
 
         DiscussionUtil.initializeEmptyDiv = function(){
             this.loader = $('div.loader');
             this.emptyMessage = $('div.no-results');
             this.showLoader();
-        }
+        };
 
         DiscussionUtil.showEmptyMsg = function(msg){
             var msgPara = this.emptyMessage.find('p').first();
@@ -36,13 +36,13 @@
             }
             this.loader.hide();
             this.forumDiv.hide();
-        }
+        };
 
         DiscussionUtil.showLoader = function(){
             this.emptyMessage.hide();
             this.loader.show();
             this.forumDiv.hide();
-        }
+        };
 
         DiscussionUtil.getTemplate = function(id) {
             return $('script#' + id).html();
