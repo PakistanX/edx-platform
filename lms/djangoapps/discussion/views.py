@@ -167,18 +167,12 @@ def get_threads(request, course, user_info, discussion_id=None, per_page=THREADS
             )
         )
     )
-    paginated_results = cc.Thread.search(query_params)
-    threads = paginated_results.collection
 
     get_following = request.GET.get('following', False)
-    following_threads = []
-    page, num_pages, corrected_text = get_pages_parameters(paginated_results)
-
-    if get_following:
-        profiled_user = cc.User(id=user_info.get('id', None), course_id=six.text_type(course.id))
-        following_results = profiled_user.subscribed_threads(query_params)
-        following_threads = following_results.collection
-        page, num_pages, corrected_text = get_pages_parameters(following_results)
+    profiled_user = cc.User(id=user_info.get('id', None), course_id=six.text_type(course.id))
+    results = profiled_user.subscribed_threads(query_params) if get_following else cc.Thread.search(query_params)
+    threads = results.collection
+    page, num_pages, corrected_text = get_pages_parameters(results)
 
     # If not provided with a discussion id, filter threads by commentable ids
     # which are accessible to the current user.
@@ -189,28 +183,16 @@ def get_threads(request, course, user_info, discussion_id=None, per_page=THREADS
             if thread.get('commentable_id') in discussion_category_ids
         ]
 
-    returning_threads = []
     for thread in threads:
         # patch for backward compatibility to comments service
-        thread_to_append = None
-        if get_following:
-            for followed_thread in following_threads:
-                if followed_thread['id'] == thread['id']:
-                    thread_to_append = thread
-                    break
-        else:
-            thread_to_append = thread
-
-        if thread_to_append:
-            if 'pinned' not in thread_to_append:
-                thread_to_append['pinned'] = False
-            returning_threads.append(thread_to_append)
+        if 'pinned' not in thread:
+            thread['pinned'] = False
 
     query_params['page'] = page
     query_params['num_pages'] = num_pages
     query_params['corrected_text'] = corrected_text
 
-    return returning_threads, query_params
+    return threads, query_params
 
 
 def use_bulk_ops(view_func):
