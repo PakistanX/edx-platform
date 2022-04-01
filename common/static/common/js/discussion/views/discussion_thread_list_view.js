@@ -556,6 +556,7 @@
                 this.clearSearchAlerts();
                 this.clearTopicsAndFilters();
                 this.mode = 'search';
+                text = text.trim();
                 this.current_search = text;
                 DiscussionUtil.showLoader();
                 /*
@@ -573,22 +574,6 @@
                     url: url,
                     type: 'GET',
                     dataType: 'json',
-                    $loading: $,
-                    loadingCallback: function() {
-                        var element = self.$('.forum-nav-thread-list');
-                        element.empty();
-                        edx.HtmlUtils.append(
-                            element,
-                            edx.HtmlUtils.joinHtml(
-                                edx.HtmlUtils.HTML("<li class='forum-nav-load-more'>"),
-                                    self.getLoadingContent(gettext('Loading posts list')),
-                                edx.HtmlUtils.HTML('</li>')
-                            )
-                        );
-                    },
-                    loadedCallback: function() {
-                        return self.$('.forum-nav-thread-list .forum-nav-load-more').remove();
-                    },
                     success: function(response, textStatus) {
                         var message, noResponseMsg;
                         if (textStatus === 'success') {
