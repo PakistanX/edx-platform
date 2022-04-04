@@ -200,7 +200,7 @@ def get_threads(request, course, user_info, discussion_id=None, per_page=THREADS
     query_params['num_pages'] = num_pages if returning_threads else 1
     query_params['corrected_text'] = corrected_text
 
-    return threads, query_params
+    return returning_threads, query_params
 
 
 def use_bulk_ops(view_func):

@@ -555,6 +555,7 @@
                     self = this;
                 this.clearSearchAlerts();
                 this.clearTopicsAndFilters();
+                this.activeThreadId = null;
                 this.mode = 'search';
                 text = text.trim();
                 this.current_search = text;
