@@ -50,7 +50,7 @@ class CourseOverviewContent(TimeStampedModel):
     course = models.OneToOneField(CourseOverview, related_name='custom_settings', on_delete=models.CASCADE)
     subsection_to_lock = models.CharField(max_length=256, blank=True, null=True)
     days_to_unlock = models.PositiveSmallIntegerField(default=0)
-
+    course_banner_image_url = models.CharField(max_length=256, blank=True, default='', null=True)
     is_public = models.BooleanField('Course is public and should be available on publisher spaces', default=False)
     publisher_name = models.CharField(max_length=128, blank=True, default='', null=True)
     publisher_card_logo_url = models.CharField(max_length=256, blank=True, default='', null=True)
