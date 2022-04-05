@@ -236,6 +236,7 @@ def overview_tab_view(request, course_id=None):
         'course_overview': course_overview_content.body_html if course_overview_content else None,
         'user': request.user,
         'course': course,
+        'banner_image': course_overview_content.course_banner_image_url,
         'accordion': render_accordion(request, course, course_block_tree, '', '',
                                       course_experience_mode=course_experience_mode)
     }
