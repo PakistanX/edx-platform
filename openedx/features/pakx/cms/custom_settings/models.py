@@ -2,16 +2,16 @@
 All models for custom settings app
 """
 
-from django.utils.lru_cache import lru_cache
 from collections import OrderedDict
 from logging import getLogger
 
 from django.conf import settings
 from django.db import models
-
+from django.utils.lru_cache import lru_cache
 from jsonfield.fields import JSONField
 from model_utils.models import TimeStampedModel
 from organizations.models import Organization
+
 from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
 
 logger = getLogger(__name__)  # pylint: disable=invalid-name
