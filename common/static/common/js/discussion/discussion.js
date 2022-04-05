@@ -52,7 +52,7 @@
                 $.timeago.settings.strings.minute = gettext('a minute');
                 $.timeago.settings.strings.hour = gettext('an hour');
                 $.timeago.settings.strings.hours = gettext('%d hours');
-                $.timeago.settings.month = gettext('a month');
+                $.timeago.settings.strings.month = gettext('a month');
             }
 
             Discussion.prototype.find = function(id) {

@@ -29,9 +29,6 @@
                 this.updateEmailNotifications = function() {
                     return DiscussionThreadListView.prototype.updateEmailNotifications.apply(self, arguments);
                 };
-                this.retrieveFollowed = function() {
-                    return DiscussionThreadListView.prototype.retrieveFollowed.apply(self, arguments);
-                };
                 this.chooseGroup = function() {
                     return DiscussionThreadListView.prototype.chooseGroup.apply(self, arguments);
                 };
@@ -86,13 +83,15 @@
             };
 
             DiscussionThreadListView.prototype.loadMoreDiscussions = function(event){
+                console.log('checking for more discussions');
                 var ul = $('ul.forum-nav-thread-list'), sidebar = $('.discussion-sidebar'),
                   loadMore = $('li.forum-nav-load-more');
                 if(
                   loadMore.length
                   && !loadMore.is(':empty')
-                  && ul.offset().top + sidebar.height() < ul.scrollTop()
+                  && ul.offset().top + sidebar.height() < ul.scrollTop() + 100
                 ) {
+                    console.log('loading more discussions');
                     this.loadMorePages(event, true);
                 }
             };
@@ -491,7 +490,7 @@
                   filters.push('all');
                 }
                 this.filters = filters;
-                if(!this.is_inline && !$('a.back').is(':visible')){
+                if(!this.is_inline && !$('a.back').is(':visible') && this.mode !== 'search'){
                     this.mode = 'all';
                 }
                 this.retrieveFirstPage();
@@ -555,11 +554,16 @@
             DiscussionThreadListView.prototype.searchFor = function(text, $searchInput) {
                 var url = DiscussionUtil.urlFor('search'),
                     self = this;
+                text = text.trim();
                 this.clearSearchAlerts();
                 this.clearTopicsAndFilters();
+                if(!text){
+                    this.mode = 'all';
+                    this.filters = ['all'];
+                    return this.retrieveFirstPage();
+                }
                 this.activeThreadId = null;
                 this.mode = 'search';
-                text = text.trim();
                 this.current_search = text;
                 DiscussionUtil.showLoader();
                 /*
@@ -663,11 +667,6 @@
                 $('a.back').hide();
                 $('input[name="filter"]').removeAttr('checked');
             }
-
-            DiscussionThreadListView.prototype.retrieveFollowed = function() {
-                this.mode = 'followed';
-                return this.retrieveFirstPage();
-            };
 
             DiscussionThreadListView.prototype.updateEmailNotifications = function() {
                 var $checkbox, checked, urlName;
