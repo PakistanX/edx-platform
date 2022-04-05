@@ -86,6 +86,7 @@ class CourseCustomSettingsView(LoginRequiredMixin, View):
         course_experience = request.POST.get('course_experience', 0)
         publisher_logo_url = truncate_string_up_to(request.POST['publisher-logo-url'], 256)
         publisher_card_logo_url = truncate_string_up_to(request.POST['publisher_card_logo_url'], 256)
+        course_banner_image_url = truncate_string_up_to(request.POST['course_banner_image_url'], 256)
         days_to_unlock = int(request.POST.get('days-duration') or 0)
         subsection_to_lock = request.POST.get('subsection')
 
@@ -103,6 +104,7 @@ class CourseCustomSettingsView(LoginRequiredMixin, View):
                     'card_description': card_description,
                     'course_experience': course_experience,
                     'publisher_logo_url': publisher_logo_url,
+                    'course_banner_image_url': course_banner_image_url,
                     'publisher_card_logo_url': publisher_card_logo_url,
                     'days_to_unlock': days_to_unlock if subsection_to_lock else 0,
                     'subsection_to_lock': subsection_to_lock
