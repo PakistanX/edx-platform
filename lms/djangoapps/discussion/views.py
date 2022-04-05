@@ -93,6 +93,25 @@ def make_course_settings(course, user, include_category_map=True):
     return course_setting
 
 
+def apply_filters(query_params, get_following, user_id, course_id):
+    """Apply filters for discussion."""
+
+    profiled_user = cc.User(id=user_id, course_id=course_id)
+    if query_params.get('text') and get_following:
+        searched_threads = cc.Thread.search(query_params)
+        results = profiled_user.subscribed_threads(query_params)
+        threads = []
+        for followed_thread in results.collection:
+            for searched_thread in searched_threads.collection:
+                if followed_thread['id'] == searched_thread['id']:
+                    threads.append(followed_thread)
+                    break
+    else:
+        results = profiled_user.subscribed_threads(query_params) if get_following else cc.Thread.search(query_params)
+        threads = results.collection
+    return threads, results.page, results.num_pages, results.corrected_text
+
+
 def get_threads(request, course, user_info, discussion_id=None, per_page=THREADS_PER_PAGE):
     """
     This may raise an appropriate subclass of cc.utils.CommentClientError
@@ -110,10 +129,6 @@ def get_threads(request, course, user_info, discussion_id=None, per_page=THREADS
             query parameters used for the search.
 
     """
-
-    def get_pages_parameters(results):
-        """return page parameters based on results."""
-        return results.page, results.num_pages, results.corrected_text
 
     default_query_params = {
         'page': 1,
@@ -169,10 +184,9 @@ def get_threads(request, course, user_info, discussion_id=None, per_page=THREADS
     )
 
     get_following = request.GET.get('following', False)
-    profiled_user = cc.User(id=user_info.get('id', None), course_id=six.text_type(course.id))
-    results = profiled_user.subscribed_threads(query_params) if get_following else cc.Thread.search(query_params)
-    threads = results.collection
-    page, num_pages, corrected_text = get_pages_parameters(results)
+    threads, page, num_pages, corrected_text = apply_filters(
+        query_params, get_following, user_info.get('id', None), six.text_type(course.id)
+    )
 
     # If not provided with a discussion id, filter threads by commentable ids
     # which are accessible to the current user.
