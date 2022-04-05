@@ -170,13 +170,15 @@
 
             DiscussionThreadListView.prototype.clearSearchAlerts = function() {
                 DiscussionUtil.forumDiv.show();
-                this.addRemoveTwoCol()
+                this.addRemoveTwoCol();
                 return this.searchAlertCollection.reset();
             };
 
             DiscussionThreadListView.prototype.reloadDisplayedCollection = function(thread) {
                 var active, $content, $currentElement, threadId;
-                this.clearSearchAlerts();
+                if(this.mode !== 'search') {
+                  this.clearSearchAlerts();
+                }
                 threadId = thread.get('id');
                 $content = this.renderThread(thread);
                 $currentElement = this.$('.forum-nav-thread[data-id=' + threadId + ']');
@@ -420,7 +422,7 @@
                 var threadId;
                 threadId = $(e.target).closest('.forum-nav-thread').attr('data-id');
                 if (this.supportsActiveThread) {
-                    if(this.is_inline || this.mode === 'commentables' || this.mode === 'user'){
+                    if(this.is_inline || this.mode === 'commentables' || this.mode === 'search'){
                         DiscussionUtil.forumDiv.show();
                     }
                     this.setActiveThread(threadId);
@@ -579,7 +581,6 @@
                         var message, noResponseMsg;
                         if (textStatus === 'success') {
                             self.collection.reset(response.discussion_data);
-                            self.clearSearchAlerts();
                             Content.loadContentInfos(response.annotated_content_info);
                             self.collection.current_page = response.page;
                             self.collection.pages = response.num_pages;
@@ -612,9 +613,6 @@
                             DiscussionUtil.loader.hide();
                             if (self.collection.models.length !== 0) {
                                 self.displayedCollection.reset(self.collection.models);
-                            }
-                            if (text) {
-                                return self.searchForUser(text);
                             }
                         }
                         return response;
