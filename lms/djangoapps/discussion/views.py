@@ -93,6 +93,25 @@ def make_course_settings(course, user, include_category_map=True):
     return course_setting
 
 
+def apply_filters(query_params, get_following, user_id, course_id):
+    """Apply filters for discussion."""
+
+    profiled_user = cc.User(id=user_id, course_id=course_id)
+    if query_params.get('text') and get_following:
+        searched_threads = cc.Thread.search(query_params)
+        results = profiled_user.subscribed_threads(query_params)
+        threads = []
+        for followed_thread in results.collection:
+            for searched_thread in searched_threads.collection:
+                if followed_thread['id'] == searched_thread['id']:
+                    threads.append(followed_thread)
+                    break
+    else:
+        results = profiled_user.subscribed_threads(query_params) if get_following else cc.Thread.search(query_params)
+        threads = results.collection
+    return threads, results.page, results.num_pages, results.corrected_text
+
+
 def get_threads(request, course, user_info, discussion_id=None, per_page=THREADS_PER_PAGE):
     """
     This may raise an appropriate subclass of cc.utils.CommentClientError
@@ -110,6 +129,7 @@ def get_threads(request, course, user_info, discussion_id=None, per_page=THREADS
             query parameters used for the search.
 
     """
+
     default_query_params = {
         'page': 1,
         'per_page': per_page,
@@ -162,15 +182,11 @@ def get_threads(request, course, user_info, discussion_id=None, per_page=THREADS
             )
         )
     )
-    paginated_results = cc.Thread.search(query_params)
-    threads = paginated_results.collection
 
     get_following = request.GET.get('following', False)
-    following_threads = []
-
-    if get_following:
-        profiled_user = cc.User(id=user_info.get('id', None), course_id=six.text_type(course.id))
-        following_threads = profiled_user.subscribed_threads(query_params).collection
+    threads, page, num_pages, corrected_text = apply_filters(
+        query_params, get_following, user_info.get('id', None), six.text_type(course.id)
+    )
 
     # If not provided with a discussion id, filter threads by commentable ids
     # which are accessible to the current user.
@@ -181,28 +197,24 @@ def get_threads(request, course, user_info, discussion_id=None, per_page=THREADS
             if thread.get('commentable_id') in discussion_category_ids
         ]
 
-    returning_threads = []
+    filtered_threads = []
     for thread in threads:
         # patch for backward compatibility to comments service
-        thread_to_append = None
+        if 'pinned' not in thread:
+            thread['pinned'] = False
         if get_following:
-            for followed_thread in following_threads:
-                if followed_thread['id'] == thread['id']:
-                    thread_to_append = thread
-                    break
+            if discussion_id is None:
+                filtered_threads.append(thread)
+            elif thread.get('commentable_id') == discussion_id:
+                filtered_threads.append(thread)
         else:
-            thread_to_append = thread
+            filtered_threads.append(thread)
 
-        if thread_to_append:
-            if 'pinned' not in thread_to_append:
-                thread_to_append['pinned'] = False
-            returning_threads.append(thread_to_append)
+    query_params['page'] = page if filtered_threads else 1
+    query_params['num_pages'] = num_pages if filtered_threads else 1
+    query_params['corrected_text'] = corrected_text
 
-    query_params['page'] = paginated_results.page
-    query_params['num_pages'] = paginated_results.num_pages
-    query_params['corrected_text'] = paginated_results.corrected_text
-
-    return returning_threads, query_params
+    return filtered_threads, query_params
 
 
 def use_bulk_ops(view_func):
@@ -301,7 +313,7 @@ def forum_form_discussion(request, course_key):
             return HttpResponseServerError("Invalid group_id")
 
         with function_trace("get_metadata_for_threads"):
-            annotated_content_info = utils.get_metadata_for_threads(course_key, threads, request.user, user_info)
+            annotated_content_info = utils.get_metadata_for_threads(course_key, unsafethreads, request.user, user_info)
 
         with function_trace("add_courseware_context"):
             add_courseware_context(threads, course, request.user)

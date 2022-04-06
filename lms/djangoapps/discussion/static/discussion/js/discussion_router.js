@@ -124,7 +124,13 @@
                 },
 
                 showNewPost: function() {
-                    var self = this;
+                    var self = this, theme = 'General';
+                    if ($('a.back').is(':visible')){
+                        theme = $('.forum-nav-browse-menu-item:visible').find('span.subcategory-text').text().trim();
+                    }
+                    var $general = $('label.radio-theme-input:contains(' + theme + ')').first()
+                      .find('input[name="create-post-theme"]');
+                    this.newPostView.topicView.setTopic($general || this.$('button.topic-title').first());
                     return DiscussionUtil.forumDiv.fadeOut({
                         duration: 200,
                         complete: function() {
@@ -140,7 +146,7 @@
                         duration: 200,
                         complete: function() {
                             $('aside.forum-nav').show();
-                            if(!DiscussionUtil.emptyMessage.is(':visible')) {
+                            if(!DiscussionUtil.emptyMessage.is(':visible') && $('a.forum-nav-thread-link').hasClass('is-active')) {
                                 DiscussionUtil.forumDiv.fadeIn(200).find('.thread-wrapper').focus();
                             }
                             return self.discussionBoardView.discussionThreadListView.addRemoveTwoCol();

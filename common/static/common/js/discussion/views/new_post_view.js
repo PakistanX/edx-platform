@@ -219,13 +219,13 @@
                                 discussionBreadcrumbsModel.set('contents', self.topicView.topicText.split('/'));
                             }
                         }
-                        self.$el.addClass('is-hidden');
                         self.collection.add(thread);
                         self.resetForm();
                         self.cancel(null, true);
                         if (!self.discussionBoardView) {
                             self.trigger('newPost:createPost');
                         }
+                        self.$el.addClass('is-hidden');
                     }
                 });
             };
