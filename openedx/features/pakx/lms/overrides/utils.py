@@ -450,7 +450,7 @@ def get_course_progress_percentage(request, course_key):
 
 def get_and_save_course_progress(course_key, user_id):
     """Calculate and save a learner's progress"""
-    from .models import CourseProgressStats
+    # from .models import CourseProgressStats
 
     user = User.objects.get(id=user_id)
     request = RequestFactory().request()
@@ -458,9 +458,10 @@ def get_and_save_course_progress(course_key, user_id):
 
     progress_percentage = get_course_progress_percentage(request, course_key)
 
-    CourseProgressStats.objects.filter(enrollment__user=user, enrollment__course=course_key).update(
-        progress=progress_percentage
-    )
+    # TODO uncomment this when we are able to handle user tab closing without clicking next to save progress
+    # CourseProgressStats.objects.filter(enrollment__user=user, enrollment__course=course_key).update(
+    #     progress=progress_percentage
+    # )
 
     return progress_percentage
 

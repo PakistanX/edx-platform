@@ -469,7 +469,6 @@
                 });
             }
         };
-
         Sequence.prototype.isStudioMode = function() {
           return typeof $(".nav-item.nav-course-tools")[0] !== 'undefined'
         };
