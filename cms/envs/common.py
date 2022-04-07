@@ -1748,6 +1748,10 @@ ADVANCED_PROBLEM_TYPES = [
     {
         'component': 'pakx_video_quiz',
         'boilerplate_name': None
+    },
+    {
+        'component': 'pakx_assessment',
+        'boilerplate_name': None
     }
 ]
 
