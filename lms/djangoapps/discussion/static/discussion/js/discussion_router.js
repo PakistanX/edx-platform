@@ -124,12 +124,11 @@
                 },
 
                 showNewPost: function() {
-                    var self = this, theme = 'General';
+                    var self = this, themeID = $('.forum-nav-browse-menu-item').first().attr('data-discussion-id');
                     if ($('a.back').is(':visible')){
-                        theme = $('.forum-nav-browse-menu-item:visible').find('span.subcategory-text').text().trim();
+                        themeID = $('.forum-nav-browse-menu-item:visible').attr('data-discussion-id');
                     }
-                    var $general = $('label.radio-theme-input:contains(' + theme + ')').first()
-                      .find('input[name="create-post-theme"]');
+                    var $general = $('input[name="create-post-theme"][data-discussion-id="' + themeID +'"]');
                     this.newPostView.topicView.setTopic($general || this.$('button.topic-title').first());
                     return DiscussionUtil.forumDiv.fadeOut({
                         duration: 200,
