@@ -63,6 +63,7 @@
                 var title = this.$('.edit-post-title').val(),
                     threadType = this.$('.input-radio:checked').val(),
                     body = this.$('.edit-post-body textarea').val(),
+                    discussionIdChanged = false,
                     postData = {
                         title: title,
                         thread_type: threadType,
@@ -70,6 +71,9 @@
                     };
                 if (this.topicView) {
                     postData.commentable_id = this.topicView.getCurrentTopicId();
+                    if(this.topicId !== postData.commentable_id){
+                        discussionIdChanged = true;
+                    }
                 }
 
                 return DiscussionUtil.safeAjax({
@@ -93,6 +97,9 @@
                             this.model.set('thread_type', threadType);
                             this.model.trigger('thread:thread_type_updated');
                             this.trigger('comment:endorse');
+                        }
+                        if ($('a.back').is(':visible') && discussionIdChanged){
+                            DiscussionUtil.forumDiv.hide();
                         }
                     }.bind(this)
                 });
