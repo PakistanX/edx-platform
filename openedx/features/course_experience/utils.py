@@ -109,9 +109,8 @@ def get_course_outline_block_tree(request, course_id, user=None, allow_start_dat
                 )
                 if block['children'][idx].get('resume_block') is True:
                     block['resume_block'] = True
-
             completable_blocks = [child for child in block['children']
-                                  if child.get('type') != 'discussion']
+                                  if child.get('type') not in 'discussion pakx_microlearning pakx_completion']
             if all(child.get('complete') for child in completable_blocks):
                 block['complete'] = True
 
@@ -210,6 +209,7 @@ def get_course_outline_block_tree(request, course_id, user=None, allow_start_dat
         'pakx_video',
         'pakx_grid_dropdown',
         'pakx_video_quiz',
+        'pakx_microlearning',
         'pakx_completion'
     ]
     all_blocks = get_blocks(
