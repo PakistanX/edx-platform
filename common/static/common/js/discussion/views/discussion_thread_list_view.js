@@ -84,12 +84,11 @@
 
             DiscussionThreadListView.prototype.loadMoreDiscussions = function(event){
                 console.log('checking for more discussions');
-                var ul = $('ul.forum-nav-thread-list'), sidebar = $('.discussion-sidebar'),
-                  loadMore = $('li.forum-nav-load-more');
+                var ul = $('ul.forum-nav-thread-list'), loadMore = $('li.forum-nav-load-more');
                 if(
                   loadMore.length
                   && !loadMore.is(':empty')
-                  && ul.offset().top + sidebar.height() < ul.scrollTop() + 100
+                  && ul.scrollTop() + 300 >= (ul.prop('scrollHeight') - ul.prop('offsetHeight'))
                 ) {
                     console.log('loading more discussions');
                     this.loadMorePages(event, true);
