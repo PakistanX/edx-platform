@@ -47,7 +47,7 @@ PROBLEM_BLOCK_TYPES = ['problem', 'edly_carousel', 'edly_assessment', 'pakx_grid
                        'pakx_assessment']
 BLOCK_TYPES_TO_FILTER = [
     'course', 'chapter', 'sequential', 'vertical', 'discussion', 'openassessment', 'pb-mcq', 'pb-answer', 'pb-choice',
-    'pb-message'
+    'pb-message', 'pakx_microlearning', 'pakx_completion'
 ]
 
 
