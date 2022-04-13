@@ -41,10 +41,9 @@ from xmodule import course_metadata_utils
 log = getLogger(__name__)
 
 VIDEO_BLOCK_TYPES = ['video', 'pakx_video']
-CORE_BLOCK_TYPES = ['html', 'video', 'problem', 'pakx_video', 'pakx_video_quiz', 'pakx_assessment'
-                    'edly_carousel', 'edly_assessment', 'pakx_grid_dropdown']
-PROBLEM_BLOCK_TYPES = ['problem', 'edly_carousel', 'edly_assessment', 'pakx_grid_dropdown', 'pakx_video_quiz',
-                       'pakx_assessment']
+CORE_BLOCK_TYPES = ['html', 'video', 'problem', 'pakx_video', 'pakx_video_quiz',
+                    'edly_carousel', 'pakx_grid_dropdown']
+PROBLEM_BLOCK_TYPES = ['problem', 'edly_carousel', 'pakx_grid_dropdown', 'pakx_video_quiz']
 BLOCK_TYPES_TO_FILTER = [
     'course', 'chapter', 'sequential', 'vertical', 'discussion', 'openassessment', 'pb-mcq', 'pb-answer', 'pb-choice',
     'pb-message', 'pakx_microlearning', 'pakx_completion'
