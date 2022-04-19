@@ -22,7 +22,7 @@ class AboutUsForm(ModelForm):
         }
         help_texts = {
             'email': _('user@email.com'),
-            'message': _(''),
+            'message': _('Maximum words (4000)'),
             'full_name': _('John Doe'),
             'organization': _('ilmX'),
         }
@@ -31,13 +31,14 @@ class AboutUsForm(ModelForm):
         hidden_fields = kwargs.pop('hidden_fields', [])
         super(AboutUsForm, self).__init__(*args, **kwargs)
         self.fields['full_name'].label = _('Full Name')
-        self.fields['message'].label = _('Maximum words (4000)')
+        self.fields['message'].label = _('How can we help you?')
 
         for key, field in self.fields.items():
             if field.required:
                 field.label = field.label + '*'
             self.fields[key].widget.attrs.update({'class': 'form-control {}'.format(
-                'hidden' if key in hidden_fields else ''), 'placeholder': field.help_text})
+                'hidden' if key in hidden_fields else ''),
+                'placeholder': field.help_text if key != 'message' else ''})
 
     def clean_organization(self):
         value = self.cleaned_data['organization']
