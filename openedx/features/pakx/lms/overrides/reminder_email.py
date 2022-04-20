@@ -1,16 +1,18 @@
 from datetime import timedelta
 from logging import getLogger
-from six import text_type
-from student.helpers import get_resume_urls_for_enrollments
+
 from django.conf import settings
 from django.contrib.sites.models import Site
 from django.utils import timezone
 from edx_ace import ace
 from edx_ace.recipient import Recipient
+from six import text_type
+
 from openedx.core.djangoapps.ace_common.template_context import get_base_template_context
 from openedx.core.lib.celery.task_utils import emulate_http_request
 from openedx.features.pakx.cms.custom_settings.models import CourseOverviewContent
 from openedx.features.pakx.lms.pakx_admin_app.message_types import CourseReminder
+from student.helpers import get_resume_urls_for_enrollments
 
 log = getLogger(__name__)
 

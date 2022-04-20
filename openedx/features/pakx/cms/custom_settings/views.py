@@ -1,8 +1,8 @@
 """
 All views for custom settings app
 """
-from datetime import datetime
 import logging
+from datetime import datetime
 
 from django.conf import settings
 from django.contrib.auth.mixins import LoginRequiredMixin
