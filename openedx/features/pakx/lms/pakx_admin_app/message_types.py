@@ -10,3 +10,7 @@ class RegistrationNotification(BaseMessageType):
 
 class EnrolmentNotification(BaseMessageType):
     pass
+
+
+class CourseReminder(BaseMessageType):
+    pass

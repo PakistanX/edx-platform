@@ -23,6 +23,7 @@ from openedx.core.lib.celery.task_utils import emulate_http_request
 from openedx.features.pakx.lms.overrides.message_types import ContactUs, CourseProgress
 from openedx.features.pakx.lms.overrides.models import CourseProgressStats
 from openedx.features.pakx.lms.overrides.post_assessment import check_and_unlock_user_milestone
+from openedx.features.pakx.lms.overrides.reminder_email import check_and_send_emails
 from openedx.features.pakx.lms.overrides.utils import (
     create_dummy_request,
     get_course_progress_percentage,
@@ -199,3 +200,13 @@ def unlock_subsections():
     log.info("Fetching records, found {} active models".format(len(progress_models)))
     for item in progress_models:
         check_and_unlock_user_milestone(item.enrollment.user, text_type(item.enrollment.course_id))
+
+
+@task(name='send_reminder_emails')
+def send_reminder_emails():
+    """Start checking and sending reminder emails"""
+
+    progress_models = CourseProgressStats.objects.filter(progress__lt=100).select_related('enrollment')
+    log.info("Fetching records, found {} active models\n\n".format(len(progress_models)))
+    for item in progress_models:
+        check_and_send_emails(item)

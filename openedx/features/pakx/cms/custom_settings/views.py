@@ -1,6 +1,7 @@
 """
 All views for custom settings app
 """
+from datetime import datetime
 import logging
 
 from django.conf import settings
@@ -67,7 +68,9 @@ class CourseCustomSettingsView(LoginRequiredMixin, View):
             'custom_settings_url': reverse('custom_settings', kwargs={'course_key_string': course_key}),
             'subsections': subsections,
             'days': course_overview_content.days_to_unlock,
-            'selected_subsection': course_overview_content.subsection_to_lock
+            'selected_subsection': course_overview_content.subsection_to_lock,
+            'email_days': course_overview_content.days_to_wait_before_reminder,
+            'email_deadline': course_overview_content.last_date_of_reminder
         }
         return render(request, self.template_name, context=context)
 
@@ -89,6 +92,7 @@ class CourseCustomSettingsView(LoginRequiredMixin, View):
         course_banner_image_url = truncate_string_up_to(request.POST['course_banner_image_url'], 256)
         days_to_unlock = int(request.POST.get('days-duration') or 0)
         subsection_to_lock = request.POST.get('subsection')
+        email_days, email_deadline = self._clean_email_reminder_data(request)
 
         self._add_days_milestone(subsection_to_lock, course_key)
 
@@ -107,11 +111,22 @@ class CourseCustomSettingsView(LoginRequiredMixin, View):
                     'course_banner_image_url': course_banner_image_url,
                     'publisher_card_logo_url': publisher_card_logo_url,
                     'days_to_unlock': days_to_unlock if subsection_to_lock else 0,
-                    'subsection_to_lock': subsection_to_lock
+                    'subsection_to_lock': subsection_to_lock,
+                    'days_to_wait_before_reminder': email_days,
+                    'last_date_of_reminder': email_deadline
                 }
             )
 
         return redirect(reverse('custom_settings', kwargs={'course_key_string': course_key}))
+
+    @staticmethod
+    def _clean_email_reminder_data(request):
+        """Clean data needed for reminder emails."""
+
+        email_days = int(request.POST.get('email-days') or 0)
+        email_deadline = request.POST.get('email-deadline')
+        email_deadline = datetime.strptime(email_deadline, '%Y-%m-%d') if email_deadline else None
+        return email_days, email_deadline
 
     def _get_chapters_and_subsections(self, course_key, request):
         """Get all chapters and subsections for a course."""
