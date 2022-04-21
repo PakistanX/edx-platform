@@ -10,7 +10,6 @@ from six import text_type
 
 from openedx.core.djangoapps.ace_common.template_context import get_base_template_context
 from openedx.core.lib.celery.task_utils import emulate_http_request
-from openedx.features.pakx.cms.custom_settings.models import CourseOverviewContent
 from openedx.features.pakx.lms.pakx_admin_app.message_types import CourseReminder
 from student.helpers import get_resume_urls_for_enrollments
 
@@ -23,23 +22,14 @@ def check_and_send_emails(progress_stats):
     course_key = text_type(progress_stats.enrollment.course_id)
     log.info('\n\nChecking reminder email for {}:{}'.format(progress_stats.enrollment.user.id, course_key))
 
-    try:
-        overview_content = CourseOverviewContent.objects.get(course_id=course_key)
-        days_to_wait_before_reminder = overview_content.days_to_wait_before_reminder
-        last_date_of_reminder = overview_content.last_date_of_reminder
-        if days_to_wait_before_reminder == 0 or not last_date_of_reminder:
-            log.info('Days to unlock or deadline date not set, skipping reminders')
-            log.info('Days:{} Date:{}\n\n'.format(days_to_wait_before_reminder, last_date_of_reminder))
-            return
-    except CourseOverviewContent.DoesNotExist:
-        log.info('Course Overview Model not found for course:{}\n\n'.format(course_key))
-        return
+    days_to_wait_before_reminder = progress_stats.enrollment.course.custom_settings.days_to_wait_before_reminder
+    last_date_of_reminder = progress_stats.enrollment.course.custom_settings.last_date_of_reminder
 
-    send_reminder, updated_date = check_reminder_status(progress_stats.send_reminder_date, last_date_of_reminder)
+    send_reminder, updated_date = check_reminder_status(progress_stats.next_reminder_date, last_date_of_reminder)
 
     if send_reminder:
-        progress_stats.send_reminder_date = updated_date + timedelta(days=days_to_wait_before_reminder)
-        send_reminder_email(progress_stats.enrollment.user, progress_stats.enrollment)
+        progress_stats.next_reminder_date = updated_date + timedelta(days=days_to_wait_before_reminder)
+        send_reminder_email(progress_stats.enrollment, last_date_of_reminder)
         progress_stats.save()
 
     log.info('\n\n')
@@ -69,9 +59,10 @@ def check_reminder_status(user_reminder_date, last_date_for_reminder):
     return send_reminder, reminder_date
 
 
-def send_reminder_email(user, enrollment):
+def send_reminder_email(enrollment, end_date):
     """Send reminder email to user."""
 
+    user = enrollment.user
     log.info("Sending reminder email to user:{}".format(user))
     site = Site.objects.get_current()
     message_context = get_base_template_context(site, user)
@@ -81,7 +72,7 @@ def send_reminder_email(user, enrollment):
             domain=site.domain,
             url=get_resume_urls_for_enrollments(user, [enrollment])[enrollment.course_id]
         ),
-        'end_date': enrollment.course.end_date
+        'end_date': end_date
     })
 
     msg = CourseReminder().personalize(
