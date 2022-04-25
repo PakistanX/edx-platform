@@ -16,34 +16,14 @@ from student.helpers import get_resume_urls_for_enrollments
 log = getLogger(__name__)
 
 
-def check_and_send_emails(progress_stats):
-    """Check if a reminder email should be send according to settings."""
-
-    course_key = text_type(progress_stats.enrollment.course_id)
-    log.info('\n\nChecking reminder email for {}:{}'.format(progress_stats.enrollment.user.id, course_key))
-
-    days_to_wait_before_reminder = progress_stats.enrollment.course.custom_settings.days_to_wait_before_reminder
-    last_date_of_reminder = progress_stats.enrollment.course.custom_settings.last_date_of_reminder
-
-    send_reminder, updated_date = check_reminder_status(progress_stats.next_reminder_date, last_date_of_reminder)
-
-    if send_reminder:
-        progress_stats.next_reminder_date = updated_date + timedelta(days=days_to_wait_before_reminder)
-        send_reminder_email(progress_stats.enrollment, last_date_of_reminder)
-        progress_stats.save()
-
-    log.info('\n\n')
-
-
 def check_reminder_status(user_reminder_date, last_date_for_reminder):
-    """Check if a learner's reminder email needs to be send or not."""
+    """Check reminder email needs to be sent or not to the learner."""
 
     send_reminder = True
     reminder_date = None
     today = timezone.now().date()
     if today > last_date_for_reminder:
-        log.info('Last date for reminder have been passed')
-        log.info('Today:{} Last Date:{}'.format(today, last_date_for_reminder))
+        log.info('Last date for reminder have been passed\nToday:{} Last Date:{}'.format(today, last_date_for_reminder))
         send_reminder = False
     elif user_reminder_date:
         if user_reminder_date == today:
@@ -59,7 +39,7 @@ def check_reminder_status(user_reminder_date, last_date_for_reminder):
     return send_reminder, reminder_date
 
 
-def send_reminder_email(enrollment, end_date):
+def send_reminder_email(enrollment):
     """Send reminder email to user."""
 
     user = enrollment.user
@@ -72,7 +52,7 @@ def send_reminder_email(enrollment, end_date):
             domain=site.domain,
             url=get_resume_urls_for_enrollments(user, [enrollment])[enrollment.course_id]
         ),
-        'end_date': end_date
+        'end_date': enrollment.course.end_date.date() if enrollment.course.end_date else None
     })
 
     msg = CourseReminder().personalize(
@@ -83,3 +63,22 @@ def send_reminder_email(enrollment, end_date):
 
     with emulate_http_request(site=site, user=user):
         ace.send(msg)
+
+
+def check_and_send_emails(progress_stats):
+    """Check if a reminder email should be send according to settings."""
+
+    course_key = text_type(progress_stats.enrollment.course_id)
+    log.info('\n\nChecking reminder email for {}:{}'.format(progress_stats.enrollment.user.id, course_key))
+
+    days_till_next_reminder = progress_stats.enrollment.course.custom_settings.days_till_next_reminder
+    reminder_stop_date = progress_stats.enrollment.course.custom_settings.reminder_stop_date
+
+    send_reminder, updated_date = check_reminder_status(progress_stats.next_reminder_date, reminder_stop_date)
+
+    if send_reminder:
+        progress_stats.next_reminder_date = updated_date + timedelta(days=days_till_next_reminder)
+        progress_stats.save()
+        send_reminder_email(progress_stats.enrollment)
+
+    log.info('\n\n')

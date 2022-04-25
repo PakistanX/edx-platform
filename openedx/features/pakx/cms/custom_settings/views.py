@@ -69,8 +69,8 @@ class CourseCustomSettingsView(LoginRequiredMixin, View):
             'subsections': subsections,
             'days': course_overview_content.days_to_unlock,
             'selected_subsection': course_overview_content.subsection_to_lock,
-            'email_days': course_overview_content.days_to_wait_before_reminder,
-            'email_deadline': course_overview_content.last_date_of_reminder
+            'email_days': course_overview_content.days_till_next_reminder,
+            'email_deadline': course_overview_content.reminder_stop_date
         }
         return render(request, self.template_name, context=context)
 
@@ -112,8 +112,8 @@ class CourseCustomSettingsView(LoginRequiredMixin, View):
                     'publisher_card_logo_url': publisher_card_logo_url,
                     'days_to_unlock': days_to_unlock if subsection_to_lock else 0,
                     'subsection_to_lock': subsection_to_lock,
-                    'days_to_wait_before_reminder': email_days,
-                    'last_date_of_reminder': email_deadline
+                    'days_till_next_reminder': email_days,
+                    'reminder_stop_date': email_deadline
                 }
             )
 

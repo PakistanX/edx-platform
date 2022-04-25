@@ -208,8 +208,8 @@ def send_reminder_emails():
 
     progress_models = CourseProgressStats.objects.filter(
         progress__lt=100,
-        enrollment__course__custom_settings__days_to_wait_before_reminder__gt=0,
-        enrollment__course__custom_settings__last_date_of_reminder__isnull=False
+        enrollment__course__custom_settings__days_till_next_reminder__gt=0,
+        enrollment__course__custom_settings__reminder_stop_date__isnull=False
     ).select_related('enrollment')
     log.info("Fetching records, found {} active models\n\n".format(len(progress_models)))
     for item in progress_models:
