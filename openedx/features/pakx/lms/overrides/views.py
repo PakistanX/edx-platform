@@ -265,13 +265,13 @@ def _get_course_about_context(request, course_id, category=None):  # pylint: dis
         course_details = CourseDetails.populate(course)
         modes = CourseMode.modes_for_course_dict(course_key)
         registered = registered_for_course(course, request.user)
+        preview_course_url = '#'
 
         course_map = get_course_card_data(course)
         staff_access = bool(has_access(request.user, 'staff', course))
         studio_url = get_studio_url(course, 'settings/details')
 
         course_block_tree = get_course_outline_block_tree(request, course_id, None)
-        preview_course_url = get_course_first_unit_lms_url(course_block_tree)
 
         if request.user.has_perm(VIEW_COURSE_HOME, course):
             course_target = reverse(course_home_url_name(course.id), args=[text_type(course.id)])
@@ -337,6 +337,9 @@ def _get_course_about_context(request, course_id, category=None):  # pylint: dis
         sidebar_html_enabled = course_experience_waffle().is_enabled(ENABLE_COURSE_ABOUT_SIDEBAR_HTML)
 
         allow_anonymous = check_public_access(course, [COURSE_VISIBILITY_PUBLIC, COURSE_VISIBILITY_PUBLIC_OUTLINE])
+
+        if allow_anonymous and show_courseware_link:
+            preview_course_url = get_course_first_unit_lms_url(course_block_tree)
 
         # This local import is due to the circularity of lms and openedx references.
         # This may be resolved by using stevedore to allow web fragments to be used
