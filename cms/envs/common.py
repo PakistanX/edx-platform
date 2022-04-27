@@ -1752,6 +1752,10 @@ ADVANCED_PROBLEM_TYPES = [
     {
         'component': 'pakx_assessment',
         'boilerplate_name': None
+    },
+    {
+        'component': 'pakx_microlearning',
+        'boilerplate_name': None
     }
 ]
 
