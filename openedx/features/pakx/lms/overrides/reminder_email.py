@@ -11,17 +11,16 @@ from six import text_type
 from openedx.core.djangoapps.ace_common.template_context import get_base_template_context
 from openedx.core.lib.celery.task_utils import emulate_http_request
 from openedx.features.pakx.lms.pakx_admin_app.message_types import CourseReminder
-from student.helpers import get_resume_urls_for_enrollments
 
 log = getLogger(__name__)
 
 
-def check_reminder_status(user_reminder_date, last_date_for_reminder):
+def check_reminder_status(user_reminder_date, last_date_for_reminder, today):
     """Check reminder email needs to be sent or not to the learner."""
 
     send_reminder = True
     reminder_date = None
-    today = timezone.now().date()
+
     if today > last_date_for_reminder:
         log.info('Last date for reminder have been passed\nToday:{} Last Date:{}'.format(today, last_date_for_reminder))
         send_reminder = False
@@ -39,7 +38,7 @@ def check_reminder_status(user_reminder_date, last_date_for_reminder):
     return send_reminder, reminder_date
 
 
-def send_reminder_email(enrollment):
+def send_reminder_email(course_key, enrollment):
     """Send reminder email to user."""
 
     user = enrollment.user
@@ -48,9 +47,9 @@ def send_reminder_email(enrollment):
     message_context = get_base_template_context(site, user)
     message_context.update({
         'course_name': enrollment.course.display_name,
-        'course_url': "https://{domain}{url}".format(
+        'course_url': "https://{domain}/courses/{course_id}/courseware".format(
             domain=site.domain,
-            url=get_resume_urls_for_enrollments(user, [enrollment])[enrollment.course_id]
+            course_id=course_key
         ),
         'end_date': enrollment.course.end_date.date() if enrollment.course.end_date else None
     })
@@ -73,12 +72,20 @@ def check_and_send_emails(progress_stats):
 
     days_till_next_reminder = progress_stats.enrollment.course.custom_settings.days_till_next_reminder
     reminder_stop_date = progress_stats.enrollment.course.custom_settings.reminder_stop_date
+    today = timezone.now().date()
 
-    send_reminder, updated_date = check_reminder_status(progress_stats.next_reminder_date, reminder_stop_date)
+    send_reminder, old_date = check_reminder_status(progress_stats.next_reminder_date, reminder_stop_date, today)
+    date_changed = False
 
     if send_reminder:
-        progress_stats.next_reminder_date = updated_date + timedelta(days=days_till_next_reminder)
+        progress_stats.next_reminder_date = old_date + timedelta(days=days_till_next_reminder)
+        date_changed = True
+    if today == reminder_stop_date:
+        progress_stats.next_reminder_date = None
+        date_changed = True
+    if date_changed:
         progress_stats.save()
-        send_reminder_email(progress_stats.enrollment)
+    if send_reminder:
+        send_reminder_email(course_key, progress_stats.enrollment)
 
     log.info('\n\n')
