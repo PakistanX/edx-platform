@@ -15,11 +15,13 @@ from openedx.features.pakx.lms.pakx_admin_app.message_types import CourseReminde
 log = getLogger(__name__)
 
 
-def check_reminder_status(user_reminder_date, last_date_for_reminder, today):
+def check_reminder_status(user_reminder_date, last_date_for_reminder):
     """Check reminder email needs to be sent or not to the learner."""
 
     send_reminder = True
     reminder_date = None
+    reset_reminder = False
+    today = timezone.now().date()
 
     if today > last_date_for_reminder:
         log.info('Last date for reminder have been passed\nToday:{} Last Date:{}'.format(today, last_date_for_reminder))
@@ -28,14 +30,20 @@ def check_reminder_status(user_reminder_date, last_date_for_reminder, today):
         if user_reminder_date == today:
             reminder_date = user_reminder_date
             log.info('Reminder date is today. Date:{}'.format(user_reminder_date))
+        elif user_reminder_date < today:
+            reset_reminder = True
+            send_reminder = False
+            log.info('Reminder date in the past, resetting it. Date:{}'.format(user_reminder_date))
         else:
             send_reminder = False
             log.info('Reminder date is not today. Date:{}'.format(user_reminder_date))
     else:
         log.info("No date found for user. Setting today's date:{}".format(today))
         reminder_date = today
+    if today == last_date_for_reminder:
+        reset_reminder = True
 
-    return send_reminder, reminder_date
+    return send_reminder, reminder_date, reset_reminder
 
 
 def send_reminder_email(course_key, enrollment):
@@ -72,15 +80,18 @@ def check_and_send_emails(progress_stats):
 
     days_till_next_reminder = progress_stats.enrollment.course.custom_settings.days_till_next_reminder
     reminder_stop_date = progress_stats.enrollment.course.custom_settings.reminder_stop_date
-    today = timezone.now().date()
 
-    send_reminder, old_date = check_reminder_status(progress_stats.next_reminder_date, reminder_stop_date, today)
+    send_reminder, old_date, reset_reminder = check_reminder_status(
+        progress_stats.next_reminder_date,
+        reminder_stop_date
+    )
+
     date_changed = False
 
     if send_reminder:
         progress_stats.next_reminder_date = old_date + timedelta(days=days_till_next_reminder)
         date_changed = True
-    if today == reminder_stop_date:
+    if reset_reminder:
         progress_stats.next_reminder_date = None
         date_changed = True
     if date_changed:
