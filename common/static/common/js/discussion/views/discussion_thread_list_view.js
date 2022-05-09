@@ -663,7 +663,7 @@
                 $('.forum-nav-browse-menu-item').each(function(index, element) {
                   $(element).show();
                 });
-                $('a.back').hide();
+                DiscussionUtil.deSelectTheme();
                 $('input[name="filter"]').removeAttr('checked');
             }
 

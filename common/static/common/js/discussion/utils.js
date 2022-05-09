@@ -14,6 +14,18 @@
         DiscussionUtil.forumDiv = null;
         DiscussionUtil.assignedThemes = {};
 
+        DiscussionUtil.selectTheme = function (){
+            $('a.back').show();
+            $('.flex-direction-nav').hide();
+            $('.flex-control-paging').hide();
+        }
+
+        DiscussionUtil.deSelectTheme = function (){
+            $('a.back').hide();
+            $('.flex-direction-nav').show();
+            $('.flex-control-paging').show();
+        }
+
         DiscussionUtil.assignTheme = function(theme, key){
             if(!this.assignedThemes.hasOwnProperty(key)){
                 this.assignedThemes[key] = theme;
