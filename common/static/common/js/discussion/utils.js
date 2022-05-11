@@ -16,15 +16,13 @@
 
         DiscussionUtil.selectTheme = function (){
             $('a.back').show();
-            $('.flex-direction-nav').hide();
-            $('.flex-control-paging').hide();
-        }
+            $('.cate-block').addClass('active-cate');
+        };
 
         DiscussionUtil.deSelectTheme = function (){
             $('a.back').hide();
-            $('.flex-direction-nav').show();
-            $('.flex-control-paging').show();
-        }
+            $('.cate-block').removeClass('active-cate');
+        };
 
         DiscussionUtil.assignTheme = function(theme, key){
             if(!this.assignedThemes.hasOwnProperty(key)){
