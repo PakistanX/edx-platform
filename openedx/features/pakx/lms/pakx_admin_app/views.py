@@ -57,8 +57,7 @@ from .utils import (
     get_user_data_from_bulk_registration_file,
     get_user_org,
     is_courses_enroll_able,
-    get_completed_filters,
-    get_incomplete_filters
+    apply_learner_progress_filters,
 )
 
 
@@ -361,7 +360,11 @@ class CourseStatsListAPI(generics.ListAPIView):
     API view for learners list
     <lms>/adminpanel/courses/stats/
     :returns
-        [
+    {
+        "count": 4,
+        "next": null,
+        "previous": null,
+        "results": [
             {
                 "display_name": "Preventing Workplace Harassment",
                 "enrolled": 2,
@@ -384,24 +387,39 @@ class CourseStatsListAPI(generics.ListAPIView):
                 "completion_rate": 0
             }
         ]
+    }
     """
 
     authentication_classes = [SessionAuthentication]
     permission_classes = [CanAccessPakXAdminPanel]
-    pagination_class = None
+    pagination_class = PakxAdminAppPagination
     serializer_class = CourseStatsListSerializer
 
     def get_queryset(self):
+        progress_filters = json.loads(
+            self.request.GET.get('progress_filters', '{"in_progress": false, "completed": false}')
+        )
+        search_text = self.request.GET.get('search', '')
+
         completed_count, in_progress_count = get_completed_course_count_filters(
             exclude_staff_superuser=True, req_user=self.request.user
         )
-        overview_qs = CourseOverview.objects.all()
+        overview_qs = CourseOverview.objects.filter(
+            display_name__icontains=search_text
+        ) if search_text else CourseOverview.objects.all()
+
         if not self.request.user.is_superuser:
             overview_qs = overview_qs.filter(get_course_overview_same_org_filter(self.request.user))
-        return overview_qs.annotate(
-            in_progress=in_progress_count,
-            completed=completed_count
-        )
+        overview_qs = overview_qs.annotate(in_progress=in_progress_count, completed=completed_count)
+
+        if progress_filters['completed'] and progress_filters['in_progress']:
+            overview_qs = overview_qs.filter(Q(in_progress__gt=0) | Q(completed__gt=0))
+        elif progress_filters['completed']:
+            overview_qs = overview_qs.filter(in_progress=0, completed__gt=0)
+        elif progress_filters['in_progress']:
+            overview_qs = overview_qs.filter(in_progress__gt=0, completed=0)
+
+        return overview_qs.order_by('display_name')
 
 
 class LearnerListAPI(generics.ListAPIView):
@@ -457,13 +475,7 @@ class LearnerListAPI(generics.ListAPIView):
         if not self.request.user.is_superuser:
             enrollment_qs = enrollment_qs.filter(course__org__iregex=get_user_org(self.request.user))
 
-        if progress_filters['in_progress'] or progress_filters['completed']:
-            user_qs = user_qs.filter(id__in=enrollment_qs.values_list('user', flat=True).distinct())
-
-            if progress_filters['in_progress']:
-                enrollment_qs.filter(get_incomplete_filters())
-            if progress_filters['completed']:
-                user_qs, enrollment_qs = get_completed_filters(user_qs, enrollment_qs)
+        user_qs, enrollment_qs = apply_learner_progress_filters(progress_filters, user_qs, enrollment_qs)
 
         enrollments = enrollment_qs.select_related('enrollment_stats')
         return user_qs.order_by('profile__name').prefetch_related(

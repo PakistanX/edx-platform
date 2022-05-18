@@ -166,7 +166,13 @@ def get_registration_email_message_context(user, password, protocol, is_public_r
     return message_context
 
 
+def get_incomplete_filters():
+    """Get incomplete filter"""
+    return Q(enrollment_stats__email_reminder_status__lt=CourseProgressStats.COURSE_COMPLETED)
+
+
 def get_completed_filters(users, enrollments):
+    """Get learners with 100% completions in all assigned courses"""
     users_with_incomplete_courses = enrollments.filter(get_incomplete_filters()).values_list(
         'user', flat=True
     ).distinct()
@@ -175,10 +181,6 @@ def get_completed_filters(users, enrollments):
         Q(enrollment_stats__email_reminder_status=CourseProgressStats.COURSE_COMPLETED) &
         ~Q(user_id__in=users_with_incomplete_courses)
     ))
-
-
-def get_incomplete_filters():
-    return Q(enrollment_stats__email_reminder_status__lt=CourseProgressStats.COURSE_COMPLETED)
 
 
 def get_completed_course_count_filters(exclude_staff_superuser=True, req_user=None):
@@ -200,6 +202,21 @@ def get_completed_course_count_filters(exclude_staff_superuser=True, req_user=No
     completed_count = Count("courseenrollment", filter=Q(learners & completed))
     in_progress_count = Count("courseenrollment", filter=Q(learners & in_progress))
     return completed_count, in_progress_count
+
+
+def apply_learner_progress_filters(progress_filters, users, enrollments):
+    """Apply filters for learner's progress."""
+
+    if progress_filters['in_progress'] or progress_filters['completed']:
+        users = users.filter(id__in=enrollments.values_list('user', flat=True).distinct())
+        if progress_filters['in_progress'] and progress_filters['completed']:
+            pass
+        elif progress_filters['in_progress']:
+            enrollments = enrollments.filter(get_incomplete_filters())
+        elif progress_filters['completed']:
+            users, enrollments = get_completed_filters(users, enrollments)
+
+    return users, enrollments
 
 
 def get_org_users_qs(user):
