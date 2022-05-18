@@ -446,7 +446,6 @@ class LearnerListAPI(generics.ListAPIView):
         progress_filters = json.loads(
             self.request.GET.get('progress_filters', '{"in_progress": false, "completed": false}')
         )
-        print(self.request.GET.get('search', ''))
         search_text = self.request.GET.get('search', '')
 
         user_qs = get_org_users_qs(self.request.user)
@@ -458,12 +457,13 @@ class LearnerListAPI(generics.ListAPIView):
         if not self.request.user.is_superuser:
             enrollment_qs = enrollment_qs.filter(course__org__iregex=get_user_org(self.request.user))
 
-        if progress_filters['in_progress'] and progress_filters['completed']:
-            pass
-        elif progress_filters['in_progress']:
-            enrollment_qs.filter(get_incomplete_filters())
-        elif progress_filters['completed']:
-            user_qs, enrollment_qs = get_completed_filters(user_qs, enrollment_qs)
+        if progress_filters['in_progress'] or progress_filters['completed']:
+            user_qs = user_qs.filter(id__in=enrollment_qs.values_list('user', flat=True).distinct())
+
+            if progress_filters['in_progress']:
+                enrollment_qs.filter(get_incomplete_filters())
+            if progress_filters['completed']:
+                user_qs, enrollment_qs = get_completed_filters(user_qs, enrollment_qs)
 
         enrollments = enrollment_qs.select_related('enrollment_stats')
         return user_qs.order_by('profile__name').prefetch_related(

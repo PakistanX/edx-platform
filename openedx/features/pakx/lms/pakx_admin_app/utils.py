@@ -167,8 +167,6 @@ def get_registration_email_message_context(user, password, protocol, is_public_r
 
 
 def get_completed_filters(users, enrollments):
-    all_enrolled_users = enrollments.values_list('user', flat=True).distinct()
-    users = users.filter(id__in=all_enrolled_users)
     users_with_incomplete_courses = enrollments.filter(get_incomplete_filters()).values_list(
         'user', flat=True
     ).distinct()
