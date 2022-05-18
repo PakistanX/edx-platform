@@ -166,6 +166,23 @@ def get_registration_email_message_context(user, password, protocol, is_public_r
     return message_context
 
 
+def get_completed_filters(users, enrollments):
+    all_enrolled_users = enrollments.values_list('user', flat=True).distinct()
+    users = users.filter(id__in=all_enrolled_users)
+    users_with_incomplete_courses = enrollments.filter(get_incomplete_filters()).values_list(
+        'user', flat=True
+    ).distinct()
+    users_with_all_complete_courses = users.exclude(id__in=users_with_incomplete_courses)
+    return users_with_all_complete_courses, enrollments.filter(Q(
+        Q(enrollment_stats__email_reminder_status=CourseProgressStats.COURSE_COMPLETED) &
+        ~Q(user_id__in=users_with_incomplete_courses)
+    ))
+
+
+def get_incomplete_filters():
+    return Q(enrollment_stats__email_reminder_status__lt=CourseProgressStats.COURSE_COMPLETED)
+
+
 def get_completed_course_count_filters(exclude_staff_superuser=True, req_user=None):
     completed = Q(
         Q(courseenrollment__enrollment_stats__email_reminder_status=CourseProgressStats.COURSE_COMPLETED) &
