@@ -2,6 +2,7 @@
 Views for Admin Panel API
 """
 from csv import DictReader
+import json
 from io import StringIO
 from itertools import groupby
 
@@ -55,7 +56,9 @@ from .utils import (
     get_roles_q_filters,
     get_user_data_from_bulk_registration_file,
     get_user_org,
-    is_courses_enroll_able
+    is_courses_enroll_able,
+    get_completed_filters,
+    get_incomplete_filters
 )
 
 
@@ -440,13 +443,30 @@ class LearnerListAPI(generics.ListAPIView):
     serializer_class = LearnersSerializer
 
     def get_queryset(self):
+        progress_filters = json.loads(
+            self.request.GET.get('progress_filters', '{"in_progress": false, "completed": false}')
+        )
+        search_text = self.request.GET.get('search', '')
+
         user_qs = get_org_users_qs(self.request.user)
         enrollment_qs = CourseEnrollment.objects.filter(is_active=True)
+
+        if search_text:
+            user_qs = user_qs.filter(profile__name__icontains=search_text)
+
         if not self.request.user.is_superuser:
             enrollment_qs = enrollment_qs.filter(course__org__iregex=get_user_org(self.request.user))
 
+        if progress_filters['in_progress'] or progress_filters['completed']:
+            user_qs = user_qs.filter(id__in=enrollment_qs.values_list('user', flat=True).distinct())
+
+            if progress_filters['in_progress']:
+                enrollment_qs.filter(get_incomplete_filters())
+            if progress_filters['completed']:
+                user_qs, enrollment_qs = get_completed_filters(user_qs, enrollment_qs)
+
         enrollments = enrollment_qs.select_related('enrollment_stats')
-        return user_qs.prefetch_related(
+        return user_qs.order_by('profile__name').prefetch_related(
             Prefetch('courseenrollment_set', to_attr='enrollment', queryset=enrollments)
         )
 
