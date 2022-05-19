@@ -1,15 +1,15 @@
 """
 helpers functions for Admin Panel API
 """
+import json
 from datetime import datetime
 from uuid import uuid4
 
 import pytz
-import json
 from django.conf import settings
 from django.contrib.auth.models import Group, User
 from django.contrib.sites.models import Site
-from django.db.models import Count, Q, Prefetch
+from django.db.models import Count, Q
 from django.urls import reverse
 from edx_ace import ace
 from edx_ace.recipient import Recipient
@@ -18,7 +18,7 @@ from openedx.core.djangoapps.ace_common.template_context import get_base_templat
 from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
 from openedx.core.djangoapps.site_configuration import helpers as configuration_helpers
 from openedx.features.pakx.lms.overrides.models import CourseProgressStats
-from student.models import Registration, CourseEnrollment
+from student.models import Registration
 
 from .constants import GROUP_ORGANIZATION_ADMIN, GROUP_TRAINING_MANAGERS, LEARNER, ORG_ADMIN, TRAINING_MANAGER
 from .message_types import RegistrationNotification
@@ -167,23 +167,6 @@ def get_registration_email_message_context(user, password, protocol, is_public_r
     return message_context
 
 
-def get_incomplete_filters():
-    """Get incomplete filter"""
-    return Q(enrollment_stats__email_reminder_status__lt=CourseProgressStats.COURSE_COMPLETED)
-
-
-def get_completed_filters(users, enrollments):
-    """Get learners with 100% completions in all assigned courses"""
-    users_with_incomplete_courses = enrollments.filter(get_incomplete_filters()).values_list(
-        'user', flat=True
-    ).distinct()
-    users_with_all_complete_courses = users.exclude(id__in=users_with_incomplete_courses)
-    return users_with_all_complete_courses, enrollments.filter(Q(
-        Q(enrollment_stats__email_reminder_status=CourseProgressStats.COURSE_COMPLETED) &
-        ~Q(user_id__in=users_with_incomplete_courses)
-    ))
-
-
 def get_completed_course_count_filters(exclude_staff_superuser=True, req_user=None):
     completed = Q(
         Q(courseenrollment__enrollment_stats__email_reminder_status=CourseProgressStats.COURSE_COMPLETED) &
@@ -205,41 +188,9 @@ def get_completed_course_count_filters(exclude_staff_superuser=True, req_user=No
     return completed_count, in_progress_count
 
 
-def apply_learner_progress_filters(progress_filters, users, enrollments):
-    """Apply filters for learner's progress."""
-
-    if progress_filters['in_progress'] or progress_filters['completed']:
-        users = users.filter(id__in=enrollments.values_list('user', flat=True).distinct())
-        if progress_filters['in_progress'] and progress_filters['completed']:
-            pass
-        elif progress_filters['in_progress']:
-            enrollments = enrollments.filter(get_incomplete_filters())
-        elif progress_filters['completed']:
-            users, enrollments = get_completed_filters(users, enrollments)
-
-    return users, enrollments
-
-
-def get_learner_queryset(request):
-    progress_filters = json.loads(
+def extract_filters_and_search(request):
+    return request.GET.get('search', ''), json.loads(
         request.GET.get('progress_filters', '{"in_progress": false, "completed": false}')
-    )
-    search_text = request.GET.get('search', '')
-
-    user_qs = get_org_users_qs(request.user)
-    enrollment_qs = CourseEnrollment.objects.filter(is_active=True)
-
-    if search_text:
-        user_qs = user_qs.filter(profile__name__icontains=search_text)
-
-    if not request.user.is_superuser:
-        enrollment_qs = enrollment_qs.filter(course__org__iregex=get_user_org(request.user))
-
-    user_qs, enrollment_qs = apply_learner_progress_filters(progress_filters, user_qs, enrollment_qs)
-
-    enrollments = enrollment_qs.select_related('enrollment_stats')
-    return user_qs.order_by('profile__name').prefetch_related(
-        Prefetch('courseenrollment_set', to_attr='enrollment', queryset=enrollments)
     )
 
 
