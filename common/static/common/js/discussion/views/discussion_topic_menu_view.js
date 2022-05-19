@@ -23,11 +23,11 @@
             },
 
             render: function() {
-                var $general,
-                    context = _.clone(this.course_settings.attributes);
+                var $general, context = _.clone(this.course_settings.attributes), themCount = {count: 0};
 
-                context.topics_html = this.renderCategoryMap(this.course_settings.get('category_map'), null);
-                this.renderFilterColors()
+                context.topics_html = this.renderCategoryMap(this.course_settings.get('category_map'), null, themCount);
+                DiscussionUtil.themeCount = themCount.count
+                this.renderFilterColors();
                 edx.HtmlUtils.setHtml(this.$el, edx.HtmlUtils.template($('#topic-template').html())(context));
 
                 $general = this.$('label.radio-theme-input:contains(General)').find('input[name="create-post-theme"]');  // always return array.
@@ -54,7 +54,7 @@
                 });
             },
 
-            renderCategoryMap: function(map, label) {
+            renderCategoryMap: function(map, label, themeCount) {
                 var categoryTemplate = edx.HtmlUtils.template($('#new-post-menu-category-template').html()),
                     entryTemplate = edx.HtmlUtils.template($('#new-post-menu-entry-template').html()),
                     mappedCategorySnippets = _.map(map.children, function(child) {
@@ -71,11 +71,12 @@
                                 is_divided: entry.is_divided,
                                 theme_color: DiscussionUtil.assignTheme(entry.color, name),
                             });
+                            themeCount.count++;
                         }
                         else { // subcategory
                             html = categoryTemplate({
                                 text: name,
-                                entries: this.renderCategoryMap(map.subcategories[name], name)
+                                entries: this.renderCategoryMap(map.subcategories[name], name, themeCount)
                             });
                         }
                         return html;
