@@ -5,10 +5,11 @@ from datetime import datetime
 from uuid import uuid4
 
 import pytz
+import json
 from django.conf import settings
 from django.contrib.auth.models import Group, User
 from django.contrib.sites.models import Site
-from django.db.models import Count, Q
+from django.db.models import Count, Q, Prefetch
 from django.urls import reverse
 from edx_ace import ace
 from edx_ace.recipient import Recipient
@@ -17,7 +18,7 @@ from openedx.core.djangoapps.ace_common.template_context import get_base_templat
 from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
 from openedx.core.djangoapps.site_configuration import helpers as configuration_helpers
 from openedx.features.pakx.lms.overrides.models import CourseProgressStats
-from student.models import Registration
+from student.models import Registration, CourseEnrollment
 
 from .constants import GROUP_ORGANIZATION_ADMIN, GROUP_TRAINING_MANAGERS, LEARNER, ORG_ADMIN, TRAINING_MANAGER
 from .message_types import RegistrationNotification
@@ -217,6 +218,29 @@ def apply_learner_progress_filters(progress_filters, users, enrollments):
             users, enrollments = get_completed_filters(users, enrollments)
 
     return users, enrollments
+
+
+def get_learner_queryset(request):
+    progress_filters = json.loads(
+        request.GET.get('progress_filters', '{"in_progress": false, "completed": false}')
+    )
+    search_text = request.GET.get('search', '')
+
+    user_qs = get_org_users_qs(request.user)
+    enrollment_qs = CourseEnrollment.objects.filter(is_active=True)
+
+    if search_text:
+        user_qs = user_qs.filter(profile__name__icontains=search_text)
+
+    if not request.user.is_superuser:
+        enrollment_qs = enrollment_qs.filter(course__org__iregex=get_user_org(request.user))
+
+    user_qs, enrollment_qs = apply_learner_progress_filters(progress_filters, user_qs, enrollment_qs)
+
+    enrollments = enrollment_qs.select_related('enrollment_stats')
+    return user_qs.order_by('profile__name').prefetch_related(
+        Prefetch('courseenrollment_set', to_attr='enrollment', queryset=enrollments)
+    )
 
 
 def get_org_users_qs(user):

@@ -1,20 +1,25 @@
 """
 Views for Admin Panel API
 """
-from csv import DictReader
+import csv
+from csv import DictReader, writer, DictWriter
 import json
+from tempfile import NamedTemporaryFile
+
 from io import StringIO
 from itertools import groupby
 
 from django.conf import settings
 from django.contrib.auth.models import Group
 from django.db.models import ExpressionWrapper, F, IntegerField, Prefetch, Q, Sum
-from django.http import Http404
+from django.http import FileResponse, Http404, HttpResponse
 from django.middleware import csrf
 from django.utils.decorators import method_decorator
 from rest_framework import generics, status, views, viewsets
 from rest_framework.authentication import SessionAuthentication
+from rest_framework.decorators import action
 from rest_framework.filters import OrderingFilter
+from rest_framework.renderers import BaseRenderer
 from rest_framework.response import Response
 
 from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
@@ -58,6 +63,7 @@ from .utils import (
     get_user_org,
     is_courses_enroll_able,
     apply_learner_progress_filters,
+    get_learner_queryset,
 )
 
 
@@ -461,26 +467,57 @@ class LearnerListAPI(generics.ListAPIView):
     serializer_class = LearnersSerializer
 
     def get_queryset(self):
-        progress_filters = json.loads(
-            self.request.GET.get('progress_filters', '{"in_progress": false, "completed": false}')
-        )
-        search_text = self.request.GET.get('search', '')
+        return get_learner_queryset(self.request)
 
-        user_qs = get_org_users_qs(self.request.user)
-        enrollment_qs = CourseEnrollment.objects.filter(is_active=True)
 
-        if search_text:
-            user_qs = user_qs.filter(profile__name__icontains=search_text)
+class DownloadViewSet(views.APIView):
+    """API for downloading CSV files according to role."""
 
-        if not self.request.user.is_superuser:
-            enrollment_qs = enrollment_qs.filter(course__org__iregex=get_user_org(self.request.user))
+    def __init__(self):
+        """Create a dict for handling multiple modes."""
 
-        user_qs, enrollment_qs = apply_learner_progress_filters(progress_filters, user_qs, enrollment_qs)
+        super().__init__()
+        self.modes = {
+            'learner': {
+                'func': self.write_learner_data,
+                'filename': 'Learner Stats.csv',
+                'field_names': [
+                    'Name', 'Email', 'Last Login', 'Assigned Courses', 'Incomplete Courses', 'Completed Courses'
+                ]
+            },
+        }
 
-        enrollments = enrollment_qs.select_related('enrollment_stats')
-        return user_qs.order_by('profile__name').prefetch_related(
-            Prefetch('courseenrollment_set', to_attr='enrollment', queryset=enrollments)
-        )
+    def prepare_learner_data(self):
+        """Get learner data."""
+
+        queryset = get_learner_queryset(self.request)
+        serializer = LearnersSerializer(queryset, many=True)
+        return serializer.data
+
+    def write_learner_data(self, csv_writer):
+        """Write learners data to CSV."""
+
+        learner_data = self.prepare_learner_data()
+        csv_writer.writeheader()
+        for row in learner_data:
+            csv_writer.writerow({
+                'Name': row['name'],
+                'Email': row['email'],
+                'Last Login': row['last_login'] or '--',
+                'Assigned Courses': row['assigned_courses'],
+                'Incomplete Courses': row['incomplete_courses'],
+                'Completed Courses': row['completed_courses']
+            })
+
+    def get(self, request):
+        """Get function for download API. Returns a CSV File with applied filters."""
+
+        mode = self.modes[request.GET.get('mode', 'learner')]
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename="{}"'.format(mode['filename'])
+        csv_writer = DictWriter(response, fieldnames=mode['field_names'])
+        mode['func'](csv_writer)
+        return response
 
 
 class UserInfo(views.APIView):
