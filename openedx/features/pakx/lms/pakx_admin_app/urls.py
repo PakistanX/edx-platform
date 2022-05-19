@@ -10,12 +10,12 @@ from .views import (
     CourseEnrolmentViewSet,
     CourseListAPI,
     CourseStatsListAPI,
+    DownloadCSVView,
     LearnerListAPI,
     UserCourseEnrollmentsListAPI,
     UserInfo,
     UserProfileViewSet,
-    UserSearchInputListAPI,
-    DownloadViewSet
+    UserSearchInputListAPI
 )
 
 user_viewset_router = DefaultRouter()
@@ -31,7 +31,7 @@ urlpatterns = [
     url(r'^users/search/$', UserSearchInputListAPI.as_view()),
     url(r'^analytics/stats/$', AnalyticsStats.as_view()),
     url(r'^analytics/learners/$', LearnerListAPI.as_view()),
-    url(r'^analytics/download$', DownloadViewSet.as_view()),
+    url(r'^analytics/download$', DownloadCSVView.as_view()),
     url(r'^courses/$', CourseListAPI.as_view()),
     url(r'^courses/stats/$', CourseStatsListAPI.as_view()),
     path('', include(user_viewset_router.urls)),
