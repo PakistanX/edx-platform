@@ -91,16 +91,14 @@
 
             NewPostView.prototype.renderShowMoreBtn = function(){
                 var span = this.$('span.theme-opener');
-                // if(span.is(':visible')){
-                  if (DiscussionUtil.themeCount > 2){
-                    var text = span.find('span.text');
-                    text.html('show more (' + DiscussionUtil.themeCount + ')');
-                    text.attr('data-theme-count', DiscussionUtil.themeCount);
-                  }
-                  else {
-                    span.hide();
-                  }
-                // }
+                if (DiscussionUtil.themeCount > 2){
+                  var text = span.find('span.text');
+                  text.html('show more (' + DiscussionUtil.themeCount + ')');
+                  text.attr('data-theme-count', DiscussionUtil.themeCount);
+                }
+                else {
+                  span.hide();
+                }
             };
 
             NewPostView.prototype.addField = function(fieldView) {
