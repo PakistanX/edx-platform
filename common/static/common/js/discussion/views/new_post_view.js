@@ -98,7 +98,7 @@
                     text.attr('data-theme-count', DiscussionUtil.themeCount);
                   }
                   else {
-                    span.find('span.text').hide();
+                    span.hide();
                   }
                 // }
             };
