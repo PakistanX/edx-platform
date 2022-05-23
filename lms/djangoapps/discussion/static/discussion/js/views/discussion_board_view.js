@@ -302,7 +302,7 @@
                 var $item = $(event.target).closest('.forum-nav-browse-menu-item');
                 event.preventDefault();
                 this.hideBrowseMenu();
-                $('a.back').show();
+                DiscussionUtil.selectTheme();
                 this.trigger('topic:selected', this.getBreadcrumbText($item));
                 return this.discussionThreadListView.selectTopic($(event.target));
             },
@@ -338,7 +338,7 @@
             selectAll: function(event) {
                 var $item = $('ul.forum-nav-browse-menu').find('#all_discussions');
                 event.preventDefault();
-                $('a.back').hide();
+                DiscussionUtil.deSelectTheme();
                 this.trigger('topic:selected', this.getBreadcrumbText($item));
                 this.discussionThreadListView.selectTopic($item.find('span.forum-nav-browse-title'));
                 $('.forum-nav-browse-menu-item').each(function(index, element) {
