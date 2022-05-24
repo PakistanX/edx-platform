@@ -718,3 +718,21 @@ def _progress(request, course_key, student_id):
         response = render_to_response('courseware/progress.html', context)
 
     return response
+
+
+# noinspection PyInterpreter
+@ensure_csrf_cookie
+@ensure_valid_course_key
+@cache_if_anonymous()
+def course_about_static(request, course_id=None):
+    """
+    Display the course's about page.
+
+    Arguments:
+        request (WSGIRequest): HTTP request
+    """
+
+    return render_to_response(
+        'courseware/course_about_static.html',
+        _get_course_about_context(request, course_id or 'course-v1:ilmx+PC1+PC_1')
+    )
