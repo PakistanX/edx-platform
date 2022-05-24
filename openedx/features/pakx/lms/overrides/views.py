@@ -649,7 +649,7 @@ def _progress(request, course_key, student_id):
     if student_id is not None:
         try:
             student_id = int(student_id)
-        except ValueError:  # pylint: disable=bad-option-value
+        except ValueError:
             raise Http404
 
     course = get_course_with_access(request.user, 'load', course_key)
@@ -671,7 +671,7 @@ def _progress(request, course_key, student_id):
             raise Http404
         try:
             student = User.objects.get(id=student_id)
-        except User.DoesNotExist:  # pylint: disable=bad-option-value
+        except User.DoesNotExist:
             raise Http404
 
     prefetch_related_objects([student], 'groups')
@@ -724,7 +724,7 @@ def _progress(request, course_key, student_id):
 @ensure_csrf_cookie
 @ensure_valid_course_key
 @cache_if_anonymous()
-def course_about_static(request, course_id=None):
+def course_about_static(request, course_id='course-v1:LUMSx+2+2022'):
     """
     Display the course's about page.
 
@@ -732,7 +732,4 @@ def course_about_static(request, course_id=None):
         request (WSGIRequest): HTTP request
     """
 
-    return render_to_response(
-        'courseware/course_about_static.html',
-        _get_course_about_context(request, course_id or 'course-v1:ilmx+PC1+PC_1')
-    )
+    return render_to_response('courseware/course_about_static.html', _get_course_about_context(request, course_id))

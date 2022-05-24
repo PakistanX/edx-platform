@@ -4,14 +4,14 @@ from django.conf.urls import url
 from .views import (
     AboutUsView,
     BusinessView,
-    course_about_static,
-    switch_space,
     MarketingCampaignPage,
     PartnerWithUsView,
     PrivacyPolicyView,
     TermsOfUseView,
+    course_about_static,
     overview_tab_view,
     partner_space_login,
+    switch_space
 )
 
 urlpatterns = [
@@ -30,7 +30,6 @@ urlpatterns = [
     url(r'^workplace-essentials-showcase/$', BusinessView.as_view(), name='we-showcase'),
     url(r'^workplace-harassment/$', MarketingCampaignPage.as_view(), name='workplace-harassment'),
     url(r'^5emodel/signup/{course_id}$'.format(
-            category=r'(?P<category>[a-z-]+)',
-            course_id=settings.COURSE_ID_PATTERN,
+        course_id=settings.COURSE_ID_PATTERN
     ), course_about_static, name='purchase-course'),
 ]
