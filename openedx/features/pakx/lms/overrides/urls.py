@@ -29,6 +29,7 @@ urlpatterns = [
     url(r'^partner-with-us/$', PartnerWithUsView.as_view(), name='partner-with-us'),
     url(r'^workplace-essentials-showcase/$', BusinessView.as_view(), name='we-showcase'),
     url(r'^workplace-harassment/$', MarketingCampaignPage.as_view(), name='workplace-harassment'),
+    url(r'^5emodel/signup/$', course_about_static, name='purchase-course'),
     url(r'^5emodel/signup/{course_id}$'.format(
         course_id=settings.COURSE_ID_PATTERN
     ), course_about_static, name='purchase-course'),
