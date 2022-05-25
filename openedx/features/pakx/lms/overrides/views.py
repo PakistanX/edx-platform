@@ -724,12 +724,15 @@ def _progress(request, course_key, student_id):
 @ensure_csrf_cookie
 @ensure_valid_course_key
 @cache_if_anonymous()
-def course_about_static(request, course_id='course-v1:LUMSx+2+2022'):
+def course_about_static(request):
     """
     Display the course's about page.
 
     Arguments:
         request (WSGIRequest): HTTP request
     """
-    
-    return render_to_response('courseware/course_about_static.html', _get_course_about_context(request, course_id))
+
+    return render_to_response('courseware/course_about_static.html', _get_course_about_context(
+        request,
+        'course-v1:LUMSx+2+2022'
+    ))
