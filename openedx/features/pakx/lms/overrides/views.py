@@ -734,5 +734,5 @@ def course_about_static(request):
 
     return render_to_response('courseware/course_about_static.html', _get_course_about_context(
         request,
-        'course-v1:ilmx+PC1+PC_1'
+        'course-v1:LUMSx+2+2022'
     ))
