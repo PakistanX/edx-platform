@@ -85,7 +85,20 @@
                     this.group_name = this.getGroupName();
                     this.updateVisibilityMessage(null, this.is_commentable_divided);
                 }
+                this.renderShowMoreBtn();
                 return DiscussionUtil.makeWmdEditor(this.$el, $.proxy(this.$, this), 'js-post-body');
+            };
+
+            NewPostView.prototype.renderShowMoreBtn = function(){
+                var span = this.$('span.theme-opener');
+                if (DiscussionUtil.themeCount > 2){
+                  var text = span.find('span.text');
+                  text.html('show more (' + DiscussionUtil.themeCount + ')');
+                  text.attr('data-theme-count', DiscussionUtil.themeCount);
+                }
+                else {
+                  span.hide();
+                }
             };
 
             NewPostView.prototype.addField = function(fieldView) {
@@ -142,8 +155,24 @@
                 'click .cancel': 'cancel',
                 'click  .add-post-cancel': 'cancel',
                 'reset .forum-new-post-form': 'updateStyles',
+                'click span.theme-opener': 'toggleThemeMobile',
                 'keydown .wmd-button': function(event) {
                     return DiscussionUtil.handleKeypressInToolbar(event);
+                }
+            };
+
+            NewPostView.prototype.toggleThemeMobile = function(){
+                var themeOpener = $('span.theme-opener');
+                if (themeOpener.is(':visible')){
+                  var themeBoxes = $('div.theme-boxes'), spanText = themeOpener.find('span.text');
+                  if (themeBoxes.hasClass('show')){
+                    themeBoxes.removeClass('show');
+                    spanText.html('show more (' + spanText.attr('data-theme-count') + ')');
+                  }
+                  else {
+                    themeBoxes.addClass('show');
+                    spanText.html('show less');
+                  }
                 }
             };
 

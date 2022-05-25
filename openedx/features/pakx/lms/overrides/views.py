@@ -731,4 +731,5 @@ def course_about_static(request, course_id='course-v1:LUMSx+2+2022'):
     Arguments:
         request (WSGIRequest): HTTP request
     """
+
     return render_to_response('courseware/course_about_static.html', _get_course_about_context(request, course_id))
