@@ -604,6 +604,10 @@
 </div>-->
 <div class="theme-selection">
     <span class="theme-title">Theme</span>
+    <span class="theme-opener">
+        <span class="text">show more (4)</span>
+        <i class="icon-Chevron-Up"></i>
+    </span>
     <div class="theme-boxes">
         <%= edx.HtmlUtils.ensureHtml(topics_html) %>
     </div>

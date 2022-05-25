@@ -80,6 +80,22 @@
                 'click .forum-nav-load-more-link': 'loadMorePages',
                 'change input[name="filter"]': 'loadSelectedFilter',
                 'change .forum-nav-filter-cohort-control': 'chooseGroup',
+                'click span.filter-opener': 'toggleFiltersMobile',
+            };
+
+            DiscussionThreadListView.prototype.toggleFiltersMobile = function(){
+                var filterOpener = $('span.filter-opener');
+                if (filterOpener.is(':visible')){
+                  var filterParent = filterOpener.parents('.filter-area');
+                  if (filterParent.hasClass('show')){
+                    filterParent.removeClass('show');
+                    filterOpener.find('span.text').html('Show Filters');
+                  }
+                  else {
+                    filterParent.addClass('show');
+                    filterOpener.find('span.text').html('Hide Filters');
+                  }
+                }
             };
 
             DiscussionThreadListView.prototype.loadMoreDiscussions = function(event){
@@ -663,7 +679,7 @@
                 $('.forum-nav-browse-menu-item').each(function(index, element) {
                   $(element).show();
                 });
-                $('a.back').hide();
+                DiscussionUtil.deSelectTheme();
                 $('input[name="filter"]').removeAttr('checked');
             }
 

@@ -14,6 +14,16 @@
         DiscussionUtil.forumDiv = null;
         DiscussionUtil.assignedThemes = {};
 
+        DiscussionUtil.selectTheme = function (){
+            $('a.back').show();
+            $('.cate-block').addClass('active-cate');
+        };
+
+        DiscussionUtil.deSelectTheme = function (){
+            $('a.back').hide();
+            $('.cate-block').removeClass('active-cate');
+        };
+
         DiscussionUtil.assignTheme = function(theme, key){
             if(!this.assignedThemes.hasOwnProperty(key)){
                 this.assignedThemes[key] = theme;
