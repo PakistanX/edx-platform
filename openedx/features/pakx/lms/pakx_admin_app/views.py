@@ -414,7 +414,7 @@ class CourseStatsListAPI(generics.ListAPIView):
         elif progress_filters['completed']:
             overview_qs = overview_qs.filter(in_progress=0, completed__gt=0)
         elif progress_filters['in_progress']:
-            overview_qs = overview_qs.filter(in_progress__gt=0, completed=0)
+            overview_qs = overview_qs.filter(in_progress__gt=0)
 
         return overview_qs.order_by('display_name')
 
@@ -481,7 +481,7 @@ class LearnerListAPI(generics.ListAPIView):
             if progress_filters['in_progress'] and progress_filters['completed']:
                 pass
             elif progress_filters['in_progress']:
-                enrollments = enrollments.filter(self.get_incomplete_filters())
+                enrollments = enrollments.filter(self.get_incomplete_filters(), user_id__in=users)
             elif progress_filters['completed']:
                 users, enrollments = self.get_completed_filters(users, enrollments)
 
