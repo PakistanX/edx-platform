@@ -462,11 +462,8 @@ class LearnerListAPI(generics.ListAPIView):
         """Get incomplete filter"""
         return Q(enrollment_stats__email_reminder_status__lt=CourseProgressStats.COURSE_COMPLETED)
 
-    def get_completed_filters(self, users, enrollments):
+    def get_completed_filters(self, users, users_with_incomplete_courses, enrollments):
         """Get learners with 100% completions in all assigned courses"""
-        users_with_incomplete_courses = enrollments.filter(self.get_incomplete_filters()).values_list(
-            'user', flat=True
-        ).distinct()
         users_with_all_complete_courses = users.exclude(id__in=users_with_incomplete_courses)
         return users_with_all_complete_courses, enrollments.filter(Q(
             Q(enrollment_stats__email_reminder_status=CourseProgressStats.COURSE_COMPLETED) &
@@ -478,12 +475,14 @@ class LearnerListAPI(generics.ListAPIView):
 
         if progress_filters['in_progress'] or progress_filters['completed']:
             users = users.filter(id__in=enrollments.values_list('user', flat=True).distinct())
-            if progress_filters['in_progress'] and progress_filters['completed']:
-                pass
-            elif progress_filters['in_progress']:
-                enrollments = enrollments.filter(self.get_incomplete_filters(), user_id__in=users)
-            elif progress_filters['completed']:
-                users, enrollments = self.get_completed_filters(users, enrollments)
+            if not progress_filters['in_progress'] or not progress_filters['completed']:
+                users_with_incomplete_courses = enrollments.filter(self.get_incomplete_filters()).values_list(
+                    'user', flat=True
+                ).distinct()
+                if progress_filters['in_progress']:
+                    users = users.filter(id__in=users_with_incomplete_courses)
+                elif progress_filters['completed']:
+                    users, enrollments = self.get_completed_filters(users, users_with_incomplete_courses, enrollments)
 
         return users, enrollments
 
