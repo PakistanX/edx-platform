@@ -577,7 +577,7 @@ class DownloadCSVView(LearnerListAPI, CourseStatsListAPI):
         """Get function for download API. Returns a CSV File with applied filters."""
 
         mode = self.modes[request.GET.get('mode', 'learner')]
-        response = HttpResponse(content_type='text/csv')
+        response = HttpResponse(content_type='text/csv; charset=utf-8')
         response['Content-Disposition'] = 'attachment; filename="{}"'.format(mode['filename'])
         csv_writer = DictWriter(response, fieldnames=mode['field_names'])
         mode['func'](csv_writer)
