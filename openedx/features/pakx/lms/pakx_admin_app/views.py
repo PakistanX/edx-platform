@@ -2,6 +2,8 @@
 Views for Admin Panel API
 """
 from csv import DictReader, DictWriter
+from datetime import timedelta
+from dateutil.parser import parse
 from io import StringIO
 from itertools import groupby
 
@@ -530,6 +532,14 @@ class DownloadCSVView(LearnerListAPI, CourseStatsListAPI):
             },
         }
 
+    @staticmethod
+    def convert_to_localtime(date_string, offset):
+        if not date_string:
+            return '--'
+        utc_time = parse(date_string)
+        local_timezone = utc_time + timedelta(hours=float(offset))
+        return local_timezone.strftime('%I:%M %P, %d %b %Y')
+
     def prepare_learner_data(self):
         """Get learner data."""
 
@@ -546,7 +556,7 @@ class DownloadCSVView(LearnerListAPI, CourseStatsListAPI):
             csv_writer.writerow({
                 'Name': row['name'],
                 'Email': row['email'],
-                'Last Login': row['last_login'] or '--',
+                'Last Login': self.convert_to_localtime(row['last_login'], self.request.GET.get('offset', '0')),
                 'Assigned Courses': row['assigned_courses'],
                 'Incomplete Courses': row['incomplete_courses'],
                 'Completed Courses': row['completed_courses']
