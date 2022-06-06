@@ -538,7 +538,7 @@ class DownloadCSVView(LearnerListAPI, CourseStatsListAPI):
             return '--'
         utc_time = parse(date_string)
         local_timezone = utc_time + timedelta(hours=float(offset))
-        return local_timezone.strftime('%I:%M %P, %d %b %Y')
+        return " {}".format(local_timezone.strftime('%I:%M %P, %d %b %Y'))
 
     def prepare_learner_data(self):
         """Get learner data."""
