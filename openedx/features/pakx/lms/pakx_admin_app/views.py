@@ -2,9 +2,11 @@
 Views for Admin Panel API
 """
 from csv import DictReader, DictWriter
+from datetime import timedelta
 from io import StringIO
 from itertools import groupby
 
+from dateutil.parser import parse
 from django.conf import settings
 from django.contrib.auth.models import Group
 from django.db.models import ExpressionWrapper, F, IntegerField, Prefetch, Q, Sum
@@ -414,7 +416,7 @@ class CourseStatsListAPI(generics.ListAPIView):
         elif progress_filters['completed']:
             overview_qs = overview_qs.filter(in_progress=0, completed__gt=0)
         elif progress_filters['in_progress']:
-            overview_qs = overview_qs.filter(in_progress__gt=0, completed=0)
+            overview_qs = overview_qs.filter(in_progress__gt=0)
 
         return overview_qs.order_by('display_name')
 
@@ -462,11 +464,8 @@ class LearnerListAPI(generics.ListAPIView):
         """Get incomplete filter"""
         return Q(enrollment_stats__email_reminder_status__lt=CourseProgressStats.COURSE_COMPLETED)
 
-    def get_completed_filters(self, users, enrollments):
+    def get_completed_filters(self, users, users_with_incomplete_courses, enrollments):
         """Get learners with 100% completions in all assigned courses"""
-        users_with_incomplete_courses = enrollments.filter(self.get_incomplete_filters()).values_list(
-            'user', flat=True
-        ).distinct()
         users_with_all_complete_courses = users.exclude(id__in=users_with_incomplete_courses)
         return users_with_all_complete_courses, enrollments.filter(Q(
             Q(enrollment_stats__email_reminder_status=CourseProgressStats.COURSE_COMPLETED) &
@@ -478,12 +477,14 @@ class LearnerListAPI(generics.ListAPIView):
 
         if progress_filters['in_progress'] or progress_filters['completed']:
             users = users.filter(id__in=enrollments.values_list('user', flat=True).distinct())
-            if progress_filters['in_progress'] and progress_filters['completed']:
-                pass
-            elif progress_filters['in_progress']:
-                enrollments = enrollments.filter(self.get_incomplete_filters())
-            elif progress_filters['completed']:
-                users, enrollments = self.get_completed_filters(users, enrollments)
+            if not progress_filters['in_progress'] or not progress_filters['completed']:
+                users_with_incomplete_courses = enrollments.filter(self.get_incomplete_filters()).values_list(
+                    'user', flat=True
+                ).distinct()
+                if progress_filters['in_progress']:
+                    users = users.filter(id__in=users_with_incomplete_courses)
+                elif progress_filters['completed']:
+                    users, enrollments = self.get_completed_filters(users, users_with_incomplete_courses, enrollments)
 
         return users, enrollments
 
@@ -531,6 +532,14 @@ class DownloadCSVView(LearnerListAPI, CourseStatsListAPI):
             },
         }
 
+    @staticmethod
+    def convert_to_localtime(date_string, offset):
+        if not date_string:
+            return '--'
+        utc_time = parse(date_string)
+        local_timezone = utc_time + timedelta(hours=float(offset))
+        return " {}".format(local_timezone.strftime('%I:%M %P, %d %b %Y'))
+
     def prepare_learner_data(self):
         """Get learner data."""
 
@@ -547,7 +556,7 @@ class DownloadCSVView(LearnerListAPI, CourseStatsListAPI):
             csv_writer.writerow({
                 'Name': row['name'],
                 'Email': row['email'],
-                'Last Login': row['last_login'] or '--',
+                'Last Login': self.convert_to_localtime(row['last_login'], self.request.GET.get('offset', '0')),
                 'Assigned Courses': row['assigned_courses'],
                 'Incomplete Courses': row['incomplete_courses'],
                 'Completed Courses': row['completed_courses']
@@ -578,7 +587,7 @@ class DownloadCSVView(LearnerListAPI, CourseStatsListAPI):
         """Get function for download API. Returns a CSV File with applied filters."""
 
         mode = self.modes[request.GET.get('mode', 'learner')]
-        response = HttpResponse(content_type='text/csv')
+        response = HttpResponse(content_type='text/csv; charset=UTF-8-sig')
         response['Content-Disposition'] = 'attachment; filename="{}"'.format(mode['filename'])
         csv_writer = DictWriter(response, fieldnames=mode['field_names'])
         mode['func'](csv_writer)
