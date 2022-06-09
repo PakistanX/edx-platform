@@ -70,7 +70,7 @@ class CourseCustomSettingsView(LoginRequiredMixin, View):
             'days': course_overview_content.days_to_unlock,
             'selected_subsection': course_overview_content.subsection_to_lock,
             'email_days': course_overview_content.days_till_next_reminder,
-            'email_deadline': course_overview_content.reminder_stop_date
+            'email_deadline': course_overview_content.reminder_stop_date,
         }
         return render(request, self.template_name, context=context)
 
@@ -90,6 +90,7 @@ class CourseCustomSettingsView(LoginRequiredMixin, View):
         publisher_logo_url = truncate_string_up_to(request.POST['publisher-logo-url'], 256)
         publisher_card_logo_url = truncate_string_up_to(request.POST['publisher_card_logo_url'], 256)
         course_banner_image_url = truncate_string_up_to(request.POST['course_banner_image_url'], 256)
+        about_page_image_url = truncate_string_up_to(request.POST['about_page_image_url'], 256)
         days_to_unlock = int(request.POST.get('days-duration') or 0)
         subsection_to_lock = request.POST.get('subsection')
         email_days, email_deadline = self._clean_email_reminder_data(request)
@@ -113,7 +114,8 @@ class CourseCustomSettingsView(LoginRequiredMixin, View):
                     'days_to_unlock': days_to_unlock if subsection_to_lock else 0,
                     'subsection_to_lock': subsection_to_lock,
                     'days_till_next_reminder': email_days,
-                    'reminder_stop_date': email_deadline
+                    'reminder_stop_date': email_deadline,
+                    'about_page_image_url': about_page_image_url,
                 }
             )
 
