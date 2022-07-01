@@ -3,6 +3,7 @@ User Partitions Transformer
 """
 
 
+import logging
 import six
 
 from lms.djangoapps.courseware.access import has_access
@@ -18,6 +19,8 @@ from xmodule.partitions.partitions_service import (
 
 from .split_test import SplitTestTransformer
 from .utils import get_field_on_block
+
+log = logging.getLogger(__name__)
 
 
 class UserPartitionTransformer(FilteringTransformerMixin, BlockStructureTransformer):
@@ -45,6 +48,8 @@ class UserPartitionTransformer(FilteringTransformerMixin, BlockStructureTransfor
         """
         Computes any information for each XBlock that's necessary to
         execute this transformer's transform method.
+
+        We (ilmX) have changed this functionality to show excluded units in accordion but with a locked sign.
 
         Arguments:
             block_structure (BlockStructureCollectedData)
@@ -79,6 +84,7 @@ class UserPartitionTransformer(FilteringTransformerMixin, BlockStructureTransfor
             block_structure.set_transformer_block_field(block_key, cls, 'merged_group_access', merged_group_access)
 
     def transform_block_filters(self, usage_info, block_structure):
+        from openedx.core.djangoapps.verified_track_content.partition_scheme import EnrollmentTrackUserPartition
         user = usage_info.user
         result_list = SplitTestTransformer().transform_block_filters(usage_info, block_structure)
         staff_access = has_access(user, 'staff', usage_info.course_key)
@@ -92,7 +98,6 @@ class UserPartitionTransformer(FilteringTransformerMixin, BlockStructureTransfor
             return [block_structure.create_universal_filter()]
 
         user_groups = get_user_partition_groups(usage_info.course_key, user_partitions, user, 'id')
-
         for block_key in block_structure.topological_traversal():
             transformer_block_field = block_structure.get_transformer_block_field(
                 block_key, self, 'merged_group_access'
@@ -104,23 +109,34 @@ class UserPartitionTransformer(FilteringTransformerMixin, BlockStructureTransfor
 
             if access_denying_partition:
                 user_group = user_groups.get(access_denying_partition.id)
-                allowed_groups = transformer_block_field.get_allowed_groups()[access_denying_partition.id]
-                access_denied_message = access_denying_partition.access_denied_message(
-                    block_key, user, user_group, allowed_groups
-                )
-                block_structure.override_xblock_field(
-                    block_key, 'authorization_denial_reason', access_denying_partition.name
-                )
-                block_structure.override_xblock_field(
-                    block_key, 'authorization_denial_message', access_denied_message
-                )
+                if (
+                    user_group.id == 1
+                    and user_group.name == 'Audit'
+                    and isinstance(access_denying_partition, EnrollmentTrackUserPartition)
+                ):
+                    log.info('\nAdded show_locked for {}\n'.format(block_key))
+                    block_structure.override_xblock_field(
+                        block_key, 'show_locked', True
+                    )
+                else:
+                    allowed_groups = transformer_block_field.get_allowed_groups()[access_denying_partition.id]
+                    access_denied_message = access_denying_partition.access_denied_message(
+                        block_key, user, user_group, allowed_groups
+                    )
+                    block_structure.override_xblock_field(
+                        block_key, 'authorization_denial_reason', access_denying_partition.name
+                    )
+                    block_structure.override_xblock_field(
+                        block_key, 'authorization_denial_message', access_denied_message
+                    )
 
         group_access_filter = block_structure.create_removal_filter(
             lambda block_key: (
                 block_structure.get_transformer_block_field(
                     block_key, self, 'merged_group_access'
                 ).get_access_denying_partition(user_groups) is not None and
-                block_structure.get_xblock_field(block_key, 'authorization_denial_message') is None
+                block_structure.get_xblock_field(block_key, 'authorization_denial_message') is None and
+                block_structure.get_xblock_field(block_key, 'show_locked', default=False) is False
             )
         )
         result_list.append(group_access_filter)
