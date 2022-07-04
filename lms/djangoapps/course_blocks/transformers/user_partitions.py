@@ -110,7 +110,7 @@ class UserPartitionTransformer(FilteringTransformerMixin, BlockStructureTransfor
             if access_denying_partition:
                 user_group = user_groups.get(access_denying_partition.id)
                 if (
-                    user_group.id == 1
+                    user_group and user_group.id == 1
                     and user_group.name == 'Audit'
                     and isinstance(access_denying_partition, EnrollmentTrackUserPartition)
                 ):
