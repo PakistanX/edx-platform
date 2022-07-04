@@ -248,6 +248,15 @@ def _get_course_about_context(request, course_id, category=None):  # pylint: dis
     context required for course about page
     """
 
+    def _get_ecommerce_data(mode):
+        single_link = ''
+        bulk_link = ''
+        if mode and mode.sku:
+            single_link = ecomm_service.get_checkout_page_url(mode.sku)
+        if mode and mode.bulk_sku:
+            bulk_link = ecomm_service.get_checkout_page_url(mode.bulk_sku)
+        return single_link, bulk_link
+
     course_key = CourseKey.from_string(course_id)
 
     # If a user is not able to enroll in a course then redirect
@@ -289,19 +298,20 @@ def _get_course_about_context(request, course_id, category=None):  # pylint: dis
         ecommerce_checkout_link = ''
         ecommerce_bulk_checkout_link = ''
         single_paid_mode = None
+        upgrade_data = None
         if ecommerce_checkout:
             if len(modes) == 1 and list(modes.values())[0].min_price:
                 single_paid_mode = list(modes.values())[0]
             else:
-                # have professional ignore other modes for historical reasons
                 single_paid_mode = modes.get(CourseMode.PROFESSIONAL)
 
-            if single_paid_mode and single_paid_mode.sku:
-                ecommerce_checkout_link = ecomm_service.get_checkout_page_url(single_paid_mode.sku)
-            if single_paid_mode and single_paid_mode.bulk_sku:
-                ecommerce_bulk_checkout_link = ecomm_service.get_checkout_page_url(single_paid_mode.bulk_sku)
+            if not single_paid_mode:
+                upgrade_data = modes.get('verified')
+                ecommerce_checkout_link, ecommerce_bulk_checkout_link = _get_ecommerce_data(upgrade_data)
+            else:
+                ecommerce_checkout_link, ecommerce_bulk_checkout_link = _get_ecommerce_data(single_paid_mode)
 
-        _, course_price = get_course_prices(course)
+        _, course_price = get_course_prices(course, for_about_page=True)
 
         # Used to provide context to message to student if enrollment not allowed
         can_enroll = bool(request.user.has_perm(ENROLL_IN_COURSE, course))
@@ -363,6 +373,7 @@ def _get_course_about_context(request, course_id, category=None):  # pylint: dis
             'ecommerce_checkout_link': ecommerce_checkout_link,
             'ecommerce_bulk_checkout_link': ecommerce_bulk_checkout_link,
             'single_paid_mode': single_paid_mode,
+            'upgrade_data': upgrade_data,
             'show_courseware_link': show_courseware_link,
             'is_course_full': is_course_full,
             'can_enroll': can_enroll,
