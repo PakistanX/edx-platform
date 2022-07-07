@@ -103,6 +103,7 @@ def get_course_card_data(course, org_prefetched=False):
         'org_logo_url': org_logo_url or pakx_short_logo,
         'short_description': course_custom_setting.card_description,
         'publisher_logo_url': course_custom_setting.publisher_logo_url,
+        'about_page_image_url': course_custom_setting.about_page_image_url,
         'url': reverse('about_course', kwargs={'course_id': text_type(course.id)}),
     }
 

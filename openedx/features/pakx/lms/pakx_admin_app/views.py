@@ -1,14 +1,16 @@
 """
 Views for Admin Panel API
 """
-from csv import DictReader
+from csv import DictReader, DictWriter
+from datetime import timedelta
 from io import StringIO
 from itertools import groupby
 
+from dateutil.parser import parse
 from django.conf import settings
 from django.contrib.auth.models import Group
 from django.db.models import ExpressionWrapper, F, IntegerField, Prefetch, Q, Sum
-from django.http import Http404
+from django.http import Http404, HttpResponse
 from django.middleware import csrf
 from django.utils.decorators import method_decorator
 from rest_framework import generics, status, views, viewsets
@@ -19,6 +21,7 @@ from rest_framework.response import Response
 from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
 from openedx.core.djangoapps.cors_csrf.decorators import ensure_csrf_cookie_cross_domain
 from openedx.core.djangoapps.user_api.accounts.image_helpers import get_profile_image_urls_for_user
+from openedx.features.pakx.lms.overrides.models import CourseProgressStats
 from student.models import CourseAccessRole, CourseEnrollment, LanguageProficiency
 
 from .constants import (
@@ -47,6 +50,7 @@ from .tasks import bulk_user_registration, enroll_users
 from .utils import (
     create_user,
     do_user_and_courses_have_same_org,
+    extract_filters_and_search,
     get_completed_course_count_filters,
     get_course_overview_same_org_filter,
     get_enroll_able_course_qs,
@@ -358,7 +362,11 @@ class CourseStatsListAPI(generics.ListAPIView):
     API view for learners list
     <lms>/adminpanel/courses/stats/
     :returns
-        [
+    {
+        "count": 4,
+        "next": null,
+        "previous": null,
+        "results": [
             {
                 "display_name": "Preventing Workplace Harassment",
                 "enrolled": 2,
@@ -381,24 +389,36 @@ class CourseStatsListAPI(generics.ListAPIView):
                 "completion_rate": 0
             }
         ]
+    }
     """
 
     authentication_classes = [SessionAuthentication]
     permission_classes = [CanAccessPakXAdminPanel]
-    pagination_class = None
+    pagination_class = PakxAdminAppPagination
     serializer_class = CourseStatsListSerializer
 
     def get_queryset(self):
+        search_text, progress_filters = extract_filters_and_search(self.request)
+
         completed_count, in_progress_count = get_completed_course_count_filters(
             exclude_staff_superuser=True, req_user=self.request.user
         )
-        overview_qs = CourseOverview.objects.all()
+        overview_qs = CourseOverview.objects.filter(
+            display_name__icontains=search_text
+        ) if search_text else CourseOverview.objects.all()
+
         if not self.request.user.is_superuser:
             overview_qs = overview_qs.filter(get_course_overview_same_org_filter(self.request.user))
-        return overview_qs.annotate(
-            in_progress=in_progress_count,
-            completed=completed_count
-        )
+        overview_qs = overview_qs.annotate(in_progress=in_progress_count, completed=completed_count)
+
+        if progress_filters['completed'] and progress_filters['in_progress']:
+            overview_qs = overview_qs.filter(Q(in_progress__gt=0) | Q(completed__gt=0))
+        elif progress_filters['completed']:
+            overview_qs = overview_qs.filter(in_progress=0, completed__gt=0)
+        elif progress_filters['in_progress']:
+            overview_qs = overview_qs.filter(in_progress__gt=0)
+
+        return overview_qs.order_by('display_name')
 
 
 class LearnerListAPI(generics.ListAPIView):
@@ -439,16 +459,139 @@ class LearnerListAPI(generics.ListAPIView):
     pagination_class = PakxAdminAppPagination
     serializer_class = LearnersSerializer
 
+    @staticmethod
+    def get_incomplete_filters():
+        """Get incomplete filter"""
+        return Q(enrollment_stats__email_reminder_status__lt=CourseProgressStats.COURSE_COMPLETED)
+
+    def get_completed_filters(self, users, users_with_incomplete_courses, enrollments):
+        """Get learners with 100% completions in all assigned courses"""
+        users_with_all_complete_courses = users.exclude(id__in=users_with_incomplete_courses)
+        return users_with_all_complete_courses, enrollments.filter(Q(
+            Q(enrollment_stats__email_reminder_status=CourseProgressStats.COURSE_COMPLETED) &
+            ~Q(user_id__in=users_with_incomplete_courses)
+        ))
+
+    def apply_learner_progress_filters(self, progress_filters, users, enrollments):
+        """Apply filters for learner's progress."""
+
+        if progress_filters['in_progress'] or progress_filters['completed']:
+            users = users.filter(id__in=enrollments.values_list('user', flat=True).distinct())
+            if not progress_filters['in_progress'] or not progress_filters['completed']:
+                users_with_incomplete_courses = enrollments.filter(self.get_incomplete_filters()).values_list(
+                    'user', flat=True
+                ).distinct()
+                if progress_filters['in_progress']:
+                    users = users.filter(id__in=users_with_incomplete_courses)
+                elif progress_filters['completed']:
+                    users, enrollments = self.get_completed_filters(users, users_with_incomplete_courses, enrollments)
+
+        return users, enrollments
+
     def get_queryset(self):
+        search_text, progress_filters = extract_filters_and_search(self.request)
+
         user_qs = get_org_users_qs(self.request.user)
         enrollment_qs = CourseEnrollment.objects.filter(is_active=True)
+
+        if search_text:
+            user_qs = user_qs.filter(profile__name__icontains=search_text)
+
         if not self.request.user.is_superuser:
             enrollment_qs = enrollment_qs.filter(course__org__iregex=get_user_org(self.request.user))
 
+        user_qs, enrollment_qs = self.apply_learner_progress_filters(progress_filters, user_qs, enrollment_qs)
+
         enrollments = enrollment_qs.select_related('enrollment_stats')
-        return user_qs.prefetch_related(
+        return user_qs.order_by('profile__name').prefetch_related(
             Prefetch('courseenrollment_set', to_attr='enrollment', queryset=enrollments)
         )
+
+
+class DownloadCSVView(LearnerListAPI, CourseStatsListAPI):
+    """API for downloading CSV files according to role."""
+
+    def __init__(self):
+        """Create a dict for handling multiple modes."""
+
+        super().__init__()
+        self.modes = {
+            'learner': {
+                'func': self.write_learner_data,
+                'filename': 'Learner Stats.csv',
+                'field_names': [
+                    'Name', 'Email', 'Last Login', 'Assigned Courses', 'Incomplete Courses', 'Completed Courses'
+                ]
+            },
+            'course': {
+                'func': self.write_course_data,
+                'filename': 'Course Stats.csv',
+                'field_names': [
+                    'Course Title', 'Assigned', 'In Progress', 'Completed', 'Completion Rate'
+                ]
+            },
+        }
+
+    @staticmethod
+    def convert_to_localtime(date_string, offset):
+        if not date_string:
+            return '--'
+        utc_time = parse(date_string)
+        local_timezone = utc_time + timedelta(hours=float(offset))
+        return " {}".format(local_timezone.strftime('%I:%M %P, %d %b %Y'))
+
+    def prepare_learner_data(self):
+        """Get learner data."""
+
+        queryset = LearnerListAPI.get_queryset(self)
+        serializer = LearnersSerializer(queryset, many=True)
+        return serializer.data
+
+    def write_learner_data(self, csv_writer):
+        """Write learners data to CSV."""
+
+        learner_data = self.prepare_learner_data()
+        csv_writer.writeheader()
+        for row in learner_data:
+            csv_writer.writerow({
+                'Name': row['name'],
+                'Email': row['email'],
+                'Last Login': self.convert_to_localtime(row['last_login'], self.request.GET.get('offset', '0')),
+                'Assigned Courses': row['assigned_courses'],
+                'Incomplete Courses': row['incomplete_courses'],
+                'Completed Courses': row['completed_courses']
+            })
+
+    def prepare_course_data(self):
+        """Get course data."""
+
+        queryset = CourseStatsListAPI.get_queryset(self)
+        serializer = CourseStatsListSerializer(queryset, many=True)
+        return serializer.data
+
+    def write_course_data(self, csv_writer):
+        """Write course data to CSV."""
+
+        course_data = self.prepare_course_data()
+        csv_writer.writeheader()
+        for row in course_data:
+            csv_writer.writerow({
+                'Course Title': row['display_name'],
+                'Assigned': row['enrolled'],
+                'In Progress': row['in_progress'],
+                'Completed': row['completed'],
+                'Completion Rate': '{} %'.format(row['completion_rate']),
+            })
+
+    def get(self, request, *args, **kwargs):
+        """Get function for download API. Returns a CSV File with applied filters."""
+
+        mode = self.modes[request.GET.get('mode', 'learner')]
+        response = HttpResponse(content_type='text/csv; charset=UTF-8-sig')
+        response['Content-Disposition'] = 'attachment; filename="{}"'.format(mode['filename'])
+        csv_writer = DictWriter(response, fieldnames=mode['field_names'])
+        mode['func'](csv_writer)
+        return response
 
 
 class UserInfo(views.APIView):

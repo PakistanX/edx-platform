@@ -55,6 +55,7 @@ class CourseOverviewContent(TimeStampedModel):
     publisher_name = models.CharField(max_length=128, blank=True, default='', null=True)
     publisher_card_logo_url = models.CharField(max_length=256, blank=True, default='', null=True)
     publisher_description = models.TextField(null=True, blank=True)
+    about_page_image_url = models.CharField(max_length=256, blank=True, default='', null=True)
     days_till_next_reminder = models.PositiveSmallIntegerField(default=0)
     reminder_stop_date = models.DateField(default=None, null=True, blank=True)
 

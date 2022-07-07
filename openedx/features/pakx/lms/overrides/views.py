@@ -248,6 +248,15 @@ def _get_course_about_context(request, course_id, category=None):  # pylint: dis
     context required for course about page
     """
 
+    def _get_ecommerce_data(mode):
+        single_link = ''
+        bulk_link = ''
+        if mode and mode.sku:
+            single_link = ecomm_service.get_checkout_page_url(mode.sku)
+        if mode and mode.bulk_sku:
+            bulk_link = ecomm_service.get_checkout_page_url(mode.bulk_sku)
+        return single_link, bulk_link
+
     course_key = CourseKey.from_string(course_id)
 
     # If a user is not able to enroll in a course then redirect
@@ -289,19 +298,20 @@ def _get_course_about_context(request, course_id, category=None):  # pylint: dis
         ecommerce_checkout_link = ''
         ecommerce_bulk_checkout_link = ''
         single_paid_mode = None
+        upgrade_data = None
         if ecommerce_checkout:
             if len(modes) == 1 and list(modes.values())[0].min_price:
                 single_paid_mode = list(modes.values())[0]
             else:
-                # have professional ignore other modes for historical reasons
                 single_paid_mode = modes.get(CourseMode.PROFESSIONAL)
 
-            if single_paid_mode and single_paid_mode.sku:
-                ecommerce_checkout_link = ecomm_service.get_checkout_page_url(single_paid_mode.sku)
-            if single_paid_mode and single_paid_mode.bulk_sku:
-                ecommerce_bulk_checkout_link = ecomm_service.get_checkout_page_url(single_paid_mode.bulk_sku)
+            if not single_paid_mode:
+                upgrade_data = modes.get('verified')
+                ecommerce_checkout_link, ecommerce_bulk_checkout_link = _get_ecommerce_data(upgrade_data)
+            else:
+                ecommerce_checkout_link, ecommerce_bulk_checkout_link = _get_ecommerce_data(single_paid_mode)
 
-        _, course_price = get_course_prices(course)
+        _, course_price = get_course_prices(course, for_about_page=True)
 
         # Used to provide context to message to student if enrollment not allowed
         can_enroll = bool(request.user.has_perm(ENROLL_IN_COURSE, course))
@@ -348,7 +358,6 @@ def _get_course_about_context(request, course_id, category=None):  # pylint: dis
 
         # Embed the course reviews tool
         reviews_fragment_view = CourseReviewsModuleFragmentView().render_to_fragment(request, course=course)
-
         context = {
             'course': course,
             'language': language,
@@ -364,6 +373,7 @@ def _get_course_about_context(request, course_id, category=None):  # pylint: dis
             'ecommerce_checkout_link': ecommerce_checkout_link,
             'ecommerce_bulk_checkout_link': ecommerce_bulk_checkout_link,
             'single_paid_mode': single_paid_mode,
+            'upgrade_data': upgrade_data,
             'show_courseware_link': show_courseware_link,
             'is_course_full': is_course_full,
             'can_enroll': can_enroll,
@@ -387,6 +397,7 @@ def _get_course_about_context(request, course_id, category=None):  # pylint: dis
             'starts_in': starts_in,
             'org_description': course_map['org_description'],
             'publisher_logo': course_map['publisher_logo_url'],
+            'about_page_image': course_map['about_page_image_url'],
             'course_rating': get_rating_classes_for_course(course_id),
             'course_dir': 'rtl' if is_rtl_language(course.language) else ''
         }
@@ -649,7 +660,7 @@ def _progress(request, course_key, student_id):
     if student_id is not None:
         try:
             student_id = int(student_id)
-        except ValueError:  # pylint: disable=bad-option-value
+        except ValueError:
             raise Http404
 
     course = get_course_with_access(request.user, 'load', course_key)
@@ -671,7 +682,7 @@ def _progress(request, course_key, student_id):
             raise Http404
         try:
             student = User.objects.get(id=student_id)
-        except User.DoesNotExist:  # pylint: disable=bad-option-value
+        except User.DoesNotExist:
             raise Http404
 
     prefetch_related_objects([student], 'groups')
@@ -718,3 +729,21 @@ def _progress(request, course_key, student_id):
         response = render_to_response('courseware/progress.html', context)
 
     return response
+
+
+# noinspection PyInterpreter
+@ensure_csrf_cookie
+@ensure_valid_course_key
+@cache_if_anonymous()
+def course_about_static(request):
+    """
+    Display the course's about page.
+
+    Arguments:
+        request (WSGIRequest): HTTP request
+    """
+
+    return render_to_response('courseware/course_about_static.html', _get_course_about_context(
+        request,
+        'course-v1:LUMSx+2+2022'
+    ))

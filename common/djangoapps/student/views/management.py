@@ -367,10 +367,12 @@ def change_enrollment(request, check_access=True):
         # then send the user to the choose your track page.
         # (In the case of no-id-professional/professional ed, this will redirect to a page that
         # funnels users directly into the verification / payment flow)
-        if CourseMode.has_verified_mode(available_modes) or CourseMode.has_professional_mode(available_modes):
-            return HttpResponse(
-                reverse("course_modes_choose", kwargs={'course_id': text_type(course_id)})
-            )
+
+        # Commenting the below code because we do not want this page, we show both modes on about page
+        # if CourseMode.has_verified_mode(available_modes) or CourseMode.has_professional_mode(available_modes):
+        #     return HttpResponse(
+        #         reverse("course_modes_choose", kwargs={'course_id': text_type(course_id)})
+        #     )
 
         # Otherwise, there is only one mode available (the default)
         return HttpResponse()

@@ -837,7 +837,7 @@ def get_cosmetic_display_price(course):
     return get_course_prices(course)[1]
 
 
-def get_course_prices(course, verified_only=False):
+def get_course_prices(course, verified_only=False, for_about_page=False):
     """
     Return registration_price and cosmetic_display_prices.
     registration_price is the minimum price for the course across all course modes.
@@ -863,19 +863,24 @@ def get_course_prices(course, verified_only=False):
     else:
         price = None
 
-    return registration_price, format_course_price(price)
+    return registration_price, format_course_price(price, for_about_page=for_about_page)
 
 
-def format_course_price(price):
+def format_course_price(price, for_about_page=False):
     """
     Return a formatted price for a course (a string preceded by correct currency, or 'Free').
     """
+    currency_name = settings.PAID_COURSE_REGISTRATION_CURRENCY[0]
     currency_symbol = settings.PAID_COURSE_REGISTRATION_CURRENCY[1]
 
     if price:
         # Translators: This will look like '$50', where {currency_symbol} is a symbol such as '$' and {price} is a
         # numerical amount in that currency. Adjust this display as needed for your language.
-        cosmetic_display_price = _("{currency_symbol}{price}").format(currency_symbol=currency_symbol, price=price)
+        if for_about_page:
+            course_price = '{:,}'.format(price)
+            cosmetic_display_price = _("{} {}").format(currency_name.upper(), course_price)
+        else:
+            cosmetic_display_price = _("{currency_symbol}{price}").format(currency_symbol=currency_symbol, price=price)
     else:
         # Translators: This refers to the cost of the course. In this case, the course costs nothing so it is free.
         cosmetic_display_price = _('Free')

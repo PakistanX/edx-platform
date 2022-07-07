@@ -1,6 +1,7 @@
 """
 helpers functions for Admin Panel API
 """
+import json
 from datetime import datetime
 from uuid import uuid4
 
@@ -185,6 +186,12 @@ def get_completed_course_count_filters(exclude_staff_superuser=True, req_user=No
     completed_count = Count("courseenrollment", filter=Q(learners & completed))
     in_progress_count = Count("courseenrollment", filter=Q(learners & in_progress))
     return completed_count, in_progress_count
+
+
+def extract_filters_and_search(request):
+    return request.GET.get('search', ''), json.loads(
+        request.GET.get('progress_filters', '{"in_progress": false, "completed": false}')
+    )
 
 
 def get_org_users_qs(user):
