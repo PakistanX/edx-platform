@@ -368,13 +368,13 @@ class SequenceModule(SequenceFields, ProctoringFields, XModule):
         # NOTE (CCB): We default to true to maintain the behavior in place prior to allowing anonymous access access.
         return context.get('user_authenticated', True)
 
-    def _get_render_metadata(self, context, display_items, prereq_met, prereq_meta_info, banner_text=None, view=STUDENT_VIEW, fragment=None):
+    def _get_render_metadata(self, context, display_items, prereq_met, prereq_meta_info, banner_text=None, view=STUDENT_VIEW, fragment=None, locked_page_params=None):
         if prereq_met and not self._is_gate_fulfilled():
             banner_text = _(
                 'This section is a prerequisite. You must complete this section in order to unlock additional content.'
             )
 
-        items = self._render_student_view_for_items(context, display_items, fragment, view) if prereq_met else []
+        items = self._render_student_view_for_items(context, display_items, fragment, view, locked_page_params) if prereq_met else []
         params = {
             'items': items,
             'element_id': self.location.html_id(),
@@ -393,6 +393,48 @@ class SequenceModule(SequenceFields, ProctoringFields, XModule):
         }
         return params
 
+    def _make_locked_units_for_audit_track(self, display_items):
+        """
+        Make units that are locked for free users.
+
+        Currently open edx excludes those units so the user has no way to know if there are any units available
+        exclusively for verified users.
+        """
+        from openedx.features.pakx.lms.overrides.utils import create_params_for_locked_till_payment_page
+
+        def unit_is_only_for_audit(groups):
+            """Check if the unit is available for only audit users.
+            In this case we do not want to show unit to user as per openedx default.
+            """
+
+            audit_id = 1
+            for group in groups.values():
+                if audit_id in group:
+                    return True
+            return False
+
+        all_units = []
+        for unit in self.children:
+            created_unit = self.runtime.load_item(unit)
+            if (
+                getattr(created_unit, 'visible_to_staff_only', False)
+                or getattr(created_unit, 'hide_after_due', False)
+                or unit_is_only_for_audit(created_unit.group_access)
+            ):
+                continue
+            created_unit.lock_until_paid = False
+            if created_unit not in display_items:
+                created_unit.lock_until_paid = True
+            all_units.append(created_unit)
+
+        locked_page_params = create_params_for_locked_till_payment_page(
+            self._get_course().language,
+            self.runtime.user_id,
+            self.course_id
+        )
+
+        return all_units, locked_page_params
+
     def _student_or_public_view(self, context, prereq_met, prereq_meta_info, banner_text=None, view=STUDENT_VIEW):
         """
         Returns the rendered student view of the content of this
@@ -401,10 +443,17 @@ class SequenceModule(SequenceFields, ProctoringFields, XModule):
         """
         _ = self.runtime.service(self, "i18n").ugettext
         display_items = self.get_display_items()
+        locked_page_params = {}
+
+        if len(self.children) != len(display_items):
+            display_items, locked_page_params = self._make_locked_units_for_audit_track(display_items)
+
         self._update_position(context, len(display_items))
 
         fragment = Fragment()
-        params = self._get_render_metadata(context, display_items, prereq_met, prereq_meta_info, banner_text, view, fragment)
+        params = self._get_render_metadata(
+            context, display_items, prereq_met, prereq_meta_info, banner_text, view, fragment, locked_page_params
+        )
         fragment.add_content(self.system.render_template("seq_module.html", params))
 
         self._capture_full_seq_item_metrics(display_items)
@@ -513,7 +562,7 @@ class SequenceModule(SequenceFields, ProctoringFields, XModule):
         elif self.position is None or self.position > number_of_display_items:
             self.position = 1
 
-    def _render_student_view_for_items(self, context, display_items, fragment, view=STUDENT_VIEW):
+    def _render_student_view_for_items(self, context, display_items, fragment, view=STUDENT_VIEW, locked_page_params=None):
         """
         Updates the given fragment with rendered student views of the given
         display_items.  Returns a list of dict objects with information about
@@ -547,17 +596,18 @@ class SequenceModule(SequenceFields, ProctoringFields, XModule):
 
             context['show_bookmark_button'] = show_bookmark_button
             context['bookmarked'] = is_bookmarked
-
             if render_items:
                 rendered_item = item.render(view, context)
                 fragment.add_fragment_resources(rendered_item)
                 content = rendered_item.content
+                if getattr(item, 'lock_until_paid', False):
+                    content = self.system.render_template("locked-for-payment.html", locked_page_params)
             else:
                 content = ''
             iteminfo = {
                 'content': content,
                 'page_title': getattr(item, 'tooltip_title', ''),
-                'type': item_type,
+                'type': 'locked' if getattr(item, 'lock_until_paid', False) else item_type,
                 'id': text_type(usage_id),
                 'bookmarked': is_bookmarked,
                 'path': " > ".join(display_names + [item.display_name_with_default]),
@@ -569,7 +619,9 @@ class SequenceModule(SequenceFields, ProctoringFields, XModule):
                 iteminfo['href'] = context.get('item_url', '').format(usage_key=usage_id)
             if is_user_authenticated:
                 if item.location.block_type == 'vertical' and completion_service:
-                    iteminfo['complete'] = completion_service.vertical_is_complete(item)
+                    iteminfo['complete'] = False
+                    if not getattr(item, 'lock_until_paid', False):
+                        iteminfo['complete'] = completion_service.vertical_is_complete(item)
 
             contents.append(iteminfo)
 

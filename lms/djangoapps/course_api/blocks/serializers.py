@@ -57,6 +57,7 @@ SUPPORTED_FIELDS = [
     SupportedFieldType('video_duration'),
     SupportedFieldType('show_correctness'),
     SupportedFieldType('gated'),
+    SupportedFieldType('show_locked'),
     # 'student_view_data'
     SupportedFieldType(StudentViewTransformer.STUDENT_VIEW_DATA, StudentViewTransformer),
     # 'student_view_multi_device'
@@ -103,6 +104,7 @@ FIELDS_ALLOWED_IN_AUTH_DENIED_CONTENT = [
     "descendants",
     "authorization_denial_reason",
     "authorization_denial_message",
+    "show_locked",
 ]
 
 

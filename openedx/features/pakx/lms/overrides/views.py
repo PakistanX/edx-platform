@@ -321,9 +321,12 @@ def _get_course_about_context(request, course_id, category=None):  # pylint: dis
         resume_course_url = None
         has_visited_course = None
         user_progress = 0
+        show_upgrade_after_enrollment = False
         if registered:
             has_visited_course, resume_course_url, _ = get_resume_course_info(request, course_id)
             user_progress = get_course_progress_percentage(request, course_id)
+            enrollment_mode, enrollment_is_active = CourseEnrollment.enrollment_mode_for_user(request.user, course_key)
+            show_upgrade_after_enrollment = enrollment_is_active and enrollment_mode != 'verified' and upgrade_data
         is_course_full = CourseEnrollment.objects.is_course_full(course)
 
         # Register button should be disabled if one of the following is true:
@@ -374,6 +377,7 @@ def _get_course_about_context(request, course_id, category=None):  # pylint: dis
             'ecommerce_bulk_checkout_link': ecommerce_bulk_checkout_link,
             'single_paid_mode': single_paid_mode,
             'upgrade_data': upgrade_data,
+            'show_upgrade_after_enrollment': show_upgrade_after_enrollment,
             'show_courseware_link': show_courseware_link,
             'is_course_full': is_course_full,
             'can_enroll': can_enroll,

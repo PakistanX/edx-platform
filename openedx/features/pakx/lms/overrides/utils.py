@@ -20,6 +20,8 @@ from opaque_keys.edx.keys import CourseKey
 from pytz import utc
 from six import text_type
 
+from course_modes.models import CourseMode
+from lms.djangoapps.commerce.utils import EcommerceService
 from lms.djangoapps.course_api.blocks.serializers import BlockDictSerializer
 from lms.djangoapps.course_api.blocks.transformers.blocks_api import BlocksAPITransformer
 from lms.djangoapps.courseware.courses import get_courses, sort_by_announcement, sort_by_start_date
@@ -578,3 +580,22 @@ def create_accordion_for_sidebar(request, course, course_experience_mode):
         accordion = render_accordion(request, course, course_block_tree, None, None, course_experience_mode)
 
     return accordion
+
+
+def create_params_for_locked_till_payment_page(course_language, user_id, course_key):
+    """Create params to show in verified track unit view for audit users."""
+
+    ecomm_service = EcommerceService()
+    modes = CourseMode.modes_for_course_dict(course_key)
+    user = User.objects.get(id=user_id)
+    ecommerce_checkout = ecomm_service.is_enabled(user)
+    ecommerce_checkout_link = '#'
+    if ecommerce_checkout:
+        single_paid_mode = modes.get(CourseMode.VERIFIED, None)
+        if single_paid_mode and single_paid_mode.sku:
+            ecommerce_checkout_link = ecomm_service.get_checkout_page_url(single_paid_mode.sku)
+    params = {
+        'rtl_class': get_rtl_class(course_language),
+        'ecommerce_checkout_link': ecommerce_checkout_link,
+    }
+    return params
