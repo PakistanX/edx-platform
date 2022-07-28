@@ -588,6 +588,13 @@ class PrivacyPolicyView(BaseTemplateView):
     template_name = 'overrides/privacy_policy.html'
 
 
+class RefundPolicyView(BaseTemplateView):
+    """
+    View for terms of use
+    """
+    template_name = 'overrides/refund_policy.html'
+
+
 def partner_space_login(request, partner):
     """
     View for Loading desired partner's login page, loads login page after setting
