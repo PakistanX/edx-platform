@@ -17,8 +17,17 @@ ORDER_URLS = ([
     url(r'^(?P<number>[-\w]+)/$', views.OrderView.as_view(), name='detail'),
 ], 'orders')
 
+ENROLLMENT_URLS = ([
+    url(
+        r'^{}/{}/$'.format(settings.USERNAME_PATTERN, settings.COURSE_ID_PATTERN),
+        views.EnrollmentNotification.as_view(),
+        name='enrollment-email'
+    ),
+], 'notify_enroll')
+
 app_name = 'v1'
 urlpatterns = [
     url(r'^courses/', include(COURSE_URLS)),
     url(r'^orders/', include(ORDER_URLS)),
+    url(r'^enrollment_mail/', include(ENROLLMENT_URLS))
 ]
