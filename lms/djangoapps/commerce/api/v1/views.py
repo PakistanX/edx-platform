@@ -27,7 +27,7 @@ from openedx.core.djangoapps.site_configuration import helpers as configuration_
 from openedx.core.lib.api.authentication import BearerAuthentication
 from openedx.core.lib.api.mixins import PutAsCreateMixin
 from openedx.core.lib.celery.task_utils import emulate_http_request
-from openedx.features.pakx.lms.pakx_admin_app.message_types import EnrolmentNotification
+from openedx.features.pakx.lms.pakx_admin_app.message_types import CommerceEnrol
 from student.models import CourseEnrollment
 from util.json_request import JsonResponse
 
@@ -128,7 +128,7 @@ class EnrollmentNotification(APIView):
                 'platform_name': configuration_helpers.get_value('PLATFORM_NAME', settings.PLATFORM_NAME),
             })
 
-            message = EnrolmentNotification().personalize(
+            message = CommerceEnrol().personalize(
                 recipient=Recipient(email_context['username'], email_context['email']),
                 language='en',
                 user_context=email_context,
