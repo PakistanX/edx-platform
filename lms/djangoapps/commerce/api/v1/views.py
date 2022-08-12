@@ -143,20 +143,18 @@ class EnrollmentNotification(APIView):
         # if host_name != settings.ECOMMERCE_PUBLIC_URL_ROOT:
         #     log.error('API call from unauthenticated source: {}'.format(host_name))
         #     raise NotAuthenticated
-
-        CourseEnrollment.objects.get(user__username=username, course=course_key)
+        if len(CourseEnrollment.objects.filter(user__username=username, course=course_key)):
+            return True, None
+        log.error('User {} not enrolled in course: {}'.format(username, course_key))
+        return False, 404
 
     def get(self, request, username, course_id):
         """Send enrollment notification to user from ecommerce."""
         log.info('Enrollment email notification request for {} and {}'.format(username, course_id))
 
-        try:
-            self._authenticate_and_verify(request.META.get('HTTP_HOST'), username, course_id)
-        except CourseEnrollment.DoesNotExist:
-            log.error('User {} not enrolled in course: {}'.format(username, course_id))
-            return JsonResponse(status=404)
-        except NotAuthenticated:
-            return JsonResponse(status=401)
+        is_verified, response_code = self._authenticate_and_verify(request.META.get('HTTP_HOST'), username, course_id)
+        if not is_verified:
+            return JsonResponse(status=response_code)
 
         self._send_course_enrolment_email(username, course_id)
 
