@@ -5,19 +5,30 @@ Commerce views
 
 import logging
 
+from django.conf import settings
 from django.contrib.auth.models import User
+from django.contrib.sites.models import Site
 from django.http import Http404
+from edx_ace import Recipient, ace
 from edx_rest_api_client import exceptions
 from edx_rest_framework_extensions.auth.jwt.authentication import JwtAuthentication
+from opaque_keys.edx.keys import CourseKey
 from rest_framework.authentication import SessionAuthentication
+from rest_framework.exceptions import NotAuthenticated
 from rest_framework.generics import ListAPIView, RetrieveUpdateAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
-from openedx.core.lib.api.authentication import BearerAuthentication
 
 from course_modes.models import CourseMode
+from openedx.core.djangoapps.ace_common.template_context import get_base_template_context
 from openedx.core.djangoapps.commerce.utils import ecommerce_api_client
+from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
+from openedx.core.djangoapps.site_configuration import helpers as configuration_helpers
+from openedx.core.lib.api.authentication import BearerAuthentication
 from openedx.core.lib.api.mixins import PutAsCreateMixin
+from openedx.core.lib.celery.task_utils import emulate_http_request
+from openedx.features.pakx.lms.pakx_admin_app.message_types import CommerceEnrol
+from student.models import CourseEnrollment
 from util.json_request import JsonResponse
 
 from ...utils import is_account_activation_requirement_disabled
@@ -88,3 +99,63 @@ class OrderView(APIView):
             return JsonResponse(order)
         except exceptions.HttpNotFoundError:
             return JsonResponse(status=404)
+
+
+class EnrollmentNotification(APIView):
+    """Send enrollment notification to user."""
+
+    @staticmethod
+    def _send_course_enrolment_email(username, course_key):
+        """
+        send a course enrolment notification via email
+        :param user: (User) request User
+        :param course_key: (str) course key
+        """
+        site = Site.objects.get_current()
+        user = User.objects.filter(username=username).first()
+        email_context = get_base_template_context(site, user)
+        course_overview = CourseOverview.objects.get(id=CourseKey.from_string(course_key))
+        email_context.update({
+            'course': course_overview.display_name,
+            'image_url': 'https://' + site.domain + course_overview.course_image_url,
+            'url': "https://{}/courses/{}/overview".format(site.domain, course_key),
+        })
+
+        with emulate_http_request(site, user):
+            email_context.update({
+                'site_name': site.domain,
+                'dashboard_url': 'https://' + site.domain + '/dashboard',
+                'platform_name': configuration_helpers.get_value('PLATFORM_NAME', settings.PLATFORM_NAME),
+            })
+
+            message = CommerceEnrol().personalize(
+                recipient=Recipient(email_context['username'], email_context['email']),
+                language='en',
+                user_context=email_context,
+            )
+            ace.send(message)
+
+    @staticmethod
+    def _authenticate_and_verify(host_name, username, course_key):
+        """Perform authentication and verify data."""
+
+        # TODO: Write authentication logic here
+        # if host_name != settings.ECOMMERCE_PUBLIC_URL_ROOT:
+        #     log.error('API call from unauthenticated source: {}'.format(host_name))
+        #     raise NotAuthenticated
+        if len(CourseEnrollment.objects.filter(user__username=username, course=course_key)):
+            return True, None
+        log.error('User {} not enrolled in course: {}'.format(username, course_key))
+        return False, 404
+
+    def get(self, request, username, course_id):
+        """Send enrollment notification to user from ecommerce."""
+        log.info('Enrollment email notification request for {} and {}'.format(username, course_id))
+
+        is_verified, response_code = self._authenticate_and_verify(request.META.get('HTTP_HOST'), username, course_id)
+        if not is_verified:
+            return JsonResponse(status=response_code)
+
+        self._send_course_enrolment_email(username, course_id)
+
+        return JsonResponse(status=200)
