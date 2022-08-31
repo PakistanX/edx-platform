@@ -14,6 +14,7 @@ from edx_ace.recipient import Recipient
 from six import text_type
 
 from grades.api import CourseGradeFactory
+from lms.djangoapps.verify_student.models import ManualVerification
 from openedx.core.djangoapps.ace_common.template_context import get_base_template_context
 from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
 from openedx.core.djangoapps.lang_pref import LANGUAGE_KEY
@@ -216,11 +217,19 @@ def send_reminder_emails():
         check_and_send_emails(item)
 
 
-@task(name='change_enrollement_modes')
-def change_enrolement_modes():
-    """Cahnge enrollment mode of users in verified courses from audit to honor."""
-    # TODO use the ORM query below to make this command more dynamic. For now we run this only for one course.
-    # CourseMode.objects.annotate(c_count=Count('course')).filter(c_count=1, mode_slug='verified')
-    enrollments = CourseEnrollment.objects.filter(course='course-v1:LUMSx+2+2022', mode='audit')
-    log.info('Found {} enrollment entries:\n {}'.format(len(enrollments), enrollments))
-    enrollments.update(mode='honor')
+@task(name='manually_verify_user')
+def manually_verify_user(user, course_key):
+    """Manually verify user for verified certificate."""
+    ManualVerification.objects.create(
+        status=u'approved',
+        user=user,
+        name='{}:{}'.format(user.id, course_key),
+        reason='Verified after enrolling in {}'.format(course_key)
+    )
+
+
+@task(name='change_enrollment_mode')
+def change_enrollment_mode(user_id, course_id):
+    """Change enrollment mode of user from audit to honor."""
+    log.info('Starting mode change for user: {} and course {}'.format(user_id, course_id))
+    CourseEnrollment.objects.filter(user_id=user_id, course=course_id, mode='audit').update(mode='honor')
