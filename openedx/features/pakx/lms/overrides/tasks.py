@@ -214,3 +214,13 @@ def send_reminder_emails():
     log.info("Fetching records, found {} active models\n\n".format(len(progress_models)))
     for item in progress_models:
         check_and_send_emails(item)
+
+
+@task(name='change_enrollement_modes')
+def change_enrolement_modes():
+    """Cahnge enrollment mode of users in verified courses from audit to honor."""
+    # TODO use the ORM query below to make this command more dynamic. For now we run this only for one course.
+    # CourseMode.objects.annotate(c_count=Count('course')).filter(c_count=1, mode_slug='verified')
+    enrollments = CourseEnrollment.objects.filter(course='course-v1:LUMSx+2+2022', mode='audit')
+    log.info('Found {} enrollment entries:\n {}'.format(len(enrollments), enrollments))
+    enrollments.update(mode='honor')
