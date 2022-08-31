@@ -1,7 +1,9 @@
 """Management command to update a learner's enrollment mode."""
 
 from logging import getLogger
+
 from django.core.management.base import BaseCommand
+
 from openedx.features.pakx.lms.overrides.tasks import change_enrolement_modes
 
 log = getLogger(__name__)
