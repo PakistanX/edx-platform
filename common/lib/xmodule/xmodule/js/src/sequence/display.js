@@ -462,7 +462,7 @@
                 $.postWithPrefix(completionUrl, {
                     usage_key: usageKey
                 }, function(data) {
-                    if (data.complete === true) {
+                    if (data && data.complete === true) {
                         completionIndicators.removeClass('is-hidden');
                         accordionElement.addClass('complete');
                     }
