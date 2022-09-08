@@ -406,6 +406,8 @@ def _get_course_about_context(request, course_id, category=None):  # pylint: dis
             'starts_in': starts_in,
             'org_description': course_map['org_description'],
             'course_for_you': course_map['course_for_you'],
+            'offered_by': course_map['offered_by'],
+            'reviews': course_map['reviews'],
             'instructors': course_map['instructors'],
             'certificate': course_map['certificate'],
             'publisher_logo': course_map['publisher_logo_url'],

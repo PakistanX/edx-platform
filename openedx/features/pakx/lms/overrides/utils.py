@@ -107,6 +107,8 @@ def get_course_card_data(course, org_prefetched=False):
         'course_for_you': course_custom_setting.course_for_you_html,
         'instructors': course_custom_setting.instructors_html,
         'certificate': course_custom_setting.certificate_html,
+        'offered_by': course_custom_setting.offered_by_html,
+        'reviews': course_custom_setting.reviews_html,
         'publisher_logo_url': course_custom_setting.publisher_logo_url,
         'about_page_image_url': course_custom_setting.about_page_image_url,
         'url': reverse('about_course', kwargs={'course_id': text_type(course.id)}),
