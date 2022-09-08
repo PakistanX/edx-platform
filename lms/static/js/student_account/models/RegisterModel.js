@@ -36,7 +36,8 @@
 
                 // Include all form fields and analytics info in the data sent to the server
                     $.extend(data, model.attributes);
-
+                    const urlParams = new URLSearchParams(Backbone.history.location.search);
+                    data.next = urlParams.get('next');
                     $.ajax({
                         url: model.urlRoot,
                         type: model.ajaxType,
