@@ -362,7 +362,7 @@ def _get_course_about_context(request, course_id, category=None):  # pylint: dis
         # Embed the course reviews tool
         reviews_fragment_view = CourseReviewsModuleFragmentView().render_to_fragment(request, course=course)
         pace = "Self-Paced" if course_details.self_paced else "Instructor-Paced"
-        effort = "None" if course_details.effort == "" else course_details.effort.split(':')[0] + 'h ' + \
+        effort = "None" if not course_details.effort else course_details.effort.split(':')[0] + 'h ' + \
                                                             course_details.effort.split(':')[1] + 'm'
         context = {
             'course': course,
