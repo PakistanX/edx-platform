@@ -6,6 +6,7 @@ Registration related views.
 import datetime
 import json
 import logging
+from urllib.parse import quote_plus
 
 from django.conf import settings
 from django.contrib import messages
@@ -153,6 +154,7 @@ def create_account_with_params(request, params):
     # Copy params so we can modify it; we can't just do dict(params) because if
     # params is request.POST, that results in a dict containing lists of values
     params = dict(list(params.items()))
+    next_url = quote_plus(params.pop('next', ''))
 
     # allow to define custom set of required/optional/hidden fields via configuration
     extra_fields = configuration_helpers.get_value(
@@ -223,7 +225,7 @@ def create_account_with_params(request, params):
         # PKX-463 (PR#111) Updated registration activation link email
         # compose_and_send_activation_email(user, profile, registration)
         from openedx.features.pakx.lms.pakx_admin_app.utils import send_registration_email
-        send_registration_email(user, None, request.scheme, is_public_registration=True)
+        send_registration_email(user, None, request.scheme, is_public_registration=True, next_url=next_url)
 
     # Perform operations that are non-critical parts of account creation
     create_or_set_user_attribute_created_on_site(user, request.site)
