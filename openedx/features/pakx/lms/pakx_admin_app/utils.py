@@ -141,7 +141,7 @@ def create_user(user_data, request_url_scheme):
     return True, user
 
 
-def get_registration_email_message_context(user, password, protocol, is_public_registration):
+def get_registration_email_message_context(user, password, protocol, is_public_registration, next_url=''):
     """
     return context for registration notification email body
     """
@@ -151,6 +151,9 @@ def get_registration_email_message_context(user, password, protocol, is_public_r
         'site_name': site.domain
     }
     message_context.update(get_base_template_context(site, user=user))
+    link = reverse('activate', kwargs={'key': activation_key})
+    if next_url:
+        link = '{}?next={}'.format(link, next_url)
     message_context.update({
         'is_public_registration': is_public_registration,
         'platform_name': configuration_helpers.get_value('PLATFORM_NAME', settings.PLATFORM_NAME),
@@ -161,7 +164,7 @@ def get_registration_email_message_context(user, password, protocol, is_public_r
         'account_activation_link': '{protocol}://{site}{link}'.format(
             protocol=protocol,
             site=configuration_helpers.get_value('SITE_NAME', settings.SITE_NAME),
-            link=reverse('activate', kwargs={'key': activation_key}),
+            link=link,
         )
     })
     return message_context
@@ -263,13 +266,15 @@ def get_request_user_org_id(request):
     return request.user.profile.organization_id
 
 
-def send_registration_email(user, password, protocol, is_public_registration=False):
+def send_registration_email(user, password, protocol, is_public_registration=False, next_url=''):
     """
     send a registration notification via email
     """
     message = RegistrationNotification().personalize(
         recipient=Recipient(user.username, user.email),
         language=user.profile.language,
-        user_context=get_registration_email_message_context(user, password, protocol, is_public_registration),
+        user_context=get_registration_email_message_context(
+            user, password, protocol, is_public_registration, next_url=next_url
+        ),
     )
     ace.send(message)

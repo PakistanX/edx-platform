@@ -543,8 +543,8 @@ def activate_account(request, key):
                 ),
                 extra_tags='account-activation aa-icon',
             )
-
-    return redirect('dashboard')
+    next_url = request.GET.get('next', '')
+    return redirect(next_url if next_url else 'dashboard')
 
 
 @ensure_csrf_cookie
