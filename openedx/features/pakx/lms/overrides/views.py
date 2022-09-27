@@ -361,12 +361,23 @@ def _get_course_about_context(request, course_id, category=None):  # pylint: dis
 
         # Embed the course reviews tool
         reviews_fragment_view = CourseReviewsModuleFragmentView().render_to_fragment(request, course=course)
+        pace = "Self-Paced" if course_details.self_paced else "Instructor-Paced"
+        if course_details.effort:
+            effort_time = course_details.effort.split(':')
+            hour = effort_time[0] + 'h '
+            minutes = effort_time[1] + 'm' if len(effort_time) > 1 else "00m"
+            effort = hour + minutes
+        else:
+            effort = "None"
+
         context = {
             'course': course,
             'language': language,
             'preview_course_url': preview_course_url,
             'course_details': course_details,
             'staff_access': staff_access,
+            'pace': pace,
+            'effort': effort,
             'studio_url': studio_url,
             'registered': registered,
             'course_target': course_target,
@@ -400,6 +411,11 @@ def _get_course_about_context(request, course_id, category=None):  # pylint: dis
             'org_short_logo': course_map['org_logo_url'],
             'starts_in': starts_in,
             'org_description': course_map['org_description'],
+            'course_for_you': course_map['course_for_you'],
+            'offered_by': course_map['offered_by'],
+            'reviews': course_map['reviews'],
+            'instructors': course_map['instructors'],
+            'certificate': course_map['certificate'],
             'publisher_logo': course_map['publisher_logo_url'],
             'about_page_image': course_map['about_page_image_url'],
             'course_rating': get_rating_classes_for_course(course_id),

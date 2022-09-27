@@ -58,6 +58,11 @@ class CourseOverviewContent(TimeStampedModel):
     about_page_image_url = models.CharField(max_length=256, blank=True, default='', null=True)
     days_till_next_reminder = models.PositiveSmallIntegerField(default=0)
     reminder_stop_date = models.DateField(default=None, null=True, blank=True)
+    course_for_you_html = models.TextField(blank=True, default='')
+    instructors_html = models.TextField(blank=True, default='')
+    certificate_html = models.TextField(blank=True, default='')
+    offered_by_html = models.TextField(blank=True, default='')
+    reviews_html = models.TextField(blank=True, default='')
 
     def __str__(self):
         return 'CourseOverviewContent for course {id}'.format(id=self.course.id)
