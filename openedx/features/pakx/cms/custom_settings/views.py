@@ -85,6 +85,7 @@ class CourseCustomSettingsView(LoginRequiredMixin, View):
         publisher_description = request.POST['publisher_description']
         course_overview = request.POST['course-overview']
         course_for_you_html = request.POST['course-for-you']
+        faq_html = request.POST['faq']
         instructors_html = request.POST['course-instructors']
         certificate_html = request.POST['course-certificate']
         offer_by_html = request.POST['offered-by']
@@ -114,6 +115,7 @@ class CourseCustomSettingsView(LoginRequiredMixin, View):
                     'certificate_html': certificate_html,
                     'offered_by_html': offer_by_html,
                     'reviews_html': reviews,
+                    'faq_html': faq_html,
                     'publisher_name': publisher_name,
                     'publisher_description': publisher_description,
                     'card_description': card_description,
