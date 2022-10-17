@@ -4,7 +4,6 @@ Progress Email related signal handlers.
 
 from django.dispatch import receiver
 
-from lms.djangoapps.verify_student.models import ManualVerification
 from openedx.features.pakx.lms.overrides.tasks import (
     add_enrollment_record,
     remove_enrollment_record,
