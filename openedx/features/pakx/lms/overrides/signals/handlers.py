@@ -19,8 +19,6 @@ def copy_active_course_enrollment(sender, event=None, user=None, **kwargs):  # p
     """
     Awards enrollment badge to the given user on new enrollments.
     """
-    import pdb
-    pdb.set_trace()
     course_key = str(kwargs.get('course_id', "Null"))
     if event == EnrollStatusChange.enroll:
         add_enrollment_record(user.id, course_key)
