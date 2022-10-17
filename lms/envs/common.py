@@ -856,7 +856,7 @@ WIKI_ENABLED = False
 
 COURSE_MODE_DEFAULTS = {
     'bulk_sku': None,
-    'currency': u'usd',
+    'currency': u'pkr',
     'description': None,
     'expiration_datetime': None,
     'min_price': 0,
