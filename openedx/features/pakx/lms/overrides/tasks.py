@@ -222,13 +222,14 @@ def send_reminder_emails():
 def verify_user_and_change_enrollment(user, course_key):
     """Manually verify user for verified certificate and change enrollment mode if needed.."""
     modes = CourseMode.objects.filter(course_id=course_key)
-    if bool(modes.filter(mode_slug=CourseMode.VERIFIED)) and not bool(ManualVerification.objects.filter(user=user)):
-        ManualVerification.objects.create(
-            status=u'approved',
-            user=user,
-            name='{}:{}'.format(user.id, course_key),
-            reason='Verified after enrolling in {}'.format(course_key)
-        )
+    if bool(modes.filter(mode_slug=CourseMode.VERIFIED)):
+        if not bool(ManualVerification.objects.filter(user=user)):
+            ManualVerification.objects.create(
+                status=u'approved',
+                user=user,
+                name='{}:{}'.format(user.id, course_key),
+                reason='Verified after enrolling in {}'.format(course_key)
+            )
         if len(modes) == 1:
             log.info('Starting mode change for user: {} and course {}'.format(user.id, course_key))
             CourseEnrollment.objects.filter(user_id=user.id, course=course_key, mode='audit').update(mode='honor')
