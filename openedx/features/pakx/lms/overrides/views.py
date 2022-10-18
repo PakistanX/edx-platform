@@ -430,8 +430,8 @@ def course_about(request, course_id):
     """
     Display the course's about page.
     """
-
-    return render_to_response('courseware/course_about.html', _get_course_about_context(request, course_id))
+    html_template = 'course_about_static.html' if course_id == 'course-v1:LUMSx+1+2022' else 'course_about.html'
+    return render_to_response('courseware/{}'.format(html_template), _get_course_about_context(request, course_id))
 
 
 # noinspection PyInterpreter
