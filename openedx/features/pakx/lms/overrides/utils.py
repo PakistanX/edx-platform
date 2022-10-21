@@ -35,7 +35,7 @@ from openedx.core.djangoapps.site_configuration import helpers as configuration_
 from openedx.core.lib.request_utils import get_request_or_stub
 from openedx.features.course_experience.utils import get_course_outline_block_tree, get_resume_block
 from openedx.features.pakx.cms.custom_settings.models import CourseOverviewContent
-from pakx_feedback.feedback_app.models import UserFeedbackModel
+# from pakx_feedback.feedback_app.models import UserFeedbackModel
 from student.models import CourseEnrollment
 from util.organizations_helpers import get_organization_by_short_name
 from xmodule import course_metadata_utils
@@ -108,6 +108,7 @@ def get_course_card_data(course, org_prefetched=False):
         'faq': course_custom_setting.faq_html,
         'instructors': course_custom_setting.instructors_html,
         'certificate': course_custom_setting.certificate_html,
+        'enrollment_options': course_custom_setting.enrollment_options_html,
         'offered_by': course_custom_setting.offered_by_html,
         'reviews': course_custom_setting.reviews_html,
         'publisher_logo_url': course_custom_setting.publisher_logo_url,
@@ -149,7 +150,7 @@ def get_rating_course(course_id):
 
     :return: (dict) {'rating': 4.3, 'total_responses': 34}
     """
-
+    return {'rating': 4.3, 'total_responses': 34}
     course_rating = UserFeedbackModel.objects.filter(
         course_id=course_id
     ).aggregate(

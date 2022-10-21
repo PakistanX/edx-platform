@@ -90,6 +90,7 @@ class CourseCustomSettingsView(LoginRequiredMixin, View):
         certificate_html = request.POST['course-certificate']
         offer_by_html = request.POST['offered-by']
         reviews = request.POST['reviews']
+        enrollment_options_html = request.POST['enrollment-options']
         card_description = truncate_string_up_to(request.POST['card-description'], 256)
         is_public = request.POST.get('is_public', 'off') == 'on'
         course_experience = request.POST.get('course_experience', 0)
@@ -112,6 +113,7 @@ class CourseCustomSettingsView(LoginRequiredMixin, View):
                     'body_html': course_overview,
                     'course_for_you_html': course_for_you_html,
                     'instructors_html': instructors_html,
+                    'enrollment_options_html': enrollment_options_html,
                     'certificate_html': certificate_html,
                     'offered_by_html': offer_by_html,
                     'reviews_html': reviews,
