@@ -6,6 +6,7 @@ Helpers for the student app.
 import json
 import logging
 import mimetypes
+import re
 import urllib.parse
 from collections import OrderedDict
 from datetime import datetime
@@ -345,8 +346,15 @@ def _get_redirect_to(request_host, request_headers, request_params, request_is_h
         else:
             themes = get_themes()
             next_path = urllib.parse.urlparse(redirect_to).path
+
+            # Having pakx as organization conflicts with theme name and so we cannot redirect back to about page
+            # after signing in
+            is_about_page_url = re.search(
+                r'^/courses/{course_id}/about$'.format(course_id=settings.COURSE_ID_PATTERN),
+                next_path
+            )
             for theme in themes:
-                if theme.theme_dir_name in next_path:
+                if theme.theme_dir_name in next_path and not is_about_page_url:
                     log.warning(
                         u"Redirect to theme content detected after login page: '%(redirect_to)s'",
                         {"redirect_to": redirect_to}
