@@ -90,11 +90,11 @@ class CourseCustomSettingsView(LoginRequiredMixin, View):
         certificate_html = request.POST['course-certificate']
         offer_by_html = request.POST['offered-by']
         reviews = request.POST['reviews']
-        enrollment_options_html = request.POST['enrollment-options']
         card_description = truncate_string_up_to(request.POST['card-description'], 256)
         is_public = request.POST.get('is_public', 'off') == 'on'
         course_experience = request.POST.get('course_experience', 0)
         publisher_logo_url = truncate_string_up_to(request.POST['publisher-logo-url'], 256)
+        group_enrollment_url = truncate_string_up_to(request.POST['group_enrollment_url'], 256)
         publisher_card_logo_url = truncate_string_up_to(request.POST['publisher_card_logo_url'], 256)
         course_banner_image_url = truncate_string_up_to(request.POST['course_banner_image_url'], 256)
         about_page_image_url = truncate_string_up_to(request.POST['about_page_image_url'], 256)
@@ -113,7 +113,6 @@ class CourseCustomSettingsView(LoginRequiredMixin, View):
                     'body_html': course_overview,
                     'course_for_you_html': course_for_you_html,
                     'instructors_html': instructors_html,
-                    'enrollment_options_html': enrollment_options_html,
                     'certificate_html': certificate_html,
                     'offered_by_html': offer_by_html,
                     'reviews_html': reviews,
@@ -123,6 +122,7 @@ class CourseCustomSettingsView(LoginRequiredMixin, View):
                     'card_description': card_description,
                     'course_experience': course_experience,
                     'publisher_logo_url': publisher_logo_url,
+                    'group_enrollment_url': group_enrollment_url,
                     'course_banner_image_url': course_banner_image_url,
                     'publisher_card_logo_url': publisher_card_logo_url,
                     'days_to_unlock': days_to_unlock if subsection_to_lock else 0,
