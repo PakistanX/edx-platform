@@ -45,6 +45,7 @@ class CourseOverviewContent(TimeStampedModel):
     body_html = models.TextField(blank=True, default='')
     card_description = models.CharField(max_length=256, blank=True)
     publisher_logo_url = models.CharField(max_length=256, blank=True, null=True)
+    group_enrollment_url = models.CharField(max_length=256, blank=True, null=True)
     course_set = models.ForeignKey(CourseSet, on_delete=models.DO_NOTHING, default=None, null=True, blank=True)
     course_experience = models.PositiveSmallIntegerField(default=NORMAL, choices=COURSE_EXPERIENCES)
     course = models.OneToOneField(CourseOverview, related_name='custom_settings', on_delete=models.CASCADE)

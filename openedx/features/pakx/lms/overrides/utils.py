@@ -105,6 +105,7 @@ def get_course_card_data(course, org_prefetched=False):
         'org_logo_url': org_logo_url or pakx_short_logo,
         'short_description': course_custom_setting.card_description,
         'course_for_you': course_custom_setting.course_for_you_html,
+        'group_enrollment_url': course_custom_setting.group_enrollment_url,
         'faq': course_custom_setting.faq_html,
         'instructors': course_custom_setting.instructors_html,
         'certificate': course_custom_setting.certificate_html,
