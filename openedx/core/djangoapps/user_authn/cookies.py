@@ -234,11 +234,20 @@ def _get_user_info_cookie_data(request, user):
     # Convert relative URL paths to absolute URIs
     for url_name, url_path in six.iteritems(header_urls):
         header_urls[url_name] = request.build_absolute_uri(url_path)
+    if user.is_superuser:
+        role = 'admin'
+    elif user.is_staff and not user.is_superuser:
+        role = 'manager'
+    else:
+        role = 'learner'
+
+    user.role = role
 
     user_info = {
         'version': settings.EDXMKTG_USER_INFO_COOKIE_VERSION,
         'username': user.username,
         'header_urls': header_urls,
+        'user_role': role
     }
 
     return user_info
