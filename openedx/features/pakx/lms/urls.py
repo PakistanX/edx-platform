@@ -35,4 +35,5 @@ pakx_url_patterns = [
         name='student_progress',
     ),
     url(r'^adminpanel/', include('openedx.features.pakx.lms.pakx_admin_app.urls')),
+    url(r'^discover/', include('openedx.features.pakx.lms.discover.urls')),
 ]

@@ -2579,6 +2579,9 @@ PAKX_INSTALLED_APPS = [
     # custom settings app
     'openedx.features.pakx.cms.custom_settings',
 
+    # discover app
+    'openedx.features.pakx.lms.discover',
+
 ]
 
 INSTALLED_APPS.extend(PAKX_INSTALLED_APPS)
@@ -3365,6 +3368,9 @@ ECOMMERCE_API_URL = 'http://localhost:8002/api/v2'
 ECOMMERCE_API_TIMEOUT = 5
 ECOMMERCE_SERVICE_WORKER_USERNAME = 'ecommerce_worker'
 ECOMMERCE_API_SIGNING_KEY = 'SET-ME-PLEASE'
+
+# Discover URL
+DISCOVER_URL = 'SET-ME-PLEASE'
 
 COURSE_CATALOG_API_URL = 'http://localhost:8008/api/v1'
 
