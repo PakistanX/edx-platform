@@ -3935,3 +3935,5 @@ GITHUB_REPO_ROOT = '/edx/var/edxapp/data'
 
 ##################### SUPPORT URL ############################
 SUPPORT_HOW_TO_UNENROLL_LINK = ''
+
+IS_IT_REAL_EMAIL_API_KEY = ''

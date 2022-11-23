@@ -5,6 +5,7 @@ Programmatic integration point for User API Accounts sub-application
 """
 
 import re
+import requests
 import datetime
 
 import six
@@ -455,6 +456,28 @@ def get_email_existence_validation_error(email):
 
     """
     return _validate(_validate_email_doesnt_exist, errors.AccountEmailAlreadyExists, email)
+
+
+def get_is_real_email_error(email):
+    """Use the external IsItARealEmail API service to check for email validity."""
+    api_key = settings.IS_IT_REAL_EMAIL_API_KEY
+
+    if not api_key:
+        return ''
+
+    response = requests.get(
+        'https://isitarealemail.com/api/email/validate',
+        params={'email': email},
+        headers={'Authorization': 'Bearer {}'.format(api_key)}
+    )
+    status = response.json()['status']
+
+    if status == 'valid':
+        return ''
+    elif status == 'invalid':
+        return 'The email entered is invalid.'
+    else:
+        return ''
 
 
 def _get_user_and_profile(username):
