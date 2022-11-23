@@ -24,7 +24,7 @@ class CourseDataView(APIView):
     @staticmethod
     def get_courses(course_ids):
         """Get course list from IDs."""
-        preserved = Case(*[When(custom_settings__course=course_id, then=pos) for pos, course_id in enumerate(course_ids)])
+        preserved = Case(*[When(custom_settings__course=id, then=pos) for pos, id in enumerate(course_ids)])
         return CourseOverview.objects.filter(
             custom_settings__course__in=course_ids
         ).order_by(preserved)

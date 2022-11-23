@@ -1,4 +1,4 @@
-from django.conf import settings
+from django.conf.urls import url
 
 from openedx.features.pakx.lms.discover.views import BusinessCoursesView, CoursesListView
 
