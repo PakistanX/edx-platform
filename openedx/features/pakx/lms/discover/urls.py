@@ -1,7 +1,6 @@
 from django.conf import settings
-from django.conf.urls import url
 
-from openedx.features.pakx.lms.discover.views import CoursesListView, BusinessCoursesView
+from openedx.features.pakx.lms.discover.views import BusinessCoursesView, CoursesListView
 
 urlpatterns = [
     url(r'^courses_data/$', CoursesListView.as_view(), name='course-data-api'),

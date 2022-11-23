@@ -1,17 +1,19 @@
-from six import text_type
-from rest_framework.views import APIView
+from django.db.models import Case, When
 from django.urls import reverse
-from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from six import text_type
+
 from course_modes.models import get_course_prices
 from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
+from openedx.features.pakx.lms.discover.authentications import DiscoverAuthentication
 from openedx.features.pakx.lms.overrides.utils import (
+    _get_org_log,
     get_or_create_course_overview_content,
     get_organization_by_short_name,
-    _get_org_log,
-    is_blank_str,
+    is_blank_str
 )
-from openedx.features.pakx.lms.discover.authentications import DiscoverAuthentication
 
 
 class CourseDataView(APIView):
@@ -22,9 +24,10 @@ class CourseDataView(APIView):
     @staticmethod
     def get_courses(course_ids):
         """Get course list from IDs."""
+        preserved = Case(*[When(custom_settings__course=course_id, then=pos) for pos, course_id in enumerate(course_ids)])
         return CourseOverview.objects.filter(
             custom_settings__course__in=course_ids
-        )
+        ).order_by(preserved)
 
     def create_course_card_dict(self, data, org_logo_url, org_name, course, is_upcoming):
         """Create dict from provided data."""
@@ -57,6 +60,7 @@ class CourseDataView(APIView):
             'about_page_url': self.request.build_absolute_uri(
                 reverse('about_course', kwargs={'course_id': text_type(course.id)})
             ),
+            'tag': 'Course'
         }
         return self.create_course_card_dict(data, org_logo_url, org_name, course, is_upcoming)
 
@@ -100,13 +104,6 @@ class CoursesListView(CourseDataView):
 
 class BusinessCoursesView(CourseDataView):
     """Get list of business courses for discovery website."""
-
-    @staticmethod
-    def get_courses(course_ids):
-        """Get course list from IDs."""
-        return CourseOverview.objects.filter(
-            custom_settings__course__in=course_ids
-        )
 
     def create_course_card_dict(self, data, org_logo_url, org_name, course, is_upcoming):
         """
