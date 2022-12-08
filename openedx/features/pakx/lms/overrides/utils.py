@@ -44,8 +44,8 @@ log = getLogger(__name__)
 
 VIDEO_BLOCK_TYPES = ['video', 'pakx_video']
 CORE_BLOCK_TYPES = ['html', 'video', 'problem', 'pakx_video', 'pakx_video_quiz',
-                    'edly_carousel', 'pakx_grid_dropdown', 'openassessment']
-PROBLEM_BLOCK_TYPES = ['problem', 'edly_carousel', 'pakx_grid_dropdown', 'pakx_video_quiz']
+                    'edly_carousel', 'pakx_grid_dropdown', 'openassessment', 'journal_xblock']
+PROBLEM_BLOCK_TYPES = ['problem', 'edly_carousel', 'pakx_grid_dropdown', 'pakx_video_quiz', 'journal_xblock']
 BLOCK_TYPES_TO_FILTER = [
     'course', 'chapter', 'sequential', 'vertical', 'discussion', 'openassessment', 'pb-mcq', 'pb-answer', 'pb-choice',
     'pb-message', 'pakx_microlearning', 'pakx_completion'
@@ -300,6 +300,7 @@ def _accumulate_total_block_counts(total_block_type_counts):
         'pakx_assessment': 'problem',
         'pakx_video_quiz': 'problem',
         'openassessment': 'problem',
+        'journal_xblock': 'problem'
     }
     if total_block_type_counts:
         for block_type, count in total_block_type_counts.items():
