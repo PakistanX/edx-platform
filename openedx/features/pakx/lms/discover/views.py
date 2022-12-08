@@ -4,10 +4,11 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from six import text_type
-
+from django.contrib.auth.models import User
 from course_modes.models import get_course_prices
 from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
 from openedx.features.pakx.lms.discover.authentications import DiscoverAuthentication
+from openedx.core.djangoapps.user_api.accounts.image_helpers import get_profile_image_urls_for_user
 from openedx.features.pakx.lms.overrides.utils import (
     _get_org_log,
     get_or_create_course_overview_content,
@@ -127,3 +128,17 @@ class BusinessCoursesView(CourseDataView):
         return Response({
             'courses': [self.get_course_card_data(course) for course in business_courses],
         }, status=status.HTTP_200_OK)
+
+
+class UserProfileImage(APIView):
+    """Get user profile image."""
+
+    def get(self, request, username):
+        """Get user profile image from username."""
+        try:
+            user = User.objects.get(username=username)
+        except User.DoesNotExist:
+            return ''
+
+        urls = get_profile_image_urls_for_user(user, request)
+        return Response({'image': urls.get('medium', '')}, status=status.HTTP_200_OK)
