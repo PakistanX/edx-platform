@@ -1205,6 +1205,7 @@ MANAGERS = ADMINS
 STATIC_URL = '/static/'
 STATIC_ROOT = ENV_ROOT / "staticfiles"
 STATIC_URL_BASE = '/static/'
+PDF_ROOT = PROJECT_ROOT / 'static' / 'pdf'
 
 STATICFILES_DIRS = [
     COMMON_ROOT / "static",
