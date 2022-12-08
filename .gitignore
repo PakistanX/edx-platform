@@ -119,6 +119,8 @@ cms/static/sass/*.css.map
 cms/static/themed_sass/
 themes/**/css
 
+lms/static/pdf/*.pdf
+
 ### Logging artifacts
 log/
 logs

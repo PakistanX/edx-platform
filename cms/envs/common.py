@@ -1756,6 +1756,10 @@ ADVANCED_PROBLEM_TYPES = [
     {
         'component': 'pakx_microlearning',
         'boilerplate_name': None
+    },
+    {
+        'component': 'journal_xblock',
+        'boilerplate_name': None
     }
 ]
 
