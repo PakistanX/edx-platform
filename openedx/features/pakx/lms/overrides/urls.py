@@ -1,6 +1,5 @@
 from django.conf import settings
 from django.conf.urls import url
-from django.conf import settings
 
 from .views import (
     AboutUsView,
@@ -10,11 +9,11 @@ from .views import (
     PrivacyPolicyView,
     RefundPolicyView,
     TermsOfUseView,
+    basket_check,
     course_about_static,
     overview_tab_view,
     partner_space_login,
-    switch_space,
-    basket_check
+    switch_space
 )
 
 urlpatterns = [

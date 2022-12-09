@@ -1,8 +1,8 @@
 """ Overridden views from core """
 from datetime import datetime
+from urllib.parse import unquote
 
 from django.conf import settings
-from urllib.parse import unquote
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import AnonymousUser, User
@@ -15,9 +15,9 @@ from django.urls import reverse
 from django.utils.translation import ugettext as _
 from django.views.decorators.cache import cache_control
 from django.views.decorators.csrf import ensure_csrf_cookie
+from django.views.decorators.http import require_http_methods
 from django.views.generic.base import TemplateView
 from opaque_keys.edx.keys import CourseKey
-from django.views.decorators.http import require_http_methods
 from pytz import utc
 from six import text_type
 from waffle import switch_is_active
