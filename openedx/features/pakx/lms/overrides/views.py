@@ -1,5 +1,6 @@
 """ Overridden views from core """
 from datetime import datetime
+from urllib.parse import unquote
 
 from django.conf import settings
 from django.contrib import messages
@@ -14,6 +15,7 @@ from django.urls import reverse
 from django.utils.translation import ugettext as _
 from django.views.decorators.cache import cache_control
 from django.views.decorators.csrf import ensure_csrf_cookie
+from django.views.decorators.http import require_http_methods
 from django.views.generic.base import TemplateView
 from opaque_keys.edx.keys import CourseKey
 from pytz import utc
@@ -773,3 +775,28 @@ def course_about_static(request):
         request,
         'course-v1:LUMSx+2+2022'
     ))
+
+
+@login_required
+@ensure_csrf_cookie
+@require_http_methods(["GET"])
+def basket_check(request, course_key_string, ne):
+    """Check if user is already enrolled in course.
+
+    Open edX checks if the user is already enrolled in course through orders on the ecommerce site. Since we are
+    manually enrolling users as well, we need to check if user is already enrolled or not.
+    """
+    redirect_url = unquote(ne)
+    course_enrollment = CourseEnrollment.get_enrollment(user=request.user, course_key=course_key_string)
+    if course_enrollment is None:
+        return redirect(redirect_url)
+
+    course_modes = CourseMode.modes_for_course(course_key_string)
+
+    if len(course_modes) == 1:
+        return render_to_response('courseware/error.html')
+
+    if course_enrollment.is_verified_enrollment():
+        return render_to_response('courseware/error.html')
+
+    return redirect(redirect_url)
