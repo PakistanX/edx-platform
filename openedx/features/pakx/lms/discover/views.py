@@ -1,14 +1,15 @@
+from django.contrib.auth.models import User
 from django.db.models import Case, When
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from six import text_type
-from django.contrib.auth.models import User
+
 from course_modes.models import get_course_prices
 from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
-from openedx.features.pakx.lms.discover.authentications import DiscoverAuthentication
 from openedx.core.djangoapps.user_api.accounts.image_helpers import get_profile_image_urls_for_user
+from openedx.features.pakx.lms.discover.authentications import DiscoverAuthentication
 from openedx.features.pakx.lms.overrides.utils import (
     _get_org_log,
     get_or_create_course_overview_content,
