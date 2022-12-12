@@ -138,7 +138,7 @@ class UserProfileImage(APIView):
         try:
             user = User.objects.get(username=username)
         except User.DoesNotExist:
-            return ''
+            return Response({'image': ''}, status=status.HTTP_200_OK)
 
         urls = get_profile_image_urls_for_user(user, request)
         return Response({'image': urls.get('medium', '')}, status=status.HTTP_200_OK)
