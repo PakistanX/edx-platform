@@ -14,6 +14,8 @@ class DiscoverAuthentication(authentication.BaseAuthentication):
         sender_domain = request.META.get("HTTP_ORIGIN", '')
 
         logger.info('\n\n\n\nsender: {}\n\n\n\n'.format(sender_domain))
+        logger.info('\n\n\n\nsender host: {}\n\n\n\n'.format(request.META.get("REMOTE_HOST", '')))
+        logger.info('\n\n\n\nsender host: {}\n\n\n\n'.format(request.META.get("REMOTE_ADDR", '')))
         logger.info('\n\n\n\nURL: {}\n\n\n\n'.format(settings.DISCOVER_URL))
 
         if sender_domain != settings.DISCOVER_URL:
