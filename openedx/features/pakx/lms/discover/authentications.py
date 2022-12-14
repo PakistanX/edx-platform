@@ -11,13 +11,15 @@ class DiscoverAuthentication(authentication.BaseAuthentication):
 
     def authenticate(self, request):
         """Check if domain name in header is valid."""
-        sender_domain = request.META.get("HTTP_ORIGIN", '')
+        sender_domain = request.META.get("HTTP_USER_AGENT", '')
 
         logger.info('\n\n\n\nsender: {}\n\n\n\n'.format(sender_domain))
-        logger.info('\n\n\n\nsender host: {}\n\n\n\n'.format(request.META.get("REMOTE_HOST", '')))
-        logger.info('\n\n\n\nsender host: {}\n\n\n\n'.format(request.META.get("REMOTE_ADDR", '')))
-        logger.info('\n\n\n\nsender host: {}\n\n\n\n'.format(request.META))
         logger.info('\n\n\n\nURL: {}\n\n\n\n'.format(settings.DISCOVER_URL))
+
+        try:
+            sender_domain = sender_domain.split('; ')[1]
+        except IndexError:
+            sender_domain = ''
 
         if sender_domain != settings.DISCOVER_URL:
             raise exceptions.AuthenticationFailed
