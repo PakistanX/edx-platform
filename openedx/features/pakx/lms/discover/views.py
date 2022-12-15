@@ -134,6 +134,8 @@ class BusinessCoursesView(CourseDataView):
 class UserProfileImage(APIView):
     """Get user profile image."""
 
+    authentication_classes = [DiscoverAuthentication, ]
+
     def get(self, request, username):
         """Get user profile image from username."""
         try:
