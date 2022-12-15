@@ -33,5 +33,5 @@ urlpatterns = [
     url(r'^workplace-essentials-showcase/$', BusinessView.as_view(), name='we-showcase'),
     url(r'^workplace-harassment/$', MarketingCampaignPage.as_view(), name='workplace-harassment'),
     url(r'^5emodel/signup/$', course_about_static, name='purchase-course'),
-    url(r'^basket_check/{}/{}$'.format(settings.COURSE_KEY_PATTERN,r'(?P<ne>.*)'), basket_check, name='basket-check'),
+    url(r'^basket_check/{}/{}$'.format(settings.COURSE_KEY_PATTERN, r'(?P<ne>.*)'), basket_check, name='basket-check'),
 ]

@@ -2579,6 +2579,9 @@ PAKX_INSTALLED_APPS = [
     # custom settings app
     'openedx.features.pakx.cms.custom_settings',
 
+    # discover app
+    'openedx.features.pakx.lms.discover',
+
 ]
 
 INSTALLED_APPS.extend(PAKX_INSTALLED_APPS)
