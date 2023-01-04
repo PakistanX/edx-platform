@@ -252,11 +252,13 @@ def _get_course_about_context(request, course_id, category=None):  # pylint: dis
     def _get_ecommerce_data(mode):
         single_link = ''
         bulk_link = ''
+        mode_sku = ''
         if mode and mode.sku:
             single_link = ecomm_service.get_checkout_page_url(mode.sku)
+            mode_sku = mode.sku
         if mode and mode.bulk_sku:
             bulk_link = ecomm_service.get_checkout_page_url(mode.bulk_sku)
-        return single_link, bulk_link, mode.sku
+        return single_link, bulk_link, mode_sku
 
     course_key = CourseKey.from_string(course_id)
 
