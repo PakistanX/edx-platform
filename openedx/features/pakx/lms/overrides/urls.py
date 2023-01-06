@@ -2,8 +2,8 @@ from django.conf import settings
 from django.conf.urls import url
 
 from .views import (
-    BaseTemplateView,
     AboutUsView,
+    BaseTemplateView,
     BusinessView,
     MarketingCampaignPage,
     PartnerWithUsView,
