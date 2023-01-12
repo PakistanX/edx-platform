@@ -465,16 +465,12 @@ def get_is_real_email_error(email):
     if not api_key:
         return ''
 
-    response = requests.get(
-        'https://isitarealemail.com/api/email/validate',
-        params={'email': email},
-        headers={'Authorization': 'Bearer {}'.format(api_key)}
-    )
-    status = response.json()['status']
+    response = requests.get("https://api.emailable.com/v1/verify?email={}&api_key={}".format(email, api_key))
+    status = response.json()['state']
 
-    if status == 'valid':
+    if status == 'deliverable':
         return ''
-    elif status == 'invalid':
+    elif status in ('undeliverable', 'unknown'):
         return 'The email entered is invalid.'
     else:
         return ''
