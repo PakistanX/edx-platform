@@ -503,7 +503,8 @@ class RegistrationView(APIView):
             return response
 
         # PKX-463 - authentication after account activation
-        if not settings.FEATURES.get('SKIP_EMAIL_VALIDATION', None):
+        if (settings.FEATURES.get('SKIP_EMAIL_VALIDATION', None) is False and
+                settings.FEATURES.get('AUTOMATIC_AUTH_FOR_TESTING') is False):
             messages.success(request, _(
                 'In order to sign in, you need to activate your account. We have sent an activation link to your email.'
             ), extra_tags='account-activation')
