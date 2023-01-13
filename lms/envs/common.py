@@ -1205,6 +1205,7 @@ MANAGERS = ADMINS
 STATIC_URL = '/static/'
 STATIC_ROOT = ENV_ROOT / "staticfiles"
 STATIC_URL_BASE = '/static/'
+PDF_ROOT = PROJECT_ROOT / 'static' / 'pdf'
 
 STATICFILES_DIRS = [
     COMMON_ROOT / "static",
@@ -2578,6 +2579,9 @@ PAKX_INSTALLED_APPS = [
 
     # custom settings app
     'openedx.features.pakx.cms.custom_settings',
+
+    # discover app
+    'openedx.features.pakx.lms.discover',
 
 ]
 

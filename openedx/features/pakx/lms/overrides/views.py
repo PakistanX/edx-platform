@@ -14,6 +14,7 @@ from django.urls import reverse
 from django.utils.translation import ugettext as _
 from django.views.decorators.cache import cache_control
 from django.views.decorators.csrf import ensure_csrf_cookie
+from django.views.decorators.http import require_http_methods
 from django.views.generic.base import TemplateView
 from opaque_keys.edx.keys import CourseKey
 from pytz import utc
@@ -251,11 +252,13 @@ def _get_course_about_context(request, course_id, category=None):  # pylint: dis
     def _get_ecommerce_data(mode):
         single_link = ''
         bulk_link = ''
+        mode_sku = ''
         if mode and mode.sku:
             single_link = ecomm_service.get_checkout_page_url(mode.sku)
+            mode_sku = mode.sku
         if mode and mode.bulk_sku:
             bulk_link = ecomm_service.get_checkout_page_url(mode.bulk_sku)
-        return single_link, bulk_link
+        return single_link, bulk_link, mode_sku
 
     course_key = CourseKey.from_string(course_id)
 
@@ -297,6 +300,7 @@ def _get_course_about_context(request, course_id, category=None):  # pylint: dis
         ecommerce_checkout = ecomm_service.is_enabled(request.user)
         ecommerce_checkout_link = ''
         ecommerce_bulk_checkout_link = ''
+        sku = ''
         single_paid_mode = None
         upgrade_data = None
         if ecommerce_checkout:
@@ -307,9 +311,9 @@ def _get_course_about_context(request, course_id, category=None):  # pylint: dis
 
             if not single_paid_mode:
                 upgrade_data = modes.get('verified')
-                ecommerce_checkout_link, ecommerce_bulk_checkout_link = _get_ecommerce_data(upgrade_data)
+                ecommerce_checkout_link, ecommerce_bulk_checkout_link, sku = _get_ecommerce_data(upgrade_data)
             else:
-                ecommerce_checkout_link, ecommerce_bulk_checkout_link = _get_ecommerce_data(single_paid_mode)
+                ecommerce_checkout_link, ecommerce_bulk_checkout_link, sku = _get_ecommerce_data(single_paid_mode)
 
         _, course_price = get_course_prices(course, for_about_page=True)
 
@@ -383,6 +387,7 @@ def _get_course_about_context(request, course_id, category=None):  # pylint: dis
             'ecommerce_checkout': ecommerce_checkout,
             'ecommerce_checkout_link': ecommerce_checkout_link,
             'ecommerce_bulk_checkout_link': ecommerce_bulk_checkout_link,
+            'sku': sku,
             'single_paid_mode': single_paid_mode,
             'upgrade_data': upgrade_data,
             'show_upgrade_after_enrollment': show_upgrade_after_enrollment,
@@ -431,7 +436,8 @@ def course_about(request, course_id):
     """
     Display the course's about page.
     """
-    html_template = 'course_about_static.html' if course_id == 'course-v1:LUMSx+1+2022' else 'course_about.html'
+    updated_template_courses = ['course-v1:LUMSx+1+2022', 'course-v1:LUMSx+4+2022']
+    html_template = 'course_about_static.html' if course_id in updated_template_courses else 'course_about.html'
     return render_to_response('courseware/{}'.format(html_template), _get_course_about_context(request, course_id))
 
 
@@ -773,3 +779,28 @@ def course_about_static(request):
         request,
         'course-v1:LUMSx+2+2022'
     ))
+
+
+@login_required
+@ensure_csrf_cookie
+@require_http_methods(["GET"])
+def basket_check(request, course_key_string, sku):
+    """Check if user is already enrolled in course.
+
+    Open edX checks if the user is already enrolled in course through orders on the ecommerce site. Since we are
+    manually enrolling users as well, we need to check if user is already enrolled or not.
+    """
+    redirect_url = '{}/basket/add/?sku={}'.format(settings.ECOMMERCE_PUBLIC_URL_ROOT, sku)
+    course_enrollment = CourseEnrollment.get_enrollment(user=request.user, course_key=course_key_string)
+    if course_enrollment is None:
+        return redirect(redirect_url)
+
+    course_modes = CourseMode.modes_for_course(course_key_string)
+
+    if len(course_modes) == 1:
+        return render_to_response('courseware/error.html')
+
+    if course_enrollment.is_verified_enrollment():
+        return render_to_response('courseware/error.html')
+
+    return redirect(redirect_url)
