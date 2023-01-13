@@ -157,8 +157,7 @@ def create_account_with_params(request, params):
     params = dict(list(params.items()))
     next_url = quote_plus(params.pop('next', ''))
 
-    is_real_email_error = get_is_real_email_error(params['email'])
-    if is_real_email_error:
+    if get_is_real_email_error(params['email']):
         raise ValidationError({'email': ['The email address provided is not a real email.']})
 
     # allow to define custom set of required/optional/hidden fields via configuration

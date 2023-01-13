@@ -460,7 +460,7 @@ def get_email_existence_validation_error(email):
 
 def get_is_real_email_error(email):
     """Use the external IsItARealEmail API service to check for email validity."""
-    api_key = settings.IS_IT_REAL_EMAIL_API_KEY
+    api_key = settings.EMAILABLE_API_KEY
 
     if not api_key:
         return ''
