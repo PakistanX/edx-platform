@@ -7,7 +7,7 @@ import datetime
 import logging
 import uuid
 from collections import namedtuple
-from urllib.parse import unquote
+from urllib.parse import quote_plus
 
 import six
 from django.conf import settings
@@ -545,8 +545,8 @@ def activate_account(request, key):
                 extra_tags='account-activation aa-icon',
             )
     next_url = request.GET.get('next', '')
-    # if not request.user.is_authenticated:
-    #     next_url = '{}?next={}'.format(reverse('signin_user'), next_url)
+    if not request.user.is_authenticated:
+        next_url = '{}?next={}'.format(reverse('signin_user'), quote_plus(next_url, safe='/'))
     return redirect(next_url if next_url else 'dashboard')
 
 
