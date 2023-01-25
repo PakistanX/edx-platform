@@ -544,7 +544,7 @@ def activate_account(request, key):
                 ),
                 extra_tags='account-activation aa-icon',
             )
-    next_url = unquote(request.GET.get('next', ''))
+    next_url = request.GET.get('next', '')
     if not request.user.is_authenticated:
         next_url = '{}?next={}'.format(reverse('signin_user'), next_url)
     return redirect(next_url if next_url else 'dashboard')
