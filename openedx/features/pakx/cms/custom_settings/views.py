@@ -1,6 +1,7 @@
 """
 All views for custom settings app
 """
+import json
 import logging
 from datetime import datetime
 
@@ -11,7 +12,7 @@ from django.urls import reverse
 from django.utils.decorators import method_decorator
 from django.utils.translation import ugettext as _
 from django.views.decorators.csrf import ensure_csrf_cookie
-from django.views.generic import View
+from django.views.generic import View, TemplateView
 from milestones import api as milestones_api
 from milestones import models as internal
 from opaque_keys.edx.keys import CourseKey
@@ -23,10 +24,18 @@ from openedx.core.djangoapps.site_configuration import helpers as configuration_
 from openedx.core.lib.gating.api import delete_prerequisites
 from openedx.features.pakx.common.utils import truncate_string_up_to
 from openedx.features.pakx.lms.overrides.utils import get_or_create_course_overview_content
+from openedx.core.djangoapps.catalog.utils import check_catalog_integration_and_get_user, create_catalog_api_client
+from openedx.core.lib.edx_api_utils import get_edx_api_data
 from util.views import ensure_valid_course_key
 from xmodule.modulestore.django import modulestore
+from openedx.core.djangoapps.catalog.models import CatalogIntegration
 
 from .models import CourseOverviewContent, CourseSet
+
+from openedx.core.djangoapps.catalog.utils import get_programs
+from django.contrib.sites.models import Site
+from django.core.cache import cache
+from openedx.core.djangoapps.catalog.cache import PROGRAM_CACHE_KEY_TPL
 
 log = logging.getLogger(__name__)
 
@@ -233,3 +242,116 @@ class CourseCustomSettingsView(LoginRequiredMixin, View):
             'content_id': course_content_milestone.content_id,
             'relationship': course_content_milestone.milestone_relationship_type.name
         }
+
+
+@method_decorator(ensure_csrf_cookie, name='dispatch')
+class ProgramsView(LoginRequiredMixin, TemplateView):
+    """Show a list of all programs."""
+
+    template_name = 'programs/programs.html'
+
+    def get_context_data(self):
+        """Add list of programs in context."""
+        context = super(ProgramsView, self).get_context_data()
+
+        programs = get_programs(site=Site.objects.get_current())
+        context['programs'] = programs
+
+        return context
+
+
+@method_decorator(ensure_csrf_cookie, name='dispatch')
+class EditProgramView(LoginRequiredMixin, View):
+    """Edit a program."""
+
+    template_name = 'programs/create-program.html'
+
+    def extract_program_data_from_request(self, request):
+        return {
+            'title': request.POST['program_title'],
+            'overview': request.POST['overview'],
+            'courses': request.POST['courses'].split(','),
+            'card_image_url': truncate_string_up_to(request.POST['card_image_url'], 256),
+        }
+
+    def parse_program_data(self, program):
+        """Parse program data to our format."""
+        course_ids = [course['course_runs'][0]['key'] for course in program['courses']]
+        context = {
+            'program_title': program['title'],
+            'program_for_you_html': '',
+            'faq_html': '',
+            'instructors_html': '',
+            'certificate_html': '',
+            'offer_by_html': '',
+            'reviews': '',
+            'overview': program['overview'],
+            'courses': ','.join(course_ids),
+            'publisher_logo_url': '',
+            'group_enrollment_url': '',
+            'card_image_url': program['card_image_url'],
+            'about_page_video_url': program['video'],
+        }
+        return context
+
+    def get(self, request, program_uuid):
+        program = get_programs(uuid=program_uuid)
+        context = self.parse_program_data(program)
+        return render(request, self.template_name, context=context)
+
+    def post(self, request, program_uuid):
+        client = create_catalog_api_client(request.user, site=Site.objects.get_current())
+        data = self.extract_program_data_from_request(request)
+        # program = client.program(program_uuid).patch(data)
+        # cache.set(PROGRAM_CACHE_KEY_TPL.format(uuid=program_uuid), program)
+
+        return render(request, self.template_name)
+
+
+@method_decorator(ensure_csrf_cookie, name='dispatch')
+class ProgramCreateView(LoginRequiredMixin, View):
+    """Create a program."""
+
+    template_name = 'programs/create-program.html'
+
+    def create_program(self):
+        user, catalog_integration = check_catalog_integration_and_get_user(error_message_field='Program types')
+        if user:
+            api = create_catalog_api_client(user)
+            cache_key = '{base}.program_types'.format(base=catalog_integration.CACHE_KEY)
+
+            data = get_edx_api_data(catalog_integration, 'program_types', api=api,
+                                    cache_key=cache_key if catalog_integration.is_cache_enabled else None)
+
+    def get(self, request):
+        """List down fields required for creating a program."""
+        return render(request, self.template_name, context={})
+
+    def post(self, request):
+        # program_for_you_html = request.POST['program-for-you']
+        # faq_html = request.POST['faq']
+        # instructors_html = request.POST['program-instructors']
+        # certificate_html = request.POST['program-certificate']
+        # offer_by_html = request.POST['offered-by']
+        # reviews = request.POST['reviews']
+        # about_program = request.POST['about-program']
+        # publisher_logo_url = truncate_string_up_to(request.POST['publisher-logo-url'], 256)
+        # group_enrollment_url = truncate_string_up_to(request.POST['group_enrollment_url'], 256)
+        # about_page_image_url = truncate_string_up_to(request.POST['about_page_image_url'], 256)
+        # about_page_video_url = truncate_string_up_to(request.POST['about_page_video_url'], 256)
+        context = {
+            'program_for_you_html': request.POST['program-for-you'],
+            'faq_html': request.POST['faq'],
+            'instructors_html': request.POST['program-instructors'],
+            'certificate_html': request.POST['program-certificate'],
+            'offer_by_html': request.POST['offered-by'],
+            'reviews': request.POST['reviews'],
+            'about_program': request.POST['about-program'],
+            'course_list': request.POST['courses-list'].split(','),
+            'publisher_logo_url': truncate_string_up_to(request.POST['publisher-logo-url'], 256),
+            'group_enrollment_url': truncate_string_up_to(request.POST['group_enrollment_url'], 256),
+            'card_image_url': truncate_string_up_to(request.POST['card_image_url'], 256),
+            'about_page_video_url': truncate_string_up_to(request.POST['about_page_video_url'], 256),
+        }
+
+        return render(request, self.template_name, context=context)
