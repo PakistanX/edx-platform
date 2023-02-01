@@ -11,9 +11,7 @@ from openedx.core.djangoapps.content.course_overviews.models import CourseOvervi
 from openedx.core.djangoapps.user_api.accounts.image_helpers import get_profile_image_urls_for_user
 from openedx.features.pakx.lms.discover.authentications import DiscoverAuthentication
 from openedx.features.pakx.lms.overrides.utils import (
-    _get_org_log,
     get_or_create_course_overview_content,
-    get_organization_by_short_name,
     is_blank_str
 )
 from util.organizations_helpers import get_organization_by_short_name
@@ -36,6 +34,12 @@ class CourseDataView(APIView):
         """Create dict from provided data."""
         raise NotImplementedError
 
+    @staticmethod
+    def get_org_logo(organization):
+        """Extract URL from organization."""
+        org_logo = organization.get('logo')
+        return org_logo.url if org_logo else org_logo
+
     def get_course_card_data(self, course, is_upcoming=False):
         """
         Get course data required for home page course card
@@ -47,7 +51,7 @@ class CourseDataView(APIView):
         course_custom_setting = get_or_create_course_overview_content(course.id)
 
         course_org = get_organization_by_short_name(course.org)
-        org_logo_url = course_custom_setting.publisher_card_logo_url or _get_org_log(course_org)
+        org_logo_url = course_custom_setting.publisher_card_logo_url or self.get_org_logo(course_org)
         org_name = course_org.get('name') if is_blank_str(course_custom_setting.publisher_name) else \
             course_custom_setting.publisher_name
         course_experience_type = 'VIDEO' if course_custom_setting.course_experience else 'NORMAL'
