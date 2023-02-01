@@ -4,6 +4,7 @@ All views for custom settings app
 import json
 import logging
 from datetime import datetime
+from slumber.exceptions import HttpServerError, HttpClientError
 
 from django.conf import settings
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -29,8 +30,10 @@ from openedx.core.lib.edx_api_utils import get_edx_api_data
 from util.views import ensure_valid_course_key
 from xmodule.modulestore.django import modulestore
 from openedx.core.djangoapps.catalog.models import CatalogIntegration
+from django.core.management import call_command
+from django.http import Http404
 
-from .models import CourseOverviewContent, CourseSet
+from .models import CourseOverviewContent, CourseSet, ProgramCustomData
 
 from openedx.core.djangoapps.catalog.utils import get_programs
 from django.contrib.sites.models import Site
@@ -255,8 +258,11 @@ class ProgramsView(LoginRequiredMixin, TemplateView):
         context = super(ProgramsView, self).get_context_data()
 
         programs = get_programs(site=Site.objects.get_current())
-        context['programs'] = programs
+        if not program:
+            call_command('cache_programs')
+            programs = get_programs(site=Site.objects.get_current())
 
+        context['programs'] = programs
         return context
 
 
@@ -264,94 +270,98 @@ class ProgramsView(LoginRequiredMixin, TemplateView):
 class EditProgramView(LoginRequiredMixin, View):
     """Edit a program."""
 
-    template_name = 'programs/create-program.html'
+    template_name = 'programs/program.html'
 
-    def extract_program_data_from_request(self, request):
-        return {
-            'title': request.POST['program_title'],
-            'overview': request.POST['overview'],
-            'courses': request.POST['courses'].split(','),
-            'card_image_url': truncate_string_up_to(request.POST['card_image_url'], 256),
+    @staticmethod
+    def get_program(program_uuid):
+        """Get program from cache. Get from discovery if not found."""
+        program = get_programs(uuid=program_uuid)
+        if not program:
+            call_command('cache_programs')
+            program = get_programs(uuid=program_uuid)
+
+        if not program:
+            raise Http404
+
+        return program
+
+    def update_discover_program(self, program_uuid):
+        """Update program in discovery.."""
+        data = {
+            'title': self.request.POST['program_title'],
+            'overview': self.request.POST['overview'],
+            'courses': self.request.POST['courses'].split(','),
+            'card_image_url': truncate_string_up_to(self.request.POST['card_image_url'], 256),
         }
+        client = create_catalog_api_client( self.request.user, site=Site.objects.get_current())
+        program = client.program(program_uuid).patch(data)
+        cache.set(PROGRAM_CACHE_KEY_TPL.format(uuid=program_uuid), program)
 
-    def parse_program_data(self, program):
+    def update_program_html(self, program_uuid):
+        """Update program in CMS."""
+        ProgramCustomData.objects.update_or_create(
+            program_uuid=program_uuid,
+            defaults={
+                'program_for_you_html': self.request.POST['program_for_you_html'],
+                'instructors_html': self.request.POST['instructors_html'],
+                'certificate_html': self.request.POST['certificate_html'],
+                'offered_by_html': self.request.POST['offered_by_html'],
+                'reviews_html': self.request.POST['reviews_html'],
+                'faq_html': self.request.POST['faq_html'],
+                'image_url': self.request.POST['image_url'],
+                'group_enrollment_url': self.request.POST['group_enrollment_url'],
+                'video_url': self.request.POST['video_url'],
+            }
+        )
+
+    @staticmethod
+    def parse_program_data(program):
         """Parse program data to our format."""
         course_ids = [course['course_runs'][0]['key'] for course in program['courses']]
-        context = {
-            'program_title': program['title'],
-            'program_for_you_html': '',
-            'faq_html': '',
-            'instructors_html': '',
-            'certificate_html': '',
-            'offer_by_html': '',
-            'reviews': '',
-            'overview': program['overview'],
-            'courses': ','.join(course_ids),
-            'publisher_logo_url': '',
-            'group_enrollment_url': '',
-            'card_image_url': program['card_image_url'],
-            'about_page_video_url': program['video'],
-        }
-        return context
+        program.update({'program_title': program['title'], 'courses': ','.join(course_ids)})
+        return program
+
+    def get_all_program_data(self, program_uuid):
+        """Get program data from cache and database."""
+        cache_program = self.get_program(program_uuid)
+        program, _ = ProgramCustomData.objects.get_or_create(program_uuid=program_uuid)
+        cache_program.update(program.__dict__)
+        return cache_program
+
+    def return_error(self, program_uuid, message):
+        """Return HTTP Response for errors."""
+        context = self.parse_program_data(self.get_all_program_data(program_uuid))
+        context.update({'error': True, 'error_msg': message})
+        return render(self.request, self.template_name, context=context)
 
     def get(self, request, program_uuid):
-        program = get_programs(uuid=program_uuid)
-        context = self.parse_program_data(program)
-        return render(request, self.template_name, context=context)
+        program = self.get_all_program_data(program_uuid)
+        return render(request, self.template_name, context=self.parse_program_data(program))
 
     def post(self, request, program_uuid):
-        client = create_catalog_api_client(request.user, site=Site.objects.get_current())
-        data = self.extract_program_data_from_request(request)
-        # program = client.program(program_uuid).patch(data)
-        # cache.set(PROGRAM_CACHE_KEY_TPL.format(uuid=program_uuid), program)
-
-        return render(request, self.template_name)
+        try:
+            self.update_discover_program(program_uuid)
+        except HttpServerError:
+            return self.return_error(program_uuid, 'An error occurred on discovery server while saving the information')
+        except HttpClientError:
+            return self.return_error(
+                program_uuid,
+                'Invalid data format for any one of the following: '
+                'Courses, Publisher Logo URL'
+            )
+        self.update_program_html(program_uuid)
+        return redirect(reverse('edit-program-cms', kwargs={'program_uuid': program_uuid}))
 
 
 @method_decorator(ensure_csrf_cookie, name='dispatch')
 class ProgramCreateView(LoginRequiredMixin, View):
     """Create a program."""
 
-    template_name = 'programs/create-program.html'
-
-    def create_program(self):
-        user, catalog_integration = check_catalog_integration_and_get_user(error_message_field='Program types')
-        if user:
-            api = create_catalog_api_client(user)
-            cache_key = '{base}.program_types'.format(base=catalog_integration.CACHE_KEY)
-
-            data = get_edx_api_data(catalog_integration, 'program_types', api=api,
-                                    cache_key=cache_key if catalog_integration.is_cache_enabled else None)
+    template_name = 'programs/program.html'
 
     def get(self, request):
         """List down fields required for creating a program."""
-        return render(request, self.template_name, context={})
+        return render(request, self.template_name)
 
     def post(self, request):
-        # program_for_you_html = request.POST['program-for-you']
-        # faq_html = request.POST['faq']
-        # instructors_html = request.POST['program-instructors']
-        # certificate_html = request.POST['program-certificate']
-        # offer_by_html = request.POST['offered-by']
-        # reviews = request.POST['reviews']
-        # about_program = request.POST['about-program']
-        # publisher_logo_url = truncate_string_up_to(request.POST['publisher-logo-url'], 256)
-        # group_enrollment_url = truncate_string_up_to(request.POST['group_enrollment_url'], 256)
-        # about_page_image_url = truncate_string_up_to(request.POST['about_page_image_url'], 256)
-        # about_page_video_url = truncate_string_up_to(request.POST['about_page_video_url'], 256)
-        context = {
-            'program_for_you_html': request.POST['program-for-you'],
-            'faq_html': request.POST['faq'],
-            'instructors_html': request.POST['program-instructors'],
-            'certificate_html': request.POST['program-certificate'],
-            'offer_by_html': request.POST['offered-by'],
-            'reviews': request.POST['reviews'],
-            'about_program': request.POST['about-program'],
-            'course_list': request.POST['courses-list'].split(','),
-            'publisher_logo_url': truncate_string_up_to(request.POST['publisher-logo-url'], 256),
-            'group_enrollment_url': truncate_string_up_to(request.POST['group_enrollment_url'], 256),
-            'card_image_url': truncate_string_up_to(request.POST['card_image_url'], 256),
-            'about_page_video_url': truncate_string_up_to(request.POST['about_page_video_url'], 256),
-        }
-
-        return render(request, self.template_name, context=context)
+        pass

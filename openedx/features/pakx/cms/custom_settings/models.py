@@ -128,15 +128,19 @@ class PartnerSpace(TimeStampedModel):
         return partner
 
 
-class ProgramHTMLData(TimeStampedModel):
+class ProgramCustomData(TimeStampedModel):
     """This model holds Our added HTML fields for various programs."""
     program_uuid = models.UUIDField(blank=True, default=uuid4, editable=False, unique=True, verbose_name=_('UUID'))
-    course_for_you_html = models.TextField(blank=True, default='')
+    program_for_you_html = models.TextField(blank=True, default='')
     instructors_html = models.TextField(blank=True, default='')
     certificate_html = models.TextField(blank=True, default='')
     offered_by_html = models.TextField(blank=True, default='')
     reviews_html = models.TextField(blank=True, default='')
     faq_html = models.TextField(blank=True, default='')
-    publisher_logo_url = models.CharField(max_length=256, blank=True, null=True)
+    image_url = models.CharField(max_length=256, blank=True, null=True)
     group_enrollment_url = models.CharField(max_length=256, blank=True, null=True)
     video_url = models.CharField(max_length=256, blank=True, null=True)
+
+    def __str__(self):
+        """String representation of this model."""
+        return str(self.program_uuid)

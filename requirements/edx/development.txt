@@ -23,7 +23,6 @@
 -e git+https://github.com/openedx/xblock-google-drive.git@2d176468e33c0713c911b563f8f65f7cf232f5b6#egg=xblock-google-drive  # via -r requirements/edx/testing.txt
 -e git+https://github.com/PakistanX/xblock-ooyala.git@rebase-juniper#egg=xblock-ooyala-player
 -e git+https://github.com/PakistanX/xblock-mentoring.git@rebase-juniper#egg=xblock-mentoring
--e git+https://github.com/PakistanX/xblock-adventure.git@1.0.2#egg=xblock-adventure
 -e git+https://github.com/PakistanX/xblock-image-explorer.git@v2.1#egg=xblock-image-explorer
 -e common/lib/xmodule  # via -r requirements/edx/testing.txt
 alabaster==0.7.12         # via sphinx
