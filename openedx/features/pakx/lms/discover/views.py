@@ -16,6 +16,7 @@ from openedx.features.pakx.lms.overrides.utils import (
     get_organization_by_short_name,
     is_blank_str
 )
+from util.organizations_helpers import get_organization_by_short_name
 
 
 class CourseDataView(APIView):
