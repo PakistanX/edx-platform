@@ -10,10 +10,7 @@ from course_modes.models import get_course_prices
 from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
 from openedx.core.djangoapps.user_api.accounts.image_helpers import get_profile_image_urls_for_user
 from openedx.features.pakx.lms.discover.authentications import DiscoverAuthentication
-from openedx.features.pakx.lms.overrides.utils import (
-    get_or_create_course_overview_content,
-    is_blank_str
-)
+from openedx.features.pakx.lms.overrides.utils import get_or_create_course_overview_content, is_blank_str
 from util.organizations_helpers import get_organization_by_short_name
 
 
