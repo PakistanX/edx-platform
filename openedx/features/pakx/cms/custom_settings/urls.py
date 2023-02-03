@@ -4,7 +4,7 @@ Urls for custom settings app
 from django.conf import settings
 from django.conf.urls import url
 
-from .views import CourseCustomSettingsView, ListProgramsView, ProgramCreateView, EditProgramView
+from .views import CourseCustomSettingsView, EditProgramView, ListProgramsView, ProgramCreateView
 
 urlpatterns = [
     url(

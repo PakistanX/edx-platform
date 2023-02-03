@@ -4,41 +4,43 @@ All views for custom settings app
 import json
 import logging
 from datetime import datetime
-from slumber.exceptions import HttpServerError, HttpClientError
 
 from django.conf import settings
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.sites.models import Site
+from django.core.cache import cache
+from django.core.management import call_command
+from django.http import Http404
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils.decorators import method_decorator
 from django.utils.translation import ugettext as _
 from django.views.decorators.csrf import ensure_csrf_cookie
-from django.views.generic import View, TemplateView
+from django.views.generic import TemplateView, View
 from milestones import api as milestones_api
 from milestones import models as internal
 from opaque_keys.edx.keys import CourseKey
 from six import text_type
+from slumber.exceptions import HttpClientError, HttpServerError
 
 from cms.djangoapps.contentstore.views.course import get_course_and_check_access
 from lms.djangoapps.course_api.blocks.api import get_blocks
+from openedx.core.djangoapps.catalog.cache import PROGRAM_CACHE_KEY_TPL
+from openedx.core.djangoapps.catalog.models import CatalogIntegration
+from openedx.core.djangoapps.catalog.utils import (
+    check_catalog_integration_and_get_user,
+    create_catalog_api_client,
+    get_programs
+)
 from openedx.core.djangoapps.site_configuration import helpers as configuration_helpers
+from openedx.core.lib.edx_api_utils import get_edx_api_data
 from openedx.core.lib.gating.api import delete_prerequisites
 from openedx.features.pakx.common.utils import truncate_string_up_to
 from openedx.features.pakx.lms.overrides.utils import get_or_create_course_overview_content
-from openedx.core.djangoapps.catalog.utils import check_catalog_integration_and_get_user, create_catalog_api_client
-from openedx.core.lib.edx_api_utils import get_edx_api_data
 from util.views import ensure_valid_course_key
 from xmodule.modulestore.django import modulestore
-from openedx.core.djangoapps.catalog.models import CatalogIntegration
-from django.core.management import call_command
-from django.http import Http404
 
 from .models import CourseOverviewContent, CourseSet, ProgramCustomData
-
-from openedx.core.djangoapps.catalog.utils import get_programs
-from django.contrib.sites.models import Site
-from django.core.cache import cache
-from openedx.core.djangoapps.catalog.cache import PROGRAM_CACHE_KEY_TPL
 
 log = logging.getLogger(__name__)
 
