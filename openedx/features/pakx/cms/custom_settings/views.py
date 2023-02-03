@@ -248,17 +248,17 @@ class CourseCustomSettingsView(LoginRequiredMixin, View):
 
 
 @method_decorator(ensure_csrf_cookie, name='dispatch')
-class ProgramsView(LoginRequiredMixin, TemplateView):
+class ListProgramsView(LoginRequiredMixin, TemplateView):
     """Show a list of all programs."""
 
     template_name = 'programs/programs.html'
 
     def get_context_data(self):
         """Add list of programs in context."""
-        context = super(ProgramsView, self).get_context_data()
+        context = super(ListProgramsView, self).get_context_data()
 
         programs = get_programs(site=Site.objects.get_current())
-        if not program:
+        if not programs:
             call_command('cache_programs')
             programs = get_programs(site=Site.objects.get_current())
 
@@ -267,10 +267,14 @@ class ProgramsView(LoginRequiredMixin, TemplateView):
 
 
 @method_decorator(ensure_csrf_cookie, name='dispatch')
-class EditProgramView(LoginRequiredMixin, View):
-    """Edit a program."""
+class ProgramMixin(LoginRequiredMixin, View):
+    """Mixin for updating or creating programs."""
 
     template_name = 'programs/program.html'
+    errors = {
+        '500': 'An error occurred on discovery server while saving the information',
+        '400': 'Invalid data format for any one of the following: Courses, Publisher Logo URL or Marketing Slug'
+    }
 
     @staticmethod
     def get_program(program_uuid):
@@ -285,34 +289,53 @@ class EditProgramView(LoginRequiredMixin, View):
 
         return program
 
-    def update_discover_program(self, program_uuid):
-        """Update program in discovery.."""
-        data = {
+    def extract_api_data(self):
+        return {
             'title': self.request.POST['program_title'],
             'overview': self.request.POST['overview'],
             'courses': self.request.POST['courses'].split(','),
-            'card_image_url': truncate_string_up_to(self.request.POST['card_image_url'], 256),
+            'card_image_url': truncate_string_up_to(self.request.POST['card_image_url'], 255),
+            'marketing_slug': truncate_string_up_to(self.request.POST['marketing_slug'], 255)
         }
-        client = create_catalog_api_client( self.request.user, site=Site.objects.get_current())
-        program = client.program(program_uuid).patch(data)
+
+    def extract_custom_program_data(self):
+        return {
+            'program_for_you_html': self.request.POST['program_for_you_html'],
+            'instructors_html': self.request.POST['instructors_html'],
+            'certificate_html': self.request.POST['certificate_html'],
+            'offered_by_html': self.request.POST['offered_by_html'],
+            'reviews_html': self.request.POST['reviews_html'],
+            'faq_html': self.request.POST['faq_html'],
+            'image_url': self.request.POST['image_url'],
+            'group_enrollment_url': self.request.POST['group_enrollment_url'],
+            'video_url': self.request.POST['video_url'],
+        }
+
+    def update_discover_program(self, program_uuid=None):
+        """Update program in discovery.."""
+        data = self.extract_api_data()
+        client = create_catalog_api_client(self.request.user, site=Site.objects.get_current())
+        program = self.get_data_from_api(data, client, program_uuid=program_uuid)
+        program_uuid = program['uuid']
         cache.set(PROGRAM_CACHE_KEY_TPL.format(uuid=program_uuid), program)
+        return program_uuid
+
+    def return_error(self, message, program_uuid=None):
+        """Return Response for errors."""
+        context = self.parse_program_data(self.get_all_program_data(program_uuid=program_uuid))
+        context.update({'error': True, 'error_msg': message})
+        return render(self.request, self.template_name, context=context)
 
     def update_program_html(self, program_uuid):
         """Update program in CMS."""
         ProgramCustomData.objects.update_or_create(
             program_uuid=program_uuid,
-            defaults={
-                'program_for_you_html': self.request.POST['program_for_you_html'],
-                'instructors_html': self.request.POST['instructors_html'],
-                'certificate_html': self.request.POST['certificate_html'],
-                'offered_by_html': self.request.POST['offered_by_html'],
-                'reviews_html': self.request.POST['reviews_html'],
-                'faq_html': self.request.POST['faq_html'],
-                'image_url': self.request.POST['image_url'],
-                'group_enrollment_url': self.request.POST['group_enrollment_url'],
-                'video_url': self.request.POST['video_url'],
-            }
+            defaults=self.extract_custom_program_data()
         )
+
+
+class EditProgramView(ProgramMixin):
+    """Edit a program."""
 
     @staticmethod
     def parse_program_data(program):
@@ -321,18 +344,17 @@ class EditProgramView(LoginRequiredMixin, View):
         program.update({'program_title': program['title'], 'courses': ','.join(course_ids)})
         return program
 
-    def get_all_program_data(self, program_uuid):
+    def get_all_program_data(self, program_uuid=None):
         """Get program data from cache and database."""
         cache_program = self.get_program(program_uuid)
         program, _ = ProgramCustomData.objects.get_or_create(program_uuid=program_uuid)
         cache_program.update(program.__dict__)
         return cache_program
 
-    def return_error(self, program_uuid, message):
-        """Return HTTP Response for errors."""
-        context = self.parse_program_data(self.get_all_program_data(program_uuid))
-        context.update({'error': True, 'error_msg': message})
-        return render(self.request, self.template_name, context=context)
+    @staticmethod
+    def get_data_from_api(data, client, program_uuid=None):
+        """Patch API call for updating program."""
+        return client.program(program_uuid).patch(data)
 
     def get(self, request, program_uuid):
         program = self.get_all_program_data(program_uuid)
@@ -342,26 +364,50 @@ class EditProgramView(LoginRequiredMixin, View):
         try:
             self.update_discover_program(program_uuid)
         except HttpServerError:
-            return self.return_error(program_uuid, 'An error occurred on discovery server while saving the information')
+            return self.return_error(
+                self.errors['500'],
+                program_uuid=program_uuid
+            )
         except HttpClientError:
             return self.return_error(
-                program_uuid,
-                'Invalid data format for any one of the following: '
-                'Courses, Publisher Logo URL'
+                self.errors['400'],
+                program_uuid=program_uuid
             )
         self.update_program_html(program_uuid)
         return redirect(reverse('edit-program-cms', kwargs={'program_uuid': program_uuid}))
 
 
-@method_decorator(ensure_csrf_cookie, name='dispatch')
-class ProgramCreateView(LoginRequiredMixin, View):
+class ProgramCreateView(ProgramMixin):
     """Create a program."""
 
-    template_name = 'programs/program.html'
+    @staticmethod
+    def get_data_from_api(data, client, program_uuid=None):
+        """Patch API call for updating program."""
+        return client.program.post(data)
+
+    def get_all_program_data(self, program_uuid=None):
+        """Get program data from cache and database."""
+        context = self.extract_api_data()
+        context['courses'] = self.request.POST['courses']
+        context.update(self.extract_custom_program_data())
+        return context
+
+    @staticmethod
+    def parse_program_data(program):
+        """Parse program data to our format."""
+        program.update({'program_title': program['title']})
+        return program
 
     def get(self, request):
         """List down fields required for creating a program."""
         return render(request, self.template_name)
 
     def post(self, request):
-        pass
+        try:
+            program_uuid = self.update_discover_program()
+        except HttpServerError:
+            return self.return_error(self.errors['500'])
+        except HttpClientError:
+            return self.return_error(self.errors['400'])
+        self.update_program_html(program_uuid)
+        return redirect(reverse('edit-program-cms', kwargs={'program_uuid': program_uuid}))
