@@ -4,7 +4,7 @@ Urls for custom settings app
 from django.conf import settings
 from django.conf.urls import url
 
-from .views import CourseCustomSettingsView
+from .views import CourseCustomSettingsView, EditProgramView, ListProgramsView, ProgramCreateView
 
 urlpatterns = [
     url(
@@ -12,4 +12,7 @@ urlpatterns = [
         CourseCustomSettingsView.as_view(),
         name='custom_settings'
     ),
+    url(r'^programs/create$', ProgramCreateView.as_view(), name='create-program-cms'),
+    url(r'^programs/{}'.format(r'(?P<program_uuid>[0-9a-f-]+)'), EditProgramView.as_view(), name='edit-program-cms'),
+    url(r'^programs$', ListProgramsView.as_view(), name='programs-list-cms'),
 ]

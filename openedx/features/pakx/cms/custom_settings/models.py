@@ -4,6 +4,7 @@ All models for custom settings app
 
 from collections import OrderedDict
 from logging import getLogger
+from uuid import uuid4
 
 from django.conf import settings
 from django.db import models
@@ -11,7 +12,7 @@ from django.utils.lru_cache import lru_cache
 from jsonfield.fields import JSONField
 from model_utils.models import TimeStampedModel
 from organizations.models import Organization
-
+from django.utils.translation import ugettext_lazy as _
 from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
 
 logger = getLogger(__name__)  # pylint: disable=invalid-name
@@ -125,3 +126,21 @@ class PartnerSpace(TimeStampedModel):
             logger.warning('Partner space for:"{}" not found, Loading Default:"{}"'.format(space_name, default_space))
             partner = cls.objects.filter(name__iexact=default_space).select_related('organization').first()
         return partner
+
+
+class ProgramCustomData(TimeStampedModel):
+    """This model holds Our added HTML fields for various programs."""
+    program_uuid = models.UUIDField(blank=True, default=uuid4, editable=False, unique=True, verbose_name=_('UUID'))
+    program_for_you_html = models.TextField(blank=True, default='')
+    instructors_html = models.TextField(blank=True, default='')
+    certificate_html = models.TextField(blank=True, default='')
+    offered_by_html = models.TextField(blank=True, default='')
+    reviews_html = models.TextField(blank=True, default='')
+    faq_html = models.TextField(blank=True, default='')
+    image_url = models.CharField(max_length=256, blank=True, null=True)
+    group_enrollment_url = models.CharField(max_length=256, blank=True, null=True)
+    video_url = models.CharField(max_length=256, blank=True, null=True)
+
+    def __str__(self):
+        """String representation of this model."""
+        return str(self.program_uuid)

@@ -3,7 +3,7 @@ Admin configuration for custom settings app models
 """
 from django.contrib import admin
 
-from .models import CourseOverviewContent, CourseSet, PartnerSpace
+from .models import CourseOverviewContent, CourseSet, PartnerSpace, ProgramCustomData
 
 
 class CourseOverviewContentAdmin(admin.ModelAdmin):
@@ -34,5 +34,17 @@ class PartnerSpaceAdmin(admin.ModelAdmin):
     list_filter = ['name']
 
 
-admin.site.register(CourseOverviewContent, CourseOverviewContentAdmin)
+class ProgramCustomDataAdmin(admin.ModelAdmin):
+    """
+    Admin interface for the CourseOverviewContent object.
+    """
 
+    class Meta(object):
+        """
+        Meta class for CourseOverviewContent admin model
+        """
+        model = ProgramCustomData
+
+
+admin.site.register(CourseOverviewContent, CourseOverviewContentAdmin)
+admin.site.register(ProgramCustomData, ProgramCustomDataAdmin)
