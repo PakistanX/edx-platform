@@ -1,7 +1,6 @@
 """
 All views for custom settings app
 """
-import json
 import logging
 from datetime import datetime
 
@@ -26,14 +25,11 @@ from slumber.exceptions import HttpClientError, HttpServerError
 from cms.djangoapps.contentstore.views.course import get_course_and_check_access
 from lms.djangoapps.course_api.blocks.api import get_blocks
 from openedx.core.djangoapps.catalog.cache import PROGRAM_CACHE_KEY_TPL
-from openedx.core.djangoapps.catalog.models import CatalogIntegration
 from openedx.core.djangoapps.catalog.utils import (
-    check_catalog_integration_and_get_user,
     create_catalog_api_client,
     get_programs
 )
 from openedx.core.djangoapps.site_configuration import helpers as configuration_helpers
-from openedx.core.lib.edx_api_utils import get_edx_api_data
 from openedx.core.lib.gating.api import delete_prerequisites
 from openedx.features.pakx.common.utils import truncate_string_up_to
 from openedx.features.pakx.lms.overrides.utils import get_or_create_course_overview_content
@@ -255,9 +251,9 @@ class ListProgramsView(LoginRequiredMixin, TemplateView):
 
     template_name = 'programs/programs.html'
 
-    def get_context_data(self):
+    def get_context_data(self, **kwargs):
         """Add list of programs in context."""
-        context = super(ListProgramsView, self).get_context_data()
+        context = super(ListProgramsView, self).get_context_data(kwargs)
 
         programs = get_programs(site=Site.objects.get_current())
         if not programs:
