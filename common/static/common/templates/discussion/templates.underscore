@@ -534,7 +534,7 @@
         </div>
         <% } %>
     </div>
-    <div>
+    <div class="d-btn-holder">
         <button type="submit" class="btn btn-primary submit"><%- gettext('Create Post') %></button>
         <button type="button" class="btn btn-outline-primary cancel"><%- gettext('Cancel') %><span class="icon icon-Cancel"></span></button>
     </div>
