@@ -594,6 +594,8 @@ class BusinessView(AboutUsView):
     View for business page.
     """
 
+    DISCOVER_EXTENSION_URL = 'ilmx-for-business'
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.email_subject = 'Business Page Form Data'
