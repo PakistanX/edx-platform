@@ -534,7 +534,7 @@
         </div>
         <% } %>
     </div>
-    <div>
+    <div class="d-btn-holder">
         <button type="submit" class="btn btn-primary submit"><%- gettext('Create Post') %></button>
         <button type="button" class="btn btn-outline-primary cancel"><%- gettext('Cancel') %><span class="icon icon-Cancel"></span></button>
     </div>
@@ -604,7 +604,7 @@
 </div>-->
 <div class="theme-selection">
     <span class="theme-title">Theme</span>
-    <span class="theme-opener">
+    <span class="theme-opener hidden">
         <span class="text">show more (4)</span>
         <i class="icon-Chevron-Up"></i>
     </span>
