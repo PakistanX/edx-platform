@@ -3,6 +3,7 @@ from django.conf.urls import url
 
 from .views import (
     AboutUsView,
+    BaseTemplateView,
     BusinessView,
     MarketingCampaignPage,
     PartnerWithUsView,
@@ -37,4 +38,5 @@ urlpatterns = [
         settings.COURSE_KEY_PATTERN,
         r'(?P<sku>[A-Za-z0-9]+)'
     ), basket_check, name='basket-check'),
+    url(r'^$', BaseTemplateView.as_view(), name="landing-page"),
 ]
