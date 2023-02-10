@@ -463,6 +463,8 @@ class BaseTemplateView(TemplateView):
     Base template view
     """
 
+    DISCOVER_EXTENSION_URL = ''
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['tags'] = ['LMS']
@@ -476,8 +478,11 @@ class BaseTemplateView(TemplateView):
         return context
 
     def get(self, request, *args, **kwargs):
-        context = self.get_context_data(request=request)
-        return render_to_response(self.template_name, context)
+        """Redirect to discover URL of appropriate page."""
+        return redirect('{}/{}'.format(settings.DISCOVER_URL, self.DISCOVER_EXTENSION_URL))
+        # Uncomment this if a switch is needed back to our platform.
+        # context = self.get_context_data(request=request)
+        # return render_to_response(self.template_name, context)
 
 
 class AboutUsView(BaseTemplateView):
@@ -486,6 +491,7 @@ class AboutUsView(BaseTemplateView):
     """
 
     template_name = 'overrides/about_us.html'
+    DISCOVER_EXTENSION_URL = 'about-us'
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -549,6 +555,7 @@ class PartnerWithUsView(AboutUsView):
         self.email_subject = 'Partner with Us Form Data'
 
     template_name = "overrides/partner_with_us.html"
+    DISCOVER_EXTENSION_URL = 'partner-with-us'
 
 
 # class BusinessView(AboutUsView):
@@ -579,12 +586,15 @@ class MarketingCampaignPage(AboutUsView):
         self.hidden_fields = ['message']
 
     template_name = 'overrides/marketing_campaign.html'
+    DISCOVER_EXTENSION_URL = 'ilmx-for-business'
 
 
 class BusinessView(AboutUsView):
     """
     View for business page.
     """
+
+    DISCOVER_EXTENSION_URL = 'ilmx-for-business'
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -615,6 +625,7 @@ class TermsOfUseView(BaseTemplateView):
     View for terms of use
     """
     template_name = 'overrides/terms_of_use.html'
+    DISCOVER_EXTENSION_URL = 'terms-of-use'
 
 
 class PrivacyPolicyView(BaseTemplateView):
@@ -622,6 +633,7 @@ class PrivacyPolicyView(BaseTemplateView):
     View for terms of use
     """
     template_name = 'overrides/privacy_policy.html'
+    DISCOVER_EXTENSION_URL = 'privacy-policy'
 
 
 class RefundPolicyView(BaseTemplateView):
@@ -629,6 +641,7 @@ class RefundPolicyView(BaseTemplateView):
     View for terms of use
     """
     template_name = 'overrides/refund_policy.html'
+    DISCOVER_EXTENSION_URL = 'refund-policy'
 
 
 def partner_space_login(request, partner):
