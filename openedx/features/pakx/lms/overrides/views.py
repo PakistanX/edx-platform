@@ -820,6 +820,9 @@ def program_marketing(request, program_uuid):
     def hour_to_str(hours):
         """Convert hours to str e.g. 1.9 = 1h 9m."""
         hours = str(hours)
+        if not hours:
+            return hours
+
         split_data = hours.split('.')
         if len(split_data) == 1:
             return '{}h'.format(hours)
