@@ -31,7 +31,7 @@ from openedx.core.djangoapps.catalog.utils import (
 )
 from openedx.core.djangoapps.site_configuration import helpers as configuration_helpers
 from openedx.core.lib.gating.api import delete_prerequisites
-from openedx.features.pakx.common.utils import truncate_string_up_to
+from openedx.features.pakx.common.utils import truncate_string_up_to, get_program
 from openedx.features.pakx.lms.overrides.utils import get_or_create_course_overview_content
 from util.views import ensure_valid_course_key
 from xmodule.modulestore.django import modulestore
@@ -253,7 +253,7 @@ class ListProgramsView(LoginRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         """Add list of programs in context."""
-        context = super(ListProgramsView, self).get_context_data(kwargs)
+        context = super(ListProgramsView, self).get_context_data(**kwargs)
 
         programs = get_programs(site=Site.objects.get_current())
         if not programs:
@@ -274,26 +274,14 @@ class ProgramMixin(LoginRequiredMixin, View):
         '400': 'Invalid data format for any one of the following: Courses, Publisher Logo URL or Marketing Slug'
     }
 
-    @staticmethod
-    def get_program(program_uuid):
-        """Get program from cache. Get from discovery if not found."""
-        program = get_programs(uuid=program_uuid)
-        if not program:
-            call_command('cache_programs')
-            program = get_programs(uuid=program_uuid)
-
-        if not program:
-            raise Http404
-
-        return program
-
     def extract_api_data(self):
         return {
             'title': self.request.POST['program_title'],
             'overview': self.request.POST['overview'],
             'courses': self.request.POST['courses'].split(','),
             'card_image_url': truncate_string_up_to(self.request.POST['card_image_url'], 255),
-            'marketing_slug': truncate_string_up_to(self.request.POST['marketing_slug'], 255)
+            'marketing_slug': truncate_string_up_to(self.request.POST['marketing_slug'], 255),
+            'total_hours_of_effort': self.request.POST['total_hours_of_effort'],
         }
 
     def extract_custom_program_data(self):
@@ -344,7 +332,7 @@ class EditProgramView(ProgramMixin):
 
     def get_all_program_data(self, program_uuid=None):
         """Get program data from cache and database."""
-        cache_program = self.get_program(program_uuid)
+        cache_program = get_program(program_uuid)
         program, _ = ProgramCustomData.objects.get_or_create(program_uuid=program_uuid)
         cache_program.update(program.__dict__)
         return cache_program

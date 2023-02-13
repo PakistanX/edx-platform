@@ -3,6 +3,8 @@ from logging import getLogger
 from django.conf import settings
 
 from openedx.features.pakx.cms.custom_settings.models import PartnerSpace
+from django.core.management import call_command
+from openedx.core.djangoapps.catalog.utils import get_programs
 
 log = getLogger(__name__)
 
@@ -129,3 +131,16 @@ def truncate_string_up_to(value, max_limit):
     """
 
     return None if value is None else value[:max_limit]
+
+
+def get_program(program_uuid):
+    """Get program from cache. Get from discovery if not found."""
+    program = get_programs(uuid=program_uuid)
+    if not program:
+        call_command('cache_programs')
+        program = get_programs(uuid=program_uuid)
+
+    if not program:
+        raise Http404
+
+    return program

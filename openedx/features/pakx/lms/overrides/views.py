@@ -20,7 +20,7 @@ from opaque_keys.edx.keys import CourseKey
 from pytz import utc
 from six import text_type
 from waffle import switch_is_active
-
+from django.utils.html import escape
 from course_modes.models import CourseMode, get_course_prices
 from edxmako.shortcuts import marketing_link, render_to_response
 from lms.djangoapps.ccx.custom_exception import CCXLocatorValidationException
@@ -57,11 +57,12 @@ from openedx.features.course_experience.utils import get_course_outline_block_tr
 from openedx.features.course_experience.waffle import ENABLE_COURSE_ABOUT_SIDEBAR_HTML
 from openedx.features.course_experience.waffle import waffle as course_experience_waffle
 from openedx.features.enterprise_support.api import data_sharing_consent_required
-from openedx.features.pakx.cms.custom_settings.models import CourseOverviewContent
+from openedx.features.pakx.cms.custom_settings.models import CourseOverviewContent, ProgramCustomData
 from openedx.features.pakx.common.utils import (
     get_active_partner_model,
     get_partner_space_meta,
-    set_partner_space_in_session
+    set_partner_space_in_session,
+    get_program
 )
 from openedx.features.pakx.lms.overrides.forms import AboutUsForm
 from openedx.features.pakx.lms.overrides.tasks import send_contact_us_email
@@ -86,6 +87,9 @@ from util.milestones_helpers import get_prerequisite_courses_display
 from util.views import ensure_valid_course_key
 from xmodule.course_module import COURSE_VISIBILITY_PUBLIC, COURSE_VISIBILITY_PUBLIC_OUTLINE
 from xmodule.modulestore.django import modulestore
+from openedx.core.djangoapps.programs.utils import ProgramMarketingDataExtender
+from django.utils.text import slugify
+from rest_framework.views import APIView
 
 
 # NOTE: This view is not linked to directly--it is called from
@@ -802,5 +806,60 @@ def basket_check(request, course_key_string, sku):
 
     if course_enrollment.is_verified_enrollment():
         return render_to_response('courseware/error.html')
+
+    return redirect(redirect_url)
+
+
+@ensure_csrf_cookie
+@cache_if_anonymous()
+def program_marketing(request, program_uuid):
+    """
+    Display the program marketing page.
+    """
+
+    def hour_to_str(hours):
+        """Convert hours to str e.g. 1.9 = 1h 9m."""
+        hours = str(hours)
+        split_data = hours.split('.')
+        if len(split_data) == 1:
+            return '{}h'.format(hours)
+        return '{}h {}m'.format(split_data[0], split_data[1])
+
+    program_data = get_program(program_uuid)
+
+    if not program_data:
+        raise Http404
+
+    program = ProgramMarketingDataExtender(program_data, request.user).extend()
+    program['type_slug'] = slugify(program['type'])
+    skus = program.get('skus')
+    ecommerce_service = EcommerceService()
+
+    program_html_data = ProgramCustomData.objects.get(program_uuid=program_uuid)
+    program.update(program_html_data.to_dict())
+    program['total_hours_of_effort'] = hour_to_str(program['total_hours_of_effort'])
+
+    context = {'program': program}
+
+    if program.get('is_learner_eligible_for_one_click_purchase') and skus:
+        context['buy_button_href'] = ecommerce_service.get_checkout_page_url(
+            *skus,
+            program_uuid=program_uuid,
+            base_url='' if request.user.is_authenticated else '/program_basket_check'
+        )
+
+    context['uses_bootstrap'] = True
+
+    return render_to_response('courseware/program_marketing.html', context)
+
+
+@login_required
+@ensure_csrf_cookie
+@require_http_methods(["GET"])
+def program_basket_check(request):
+    redirect_url = '{}/basket/add/?{}'.format(
+        settings.ECOMMERCE_PUBLIC_URL_ROOT,
+        request.META.get('QUERY_STRING', '')
+    )
 
     return redirect(redirect_url)

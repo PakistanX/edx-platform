@@ -144,3 +144,9 @@ class ProgramCustomData(TimeStampedModel):
     def __str__(self):
         """String representation of this model."""
         return str(self.program_uuid)
+
+    def to_dict(self):
+        """Dictionary representation for program about page."""
+        data = self.__dict__
+        data.pop('program_uuid')
+        return data
