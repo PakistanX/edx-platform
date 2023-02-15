@@ -285,6 +285,7 @@ class ProgramMixin(LoginRequiredMixin, View):
         }
 
     def extract_custom_program_data(self):
+        launch_date = self.request.POST['launch_date']
         return {
             'program_for_you_html': self.request.POST['program_for_you_html'],
             'instructors_html': self.request.POST['instructors_html'],
@@ -295,6 +296,8 @@ class ProgramMixin(LoginRequiredMixin, View):
             'image_url': self.request.POST['image_url'],
             'group_enrollment_url': self.request.POST['group_enrollment_url'],
             'video_url': self.request.POST['video_url'],
+            'launch_date': datetime.strptime(launch_date, '%Y-%m-%d') if launch_date else None,
+            'language': self.request.POST['language'],
         }
 
     def update_discover_program(self, program_uuid=None):
