@@ -232,4 +232,4 @@ def verify_user_and_change_enrollment(user, course_key):
             )
         if len(modes) == 1:
             log.info('Starting mode change for user: {} and course {}'.format(user.id, course_key))
-            CourseEnrollment.objects.filter(user_id=user.id, course=course_key, mode='audit').update(mode='honor')
+            CourseEnrollment.objects.filter(user_id=user.id, course=course_key, mode='audit').update(mode='verified')
