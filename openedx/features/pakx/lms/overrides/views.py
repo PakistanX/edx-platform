@@ -436,7 +436,7 @@ def course_about(request, course_id):
     """
     Display the course's about page.
     """
-    updated_template_courses = ['course-v1:LUMSx+1+2022', 'course-v1:LUMSx+4+2022']
+    updated_template_courses = ['course-v1:LUMSx+1+2022', 'course-v1:LUMSx+4+2022', 'course-v1:LUMSx+2+2022']
     html_template = 'course_about_static.html' if course_id in updated_template_courses else 'course_about.html'
     return render_to_response('courseware/{}'.format(html_template), _get_course_about_context(request, course_id))
 
