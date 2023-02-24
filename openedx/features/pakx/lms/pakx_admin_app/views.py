@@ -5,8 +5,8 @@ from csv import DictReader, DictWriter
 from datetime import timedelta
 from io import StringIO
 from itertools import groupby
-import six
 
+import six
 from dateutil.parser import parse
 from django.conf import settings
 from django.contrib.auth.models import Group

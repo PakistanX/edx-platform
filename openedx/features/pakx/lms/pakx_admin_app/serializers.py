@@ -6,6 +6,7 @@ from re import match
 from django.contrib.auth.models import User
 from django.db import transaction
 from django.db.models import Q
+from django.utils.timezone import now
 from rest_framework import serializers
 
 from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
@@ -14,7 +15,6 @@ from student.models import CourseEnrollment, LanguageProficiency, Registration, 
 
 from .constants import GROUP_TRAINING_MANAGERS, LEARNER, ORG_ADMIN, ORG_ROLES, TRAINING_MANAGER
 from .utils import specify_user_role
-from django.utils.timezone import now
 
 
 class CourseStatsListSerializer(serializers.ModelSerializer):
