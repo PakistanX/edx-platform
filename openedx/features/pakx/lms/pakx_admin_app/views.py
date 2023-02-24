@@ -6,6 +6,7 @@ from datetime import timedelta
 from io import StringIO
 from itertools import groupby
 
+import six
 from dateutil.parser import parse
 from django.conf import settings
 from django.contrib.auth.models import Group
@@ -109,7 +110,9 @@ class UserCourseEnrollmentsListAPI(generics.ListAPIView):
 
         return qs.select_related(
             'enrollment_stats',
-            'course'
+            'course',
+        ).prefetch_related(
+            'course__modes',
         ).order_by(
             '-id'
         )
@@ -689,3 +692,18 @@ class UserSearchInputListAPI(views.APIView):
         qs = get_org_users_qs(self.request.user).exclude(id=self.request.user.id)
         users = {user.id: {'email': user.email} for user in qs}
         return Response(status=status.HTTP_200_OK, data={'users': users})
+
+
+class UserUpdateEnrollmentMode(views.APIView):
+    authentication_classes = [SessionAuthentication]
+    permission_classes = [CanAccessPakXAdminPanel]
+
+    def post(self, request, user_id):
+        updated_data = request.data.get('modes', {})
+        updated_enrollments = []
+        for enrollment in CourseEnrollment.objects.filter(course_id__in=updated_data.keys(), user_id=user_id):
+            enrollment.mode = updated_data[six.text_type(enrollment.course_id)]
+            updated_enrollments.append(enrollment)
+
+        CourseEnrollment.objects.bulk_update(updated_enrollments, ['mode'], batch_size=3)
+        return Response(status=status.HTTP_200_OK)
