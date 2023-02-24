@@ -13,6 +13,8 @@ from .views import (
     course_about_static,
     overview_tab_view,
     partner_space_login,
+    program_marketing,
+    program_basket_check,
     switch_space
 )
 
@@ -37,4 +39,10 @@ urlpatterns = [
         settings.COURSE_KEY_PATTERN,
         r'(?P<sku>[A-Za-z0-9]+)'
     ), basket_check, name='basket-check'),
+    url(r'^program_basket_check/$', program_basket_check, name='program-basket-check'),
+    url(
+        r'^programs/{}/about'.format(r'(?P<program_uuid>[0-9a-f-]+)'),
+        program_marketing,
+        name='program_marketing_view'
+    ),
 ]

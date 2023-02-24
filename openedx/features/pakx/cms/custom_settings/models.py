@@ -140,7 +140,17 @@ class ProgramCustomData(TimeStampedModel):
     image_url = models.CharField(max_length=256, blank=True, null=True)
     group_enrollment_url = models.CharField(max_length=256, blank=True, null=True)
     video_url = models.CharField(max_length=256, blank=True, null=True)
+    launch_date = models.DateField(default=None, null=True, blank=True)
+    language = models.CharField(max_length=50, blank=True, null=True, default='English')
 
     def __str__(self):
         """String representation of this model."""
         return str(self.program_uuid)
+
+    def to_dict(self):
+        """Dictionary representation for program about page."""
+        data = self.__dict__
+        data.pop('program_uuid')
+        launch_date = data['launch_date']
+        data['launch_date'] = launch_date.strftime('%b, %d %Y') if launch_date else None
+        return data
