@@ -54,6 +54,13 @@ class CourseDataView(APIView):
         course_experience_type = 'VIDEO' if course_custom_setting.course_experience else 'NORMAL'
         pakx_short_logo = '/static/pakx/images/mooc/pakx-logo.png'
 
+        if text_type(course.id) == 'course-v1:LUMSx+2+2022':
+            about_page_url = self.request.build_absolute_uri(reverse('5emodel-course-about'))
+        else:
+            about_page_url = self.request.build_absolute_uri(
+                reverse('about_course', kwargs={'course_id': text_type(course.id)})
+            )
+
         data = {
             'org_name': org_name,
             'course_image_url': self.request.build_absolute_uri(course.course_image_url),
@@ -61,9 +68,7 @@ class CourseDataView(APIView):
             'org_logo_url': self.request.build_absolute_uri(org_logo_url or pakx_short_logo),
             'course_description': course_custom_setting.card_description,
             'course_type': course_experience_type,
-            'about_page_url': self.request.build_absolute_uri(
-                reverse('about_course', kwargs={'course_id': text_type(course.id)})
-            ),
+            'about_page_url': about_page_url,
             'tag': 'Course'
         }
         return self.create_course_card_dict(data, org_logo_url, org_name, course, is_upcoming)
