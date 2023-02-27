@@ -5,6 +5,7 @@ Programmatic integration point for User API Accounts sub-application
 """
 
 import re
+import requests
 import datetime
 
 import six
@@ -455,6 +456,24 @@ def get_email_existence_validation_error(email):
 
     """
     return _validate(_validate_email_doesnt_exist, errors.AccountEmailAlreadyExists, email)
+
+
+def get_is_real_email_error(email):
+    """Use the external IsItARealEmail API service to check for email validity."""
+    api_key = settings.EMAILABLE_API_KEY
+
+    if not api_key:
+        return ''
+
+    response = requests.get("https://api.emailable.com/v1/verify?email={}&api_key={}".format(email, api_key))
+    status = response.json()['state']
+
+    if status == 'deliverable':
+        return ''
+    elif status in ('undeliverable', 'unknown'):
+        return 'The email entered is invalid.'
+    else:
+        return ''
 
 
 def _get_user_and_profile(username):

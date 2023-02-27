@@ -49,7 +49,8 @@ from openedx.core.djangoapps.user_api.accounts.api import (
     get_name_validation_error,
     get_password_validation_error,
     get_username_existence_validation_error,
-    get_username_validation_error
+    get_username_validation_error,
+    get_is_real_email_error
 )
 from openedx.core.djangoapps.user_authn.utils import generate_password
 from openedx.core.djangoapps.user_api.preferences import api as preferences_api
@@ -155,6 +156,9 @@ def create_account_with_params(request, params):
     # params is request.POST, that results in a dict containing lists of values
     params = dict(list(params.items()))
     next_url = quote_plus(params.pop('next', ''), safe='/')
+
+    if get_is_real_email_error(params['email']):
+        raise ValidationError({'email': ['The email address provided is not a real email.']})
 
     # allow to define custom set of required/optional/hidden fields via configuration
     extra_fields = configuration_helpers.get_value(
@@ -499,11 +503,12 @@ class RegistrationView(APIView):
             return response
 
         # PKX-463 - authentication after account activation
-        messages.success(
-            request,
-            _('In order to sign in, you need to activate your account. We have sent an activation link to your email.'),
-            extra_tags='account-activation'
-        )
+        if (settings.FEATURES.get('SKIP_EMAIL_VALIDATION', None) is False and
+                settings.FEATURES.get('AUTOMATIC_AUTH_FOR_TESTING') is False):
+            messages.success(request, _(
+                'In order to sign in, you need to activate your account. We have sent an activation link to your email.'
+            ), extra_tags='account-activation')
+
         return self._create_response(request, {}, status_code=200)
         # set_logged_in_cookies(request, response, user)
 
