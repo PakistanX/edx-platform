@@ -9,6 +9,7 @@ from rest_framework import routers
 
 from . import views as user_api_views
 from .accounts.settings_views import account_settings
+from .accounts.views import update_lms_tour_status
 from .models import UserPreference
 
 USER_API_ROUTER = routers.DefaultRouter()
@@ -35,5 +36,10 @@ urlpatterns = [
     url(
         r'^user_api/v1/preferences/time_zones/$',
         user_api_views.CountryTimeZoneListView.as_view(),
+    ),
+    url(
+        r'^accounts/v1/update-lms-tour-status/',
+        update_lms_tour_status,
+        name='update_lms_tour_status'
     ),
 ]
