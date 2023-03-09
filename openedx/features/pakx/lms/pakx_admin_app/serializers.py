@@ -6,6 +6,7 @@ from re import match
 from django.contrib.auth.models import User
 from django.db import transaction
 from django.db.models import Q
+from django.utils.timezone import now
 from rest_framework import serializers
 
 from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
@@ -58,12 +59,13 @@ class UserCourseEnrollmentSerializer(serializers.ModelSerializer):
     completion_date = serializers.SerializerMethodField()
     progress = serializers.SerializerMethodField()
     grades = serializers.SerializerMethodField()
+    modes = serializers.SerializerMethodField()
 
     class Meta:
         model = CourseEnrollment
         fields = (
             'course_id', 'display_name', 'enrollment_status', 'enrollment_date',
-            'progress', 'completion_date', 'grades'
+            'progress', 'completion_date', 'grades', 'modes'
         )
 
     @staticmethod
@@ -81,6 +83,21 @@ class UserCourseEnrollmentSerializer(serializers.ModelSerializer):
     @staticmethod
     def get_grades(obj):
         return obj.enrollment_stats.grade if hasattr(obj, 'enrollment_stats') else None
+
+    @staticmethod
+    def get_modes(obj):
+        try:
+            modes = obj.course._prefetched_objects_cache['modes']
+        except (AttributeError, KeyError):
+            return []
+
+        mode_options = []
+        now_dt = now()
+        for mode in modes:
+            if mode.expiration_datetime is None or mode.expiration_datetime >= now_dt:
+                mode_options.append(mode.mode_slug)
+
+        return mode_options
 
 
 class UserDetailViewSerializer(serializers.ModelSerializer):

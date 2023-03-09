@@ -465,6 +465,9 @@
                     );
                     this.renderErrors(this.defaultFormErrorsTitle, this.errors);
                     this.scrollToFormFeedback();
+                    if (this.errors && error.responseJSON.email){
+                      $('#register-email-validation-error-msg').text(error.responseJSON.email[0].user_message)
+                    }
                     this.toggleDisableButton(false);
                 },
 
