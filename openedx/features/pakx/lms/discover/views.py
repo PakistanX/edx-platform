@@ -1,17 +1,24 @@
 from django.contrib.auth.models import User
 from django.db.models import Case, When
 from django.urls import reverse
+from opaque_keys.edx.keys import CourseKey
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from six import text_type
 
 from course_modes.models import get_course_prices
+from lms.djangoapps.courseware.courses import (
+    get_course_about_section,
+    get_course_with_access,
+    get_permission_for_course_about
+)
 from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
 from openedx.core.djangoapps.user_api.accounts.image_helpers import get_profile_image_urls_for_user
 from openedx.features.pakx.lms.discover.authentications import DiscoverAuthentication
 from openedx.features.pakx.lms.overrides.utils import get_or_create_course_overview_content, is_blank_str
 from util.organizations_helpers import get_organization_by_short_name
+from xmodule.modulestore.django import modulestore
 
 
 class CourseDataView(APIView):
@@ -157,3 +164,50 @@ class UserProfileImage(APIView):
 
         urls = get_profile_image_urls_for_user(user, request)
         return Response({'image': urls.get('medium', '')}, status=status.HTTP_200_OK)
+
+
+class CourseAboutPageData(CoursesListView):
+    """Get data to show on course about page high touch (discovery)."""
+
+    def get_course_data(self, course_id):
+        """Get course about page data for discovery."""
+        course_key = CourseKey.from_string(course_id)
+
+        with modulestore().bulk_operations(course_key):
+            permission = get_permission_for_course_about()
+            course = get_course_with_access(self.request.user, permission, course_key)
+
+            if not course:
+                return {}
+
+            overview = CourseOverview.get_from_id(course.id)
+            custom_settings = get_or_create_course_overview_content(course.id)
+            _, course_price = get_course_prices(course, for_about_page=True)
+
+            if course_id == 'course-v1:LUMSx+2+2022':
+                org_logo_url = self.request.build_absolute_uri('/static/pakx/images/lums-k-logo.png')
+            else:
+                course_org = get_organization_by_short_name(course.org)
+                org_logo_url = custom_settings.publisher_card_logo_url or self.get_org_logo(course_org)
+                org_logo_url = self.request.build_absolute_uri(org_logo_url or '/static/pakx/images/mooc/pakx-logo.png')
+
+            return {
+                'course_name': course.display_name_with_default,
+                'image_url': self.request.build_absolute_uri(overview.image_urls.get('large', '')),
+                'org_logo_url': org_logo_url,
+                'offered_by': custom_settings.offered_by_html,
+                'instructors': custom_settings.instructors_html,
+                'outline': get_course_about_section(self.request, course, "overview"),
+                'price': course_price
+            }
+
+    def post(self, request):
+        """List courses."""
+        recommended_courses_ids = request.data.get('RECOMMENDED_COURSES', []) or []
+        course_id = request.data.get('COURSE', '')
+        recommended_courses = self.get_courses(recommended_courses_ids)
+
+        return Response({
+            'recommended_courses': [self.get_course_card_data(course) for course in recommended_courses],
+            'course_data': self.get_course_data(course_id)
+        }, status=status.HTTP_200_OK)
