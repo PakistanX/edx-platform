@@ -98,7 +98,7 @@ class CourseCustomSettingsView(LoginRequiredMixin, View):
         publisher_card_logo_url = truncate_string_up_to(request.POST['publisher_card_logo_url'], 256)
         course_banner_image_url = truncate_string_up_to(request.POST['course_banner_image_url'], 256)
         about_page_banner_color = truncate_string_up_to(request.POST['about_page_banner_color'], 256)
-        is_text_color_dark = request.POST.get('is_text_color_dark', False)
+        is_text_color_dark = request.POST.get('is_text_color_dark', 'off') == 'on'
         days_to_unlock = int(request.POST.get('days-duration') or 0)
         subsection_to_lock = request.POST.get('subsection')
         email_days, email_deadline = self._clean_email_reminder_data(request)
