@@ -53,7 +53,7 @@ class CourseDataView(APIView):
 
         course_org = get_organization_by_short_name(course.org)
         org_logo_url = course_custom_setting.publisher_card_logo_url or self.get_org_logo(course_org)
-        org_name = course_org.get('name') if is_blank_str(course_custom_setting.publisher_name) else \
+        org_name = course.display_org_with_default if is_blank_str(course_custom_setting.publisher_name) else \
             course_custom_setting.publisher_name
         course_experience_type = 'VIDEO' if course_custom_setting.course_experience else 'NORMAL'
         pakx_short_logo = '/static/pakx/images/mooc/pakx-logo.png'
