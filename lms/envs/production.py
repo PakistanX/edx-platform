@@ -947,12 +947,21 @@ SENTRY_DSN = ENV_TOKENS.get('SENTRY_DSN', None)
 if SENTRY_DSN:
     import sentry_sdk
     from sentry_sdk.integrations.django import DjangoIntegration
+    from openedx.core.djangoapps.user_authn.exceptions import AuthFailedError
+
+    def before_send(event, hint):
+        if 'exc_info' in hint:
+            exc_type, exc_value, tb = hint['exc_info']
+            if isinstance(exc_value, AuthFailedError):
+                return None
+        return event
 
     sentry_sdk.init(
         dsn=SENTRY_DSN,
         integrations=[DjangoIntegration()],
         traces_sample_rate=1.0,
-        send_default_pii=True
+        send_default_pii=True,
+        before_send=before_send
     )
 
 ############################### Plugin Settings ###############################
