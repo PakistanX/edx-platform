@@ -31,7 +31,7 @@ class CourseDataView(APIView):
             custom_settings__course__in=course_ids
         ).order_by(preserved)
 
-    def create_course_card_dict(self, data, org_logo_url, org_name, course, is_upcoming):
+    def create_course_card_dict(self, data, org_logo_url, org_name, course, is_upcoming, pub_logo=''):
         """Create dict from provided data."""
         raise NotImplementedError
 
@@ -75,13 +75,14 @@ class CourseDataView(APIView):
             'about_page_url': about_page_url,
             'tag': 'Course'
         }
-        return self.create_course_card_dict(data, org_logo_url, org_name, course, is_upcoming)
+        return self.create_course_card_dict(data, org_logo_url, org_name, course, is_upcoming,
+                                            course_custom_setting.publisher_logo_url)
 
 
 class CoursesListView(CourseDataView):
     """Get list of upcoming and featured courses for discovery website."""
 
-    def create_course_card_dict(self, data, org_logo_url, org_name, course, is_upcoming):
+    def create_course_card_dict(self, data, org_logo_url, org_name, course, is_upcoming, pub_logo=''):
         """
         Get course data required for home page course card
 
@@ -118,7 +119,7 @@ class CoursesListView(CourseDataView):
 class BusinessCoursesView(CourseDataView):
     """Get list of business courses for discovery website."""
 
-    def create_course_card_dict(self, data, org_logo_url, org_name, course, is_upcoming):
+    def create_course_card_dict(self, data, org_logo_url, org_name, course, is_upcoming, pub_logo=''):
         """
         Get course data required for home page course card
 
@@ -128,7 +129,7 @@ class BusinessCoursesView(CourseDataView):
         if text_type(course.id) == 'course-v1:LUMSx+2+2022':
             default_logo = '/static/pakx/images/lums-k-logo.png'
 
-        data['org_logo_url'] = self.request.build_absolute_uri(org_logo_url or default_logo)
+        data['org_logo_url'] = self.request.build_absolute_uri(pub_logo or default_logo)
         data.pop('course_type')
         return data
 
