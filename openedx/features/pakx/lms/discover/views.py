@@ -136,7 +136,7 @@ class BusinessCoursesView(CourseDataView):
         if text_type(course.id) == 'course-v1:LUMSx+2+2022':
             default_logo = '/static/pakx/images/lums-k-logo.png'
 
-        # data['about_page_url'] = '/{}-about'.format(course.id).translate({ord(i): None for i in ':+'})
+        data['about_page_url'] = '/{}-about'.format(course.id).translate({ord(i): None for i in ':+'})
 
         data['org_logo_url'] = self.request.build_absolute_uri(pub_logo or default_logo)
         data.pop('course_type')
@@ -207,7 +207,7 @@ class CourseAboutPageData(CoursesListView):
         """List courses."""
         recommended_courses_ids = request.data.get('RECOMMENDED_COURSES', []) or []
         course_id = request.data.get('COURSE', '')
-        recommended_courses = self.get_courses(recommended_courses_ids)
+        recommended_courses = self.get_courses([course for course in recommended_courses_ids if course != course_id])
 
         return Response({
             'recommended_courses': [self.get_course_card_data(course) for course in recommended_courses],
