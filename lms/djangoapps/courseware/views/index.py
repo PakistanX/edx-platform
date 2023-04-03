@@ -465,7 +465,8 @@ class CoursewareIndex(View):
             'show_search': show_search,
             'course_experience_icon': get_course_experience_icon(course_experience_mode),
             'has_toured': request.user.profile.has_toured,
-            'profile_key': request.user.profile.id
+            'profile_key': request.user.profile.id,
+            'username': request.user.username
         }
 
         courseware_context.update(get_partner_space_meta(request))
