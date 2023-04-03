@@ -207,7 +207,7 @@ class CourseAboutPageData(CoursesListView):
         """List courses."""
         recommended_courses_ids = request.data.get('RECOMMENDED_COURSES', []) or []
         course_id = request.data.get('COURSE', '')
-        recommended_courses = self.get_courses(recommended_courses_ids)
+        recommended_courses = self.get_courses([course for course in recommended_courses_ids if course != course_id])
 
         return Response({
             'recommended_courses': [self.get_course_card_data(course) for course in recommended_courses],
