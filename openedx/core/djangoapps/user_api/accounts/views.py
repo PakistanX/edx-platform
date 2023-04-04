@@ -20,7 +20,6 @@ from django.contrib.sites.models import Site
 from django.core.cache import cache
 from django.db import transaction
 from django.utils.translation import ugettext as _
-from django.http import JsonResponse
 from edx_ace import ace
 from edx_ace.recipient import Recipient
 from edx_rest_framework_extensions.auth.jwt.authentication import JwtAuthentication
@@ -1219,14 +1218,3 @@ class UsernameReplacementView(APIView):
                 new_username,
             )
         return True
-
-
-def update_lms_tour_status(request):
-    try:
-        profile_id = request.POST['profile_id']
-        profile = UserProfile.objects.get(id=profile_id)
-        profile.has_toured = True
-        profile.save(update_fields=['has_toured'])
-        return JsonResponse({'result': 'success', 'msg': 'Profile updated Successfully'}, status=200)
-    except UserProfile.DoesNotExist:
-        return JsonResponse({'result': 'error', 'msg': 'Profile Does Not Exist'}, status=404)

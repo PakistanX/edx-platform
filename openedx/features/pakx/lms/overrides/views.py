@@ -11,6 +11,7 @@ from django.forms.models import model_to_dict
 from django.http import Http404
 from django.shortcuts import redirect
 from django.urls import reverse
+from django.http import JsonResponse
 from django.utils.translation import ugettext as _
 from django.views.decorators.cache import cache_control
 from django.views.decorators.csrf import ensure_csrf_cookie
@@ -86,6 +87,7 @@ from util.milestones_helpers import get_prerequisite_courses_display
 from util.views import ensure_valid_course_key
 from xmodule.course_module import COURSE_VISIBILITY_PUBLIC, COURSE_VISIBILITY_PUBLIC_OUTLINE
 from xmodule.modulestore.django import modulestore
+from student.models import UserProfile
 
 
 # NOTE: This view is not linked to directly--it is called from
@@ -817,3 +819,14 @@ def basket_check(request, course_key_string, sku):
         return render_to_response('courseware/error.html')
 
     return redirect(redirect_url)
+
+
+def update_lms_tour_status(request):
+    try:
+        profile_id = request.POST['profile_id']
+        profile = UserProfile.objects.get(id=profile_id)
+        profile.has_toured = True
+        profile.save(update_fields=['has_toured'])
+        return JsonResponse({'result': 'success', 'msg': 'Profile updated Successfully'}, status=200)
+    except UserProfile.DoesNotExist:
+        return JsonResponse({'result': 'error', 'msg': 'Profile Does Not Exist'}, status=404)
