@@ -29,12 +29,16 @@ class CourseDataView(APIView):
     @staticmethod
     def get_courses(course_ids):
         """Get course list from IDs."""
-        preserved = Case(*[When(custom_settings__course=id, then=pos) for pos, id in enumerate(course_ids)])
+        preserved = Case(*[When(
+            custom_settings__course=CourseKey.from_string(id),
+            then=pos
+        ) for pos, id in enumerate(course_ids)])
+
         return CourseOverview.objects.filter(
             custom_settings__course__in=course_ids
         ).order_by(preserved)
 
-    def create_course_card_dict(self, data, org_logo_url, org_name, course, is_upcoming):
+    def create_course_card_dict(self, data, org_logo_url, org_name, course, is_upcoming, pub_logo=''):
         """Create dict from provided data."""
         raise NotImplementedError
 
@@ -56,7 +60,7 @@ class CourseDataView(APIView):
 
         course_org = get_organization_by_short_name(course.org)
         org_logo_url = course_custom_setting.publisher_card_logo_url or self.get_org_logo(course_org)
-        org_name = course_org.get('name') if is_blank_str(course_custom_setting.publisher_name) else \
+        org_name = course.display_org_with_default if is_blank_str(course_custom_setting.publisher_name) else \
             course_custom_setting.publisher_name
         course_experience_type = 'VIDEO' if course_custom_setting.course_experience else 'NORMAL'
         pakx_short_logo = '/static/pakx/images/mooc/pakx-logo.png'
@@ -78,13 +82,14 @@ class CourseDataView(APIView):
             'about_page_url': about_page_url,
             'tag': 'Course'
         }
-        return self.create_course_card_dict(data, org_logo_url, org_name, course, is_upcoming)
+        return self.create_course_card_dict(data, org_logo_url, org_name, course, is_upcoming,
+                                            course_custom_setting.publisher_logo_url)
 
 
 class CoursesListView(CourseDataView):
     """Get list of upcoming and featured courses for discovery website."""
 
-    def create_course_card_dict(self, data, org_logo_url, org_name, course, is_upcoming):
+    def create_course_card_dict(self, data, org_logo_url, org_name, course, is_upcoming, pub_logo=''):
         """
         Get course data required for home page course card
 
@@ -96,6 +101,7 @@ class CoursesListView(CourseDataView):
 
         if is_upcoming:
             data.pop('about_page_url')
+            data['course_id'] = text_type(course.id)
         else:
             _, course_price = get_course_prices(course, for_about_page=True)
             data.update({
@@ -121,7 +127,7 @@ class CoursesListView(CourseDataView):
 class BusinessCoursesView(CourseDataView):
     """Get list of business courses for discovery website."""
 
-    def create_course_card_dict(self, data, org_logo_url, org_name, course, is_upcoming):
+    def create_course_card_dict(self, data, org_logo_url, org_name, course, is_upcoming, pub_logo=''):
         """
         Get course data required for home page course card
 
@@ -133,7 +139,7 @@ class BusinessCoursesView(CourseDataView):
 
         data['about_page_url'] = '/{}-about'.format(course.id).translate({ord(i): None for i in ':+'})
 
-        data['org_logo_url'] = self.request.build_absolute_uri(org_logo_url or default_logo)
+        data['org_logo_url'] = self.request.build_absolute_uri(pub_logo or default_logo)
         data.pop('course_type')
         return data
 
@@ -185,7 +191,7 @@ class CourseAboutPageData(CoursesListView):
                 org_logo_url = self.request.build_absolute_uri('/static/pakx/images/lums-k-logo.png')
             else:
                 course_org = get_organization_by_short_name(course.org)
-                org_logo_url = custom_settings.publisher_card_logo_url or self.get_org_logo(course_org)
+                org_logo_url = custom_settings.publisher_logo_url or self.get_org_logo(course_org)
                 org_logo_url = self.request.build_absolute_uri(org_logo_url or '/static/pakx/images/mooc/pakx-logo.png')
 
             return {
@@ -202,7 +208,7 @@ class CourseAboutPageData(CoursesListView):
         """List courses."""
         recommended_courses_ids = request.data.get('RECOMMENDED_COURSES', []) or []
         course_id = request.data.get('COURSE', '')
-        recommended_courses = self.get_courses(recommended_courses_ids)
+        recommended_courses = self.get_courses([course for course in recommended_courses_ids if course != course_id])
 
         return Response({
             'recommended_courses': [self.get_course_card_data(course) for course in recommended_courses],
