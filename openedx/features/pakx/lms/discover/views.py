@@ -101,6 +101,7 @@ class CoursesListView(CourseDataView):
 
         if is_upcoming:
             data.pop('about_page_url')
+            data['course_id'] = text_type(course.id)
         else:
             _, course_price = get_course_prices(course, for_about_page=True)
             data.update({
