@@ -80,14 +80,13 @@ from openedx.features.pakx.lms.overrides.utils import (
     is_course_enroll_able,
     is_rtl_language
 )
-from student.models import CourseEnrollment
+from student.models import CourseEnrollment, UserProfile
 from util.cache import cache_if_anonymous
 from util.db import outer_atomic
 from util.milestones_helpers import get_prerequisite_courses_display
 from util.views import ensure_valid_course_key
 from xmodule.course_module import COURSE_VISIBILITY_PUBLIC, COURSE_VISIBILITY_PUBLIC_OUTLINE
 from xmodule.modulestore.django import modulestore
-from student.models import UserProfile
 
 
 # NOTE: This view is not linked to directly--it is called from
@@ -823,8 +822,7 @@ def basket_check(request, course_key_string, sku):
 
 def update_lms_tour_status(request):
     try:
-        profile_id = request.POST['profile_id']
-        profile = UserProfile.objects.get(id=profile_id)
+        profile = UserProfile.objects.get(id=request.user.profile.id)
         profile.has_toured = True
         profile.save(update_fields=['has_toured'])
         return JsonResponse({'result': 'success', 'msg': 'Profile updated Successfully'}, status=200)
