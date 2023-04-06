@@ -426,6 +426,8 @@ def _get_course_about_context(request, course_id, category=None):  # pylint: dis
             'course_rating': get_rating_classes_for_course(course_id),
             'course_dir': 'rtl' if is_rtl_language(course.language) else '',
             'enrollment_count': course_map['enrollment_count'],
+            'program_name': course_map['program_name'],
+            'program_url': course_map['program_url']
         }
 
         return context

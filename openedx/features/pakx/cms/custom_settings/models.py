@@ -67,6 +67,7 @@ class CourseOverviewContent(TimeStampedModel):
     reviews_html = models.TextField(blank=True, default='')
     faq_html = models.TextField(blank=True, default='')
     enrollment_count = models.PositiveIntegerField(default=0)
+    program_detail = models.CharField(max_length=500, blank=True, default='')
 
     def __str__(self):
         return 'CourseOverviewContent for course {id}'.format(id=self.course.id)
