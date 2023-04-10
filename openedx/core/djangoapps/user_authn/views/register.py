@@ -186,7 +186,7 @@ def create_account_with_params(request, params):
                     provider=params.get('social_auth_provider'))
             ]}
         )
-
+    do_external_auth, eamap = pre_account_creation_external_auth(request, params)
     extended_profile_fields = configuration_helpers.get_value('extended_profile_fields', [])
     # Can't have terms of service for certain SHIB users, like at Stanford
     registration_fields = getattr(settings, 'REGISTRATION_EXTRA_FIELDS', {})
@@ -199,7 +199,7 @@ def create_account_with_params(request, params):
         data=params,
         extra_fields=extra_fields,
         extended_profile_fields=extended_profile_fields,
-        do_third_party_auth=False,
+        do_third_party_auth=do_external_auth,
         tos_required=tos_required,
     )
     custom_form = get_registration_extension_form(data=params)
@@ -213,10 +213,10 @@ def create_account_with_params(request, params):
             is_third_party_auth_enabled, third_party_auth_credentials_in_api, user, request, params,
         )
 
-        # PKX-463 - authentication after account activation
-        # new_user = authenticate_new_user(request, user.username, form.cleaned_data['password'])
-        # django_login(request, new_user)
-        # request.session.set_expiry(0)
+        new_user = authenticate_new_user(request, user.username, params['password'])
+        django_login(request, new_user)
+        request.session.set_expiry(0)
+        post_account_creation_external_auth(do_external_auth, eamap, new_user)
 
     # Check if system is configured to skip activation email for the current user.
     skip_email = _skip_activation_email(
@@ -250,7 +250,7 @@ def create_account_with_params(request, params):
     create_comments_service_user(user)
 
     try:
-        _record_registration_attributions(request, user)
+        _record_registration_attributions(request, new_user)
     # Don't prevent a user from registering due to attribution errors.
     except Exception:   # pylint: disable=broad-except
         log.exception('Error while attributing cookies to user registration.')
@@ -260,7 +260,51 @@ def create_account_with_params(request, params):
     # if new_user is not None:
     #     AUDIT_LOG.info(u"Login success on new account creation - {0}".format(new_user.username))
 
-    return user
+    return new_user
+
+
+def post_account_creation_external_auth(do_external_auth, eamap, new_user):
+    """
+    External auth related updates after account is created.
+    """
+    if do_external_auth:
+        eamap.user = new_user
+        eamap.dtsignup = datetime.datetime.now(UTC)
+        eamap.save()
+        AUDIT_LOG.info(u"User registered with external_auth %s", new_user.username)
+        AUDIT_LOG.info(u'Updated ExternalAuthMap for %s to be %s', new_user.username, eamap)
+
+        if settings.FEATURES.get('BYPASS_ACTIVATION_EMAIL_FOR_EXTAUTH'):
+            log.info('bypassing activation email')
+            new_user.is_active = True
+            new_user.save()
+            AUDIT_LOG.info(u"Login activated on extauth account - {0} ({1})".format(new_user.username, new_user.email))
+
+
+def pre_account_creation_external_auth(request, params):
+    """
+    External auth related setup before account is created.
+    """
+    # If doing signup for an external authorization, then get email, password, name from the eamap
+    # don't use the ones from the form, since the user could have hacked those
+    # unless originally we didn't get a valid email or name from the external auth
+    # TODO: We do not check whether these values meet all necessary criteria, such as email length
+    do_external_auth = 'ExternalAuthMap' in request.session
+    eamap = None
+    if do_external_auth:
+        eamap = request.session['ExternalAuthMap']
+        try:
+            validate_email(eamap.external_email)
+            params["email"] = eamap.external_email
+        except ValidationError:
+            pass
+        if len(eamap.external_name.strip()) >= accounts_settings.NAME_MIN_LENGTH:
+            params["name"] = eamap.external_name
+        params["password"] = eamap.internal_password
+        log.debug(u'In create_account with external_auth: user = %s, email=%s', params["name"],
+                  params["email"])
+
+    return do_external_auth, eamap
 
 
 def _link_user_to_third_party_provider(
@@ -509,8 +553,9 @@ class RegistrationView(APIView):
                 'In order to sign in, you need to activate your account. We have sent an activation link to your email.'
             ), extra_tags='account-activation')
 
-        return self._create_response(request, {}, status_code=200)
-        # set_logged_in_cookies(request, response, user)
+        response = self._create_response(request, {}, status_code=200)
+        set_logged_in_cookies(request, response, user)
+        return response
 
     def _handle_duplicate_email_username(self, request, data):
         # pylint: disable=no-member
