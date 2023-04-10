@@ -11,6 +11,7 @@ from django.forms.models import model_to_dict
 from django.http import Http404
 from django.shortcuts import redirect
 from django.urls import reverse
+from django.http import JsonResponse
 from django.utils.translation import ugettext as _
 from django.views.decorators.cache import cache_control
 from django.views.decorators.csrf import ensure_csrf_cookie
@@ -79,7 +80,7 @@ from openedx.features.pakx.lms.overrides.utils import (
     is_course_enroll_able,
     is_rtl_language
 )
-from student.models import CourseEnrollment
+from student.models import CourseEnrollment, UserProfile
 from util.cache import cache_if_anonymous
 from util.db import outer_atomic
 from util.milestones_helpers import get_prerequisite_courses_display
@@ -817,3 +818,13 @@ def basket_check(request, course_key_string, sku):
         return render_to_response('courseware/error.html')
 
     return redirect(redirect_url)
+
+
+def update_lms_tour_status(request):
+    try:
+        profile = UserProfile.objects.get(id=request.user.profile.id)
+        profile.has_toured = True
+        profile.save(update_fields=['has_toured'])
+        return JsonResponse({'result': 'success', 'msg': 'Profile updated Successfully'}, status=200)
+    except UserProfile.DoesNotExist:
+        return JsonResponse({'result': 'error', 'msg': 'Profile Does Not Exist'}, status=404)

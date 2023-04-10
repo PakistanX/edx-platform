@@ -14,7 +14,8 @@ from .views import (
     course_about_static,
     overview_tab_view,
     partner_space_login,
-    switch_space
+    switch_space,
+    update_lms_tour_status
 )
 
 urlpatterns = [
@@ -39,4 +40,5 @@ urlpatterns = [
         r'(?P<sku>[A-Za-z0-9]+)'
     ), basket_check, name='basket-check'),
     url(r'^$', BaseTemplateView.as_view(), name="landing-page"),
+    url(r'^update-lms-tour-status/$', update_lms_tour_status, name='update_lms_tour_status'),
 ]
