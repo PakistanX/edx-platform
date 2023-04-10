@@ -56,7 +56,8 @@ class CourseOverviewContent(TimeStampedModel):
     publisher_name = models.CharField(max_length=128, blank=True, default='', null=True)
     publisher_card_logo_url = models.CharField(max_length=256, blank=True, default='', null=True)
     publisher_description = models.TextField(null=True, blank=True)
-    about_page_image_url = models.CharField(max_length=256, blank=True, default='', null=True)
+    about_page_banner_color = models.CharField(max_length=256, blank=True, default='', null=True)
+    is_text_color_dark = models.BooleanField(default=False)
     days_till_next_reminder = models.PositiveSmallIntegerField(default=0)
     reminder_stop_date = models.DateField(default=None, null=True, blank=True)
     course_for_you_html = models.TextField(blank=True, default='')
@@ -65,6 +66,8 @@ class CourseOverviewContent(TimeStampedModel):
     offered_by_html = models.TextField(blank=True, default='')
     reviews_html = models.TextField(blank=True, default='')
     faq_html = models.TextField(blank=True, default='')
+    enrollment_count = models.PositiveIntegerField(default=0)
+    program_detail = models.CharField(max_length=500, blank=True, default='')
 
     def __str__(self):
         return 'CourseOverviewContent for course {id}'.format(id=self.course.id)
