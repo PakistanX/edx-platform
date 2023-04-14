@@ -24,7 +24,7 @@ from xmodule.modulestore.django import modulestore
 class CourseDataView(APIView):
     """Get course card data."""
 
-    # authentication_classes = [DiscoverAuthentication, ]
+    authentication_classes = [DiscoverAuthentication, ]
 
     @staticmethod
     def get_courses(course_ids):
