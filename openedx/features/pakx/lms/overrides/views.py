@@ -191,7 +191,8 @@ def courses(request, section='in-progress'):
     courses_list = [user_course for user_course in courses_list]
 
     for course in courses_list:
-        if str(('studio' in course.course_image_url) and (settings.DEFAULT_COURSE_ABOUT_IMAGE_URL in course.course_image_url)):
+        if str(('/studio/' in course.course_image_url) and
+               (settings.DEFAULT_COURSE_ABOUT_IMAGE_URL in course.course_image_url)):
             course.course_image_url = course.course_image_url.replace('/studio', '')
         if is_course_public_for_current_space(course, space_org_name):
             browse_courses.append(course)
