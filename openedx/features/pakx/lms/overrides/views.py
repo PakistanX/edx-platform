@@ -188,12 +188,8 @@ def courses(request, section='in-progress'):
     show_only_enrolled_courses = switch_is_active('show_only_enrolled_courses')
     space_model = get_active_partner_model(request)
     space_org_name = space_model.organization.short_name
-    courses_list = [user_course for user_course in courses_list]
 
     for course in courses_list:
-        if str(('/studio/' in course.course_image_url) and
-               (settings.DEFAULT_COURSE_ABOUT_IMAGE_URL in course.course_image_url)):
-            course.course_image_url = course.course_image_url.replace('/studio', '')
         if is_course_public_for_current_space(course, space_org_name):
             browse_courses.append(course)
             continue
