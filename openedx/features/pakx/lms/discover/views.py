@@ -7,7 +7,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from six import text_type
 
-from course_modes.models import get_course_prices
+from course_modes.models import CourseMode, get_course_prices
 from lms.djangoapps.courseware.courses import (
     get_course_about_section,
     get_course_with_access,
@@ -104,8 +104,17 @@ class CoursesListView(CourseDataView):
             data['course_id'] = text_type(course.id)
         else:
             _, course_price = get_course_prices(course, for_about_page=True)
+            course_price = course_price.replace('PKR', 'Rs.')
+
+            if 'free' in course_price.lower():
+                modes = CourseMode.modes_for_course_dict(course.id)
+                upgrade_data = modes.get('verified')
+                print('\n\n\n{}\n\n\n'.format(modes))
+                if upgrade_data:
+                    course_price = "{} {}".format(upgrade_data.currency.upper(), '{:,}'.format(upgrade_data.min_price))
+
             data.update({
-                'course_price': course_price.replace('PKR', 'Rs.'),
+                'course_price': course_price,
             })
 
         return data
@@ -212,5 +221,5 @@ class CourseAboutPageData(CoursesListView):
 
         return Response({
             'recommended_courses': [self.get_course_card_data(course) for course in recommended_courses],
-            'course_data': self.get_course_data(course_id)
+            'course_data': self.get_course_data(course_id) if course_id else {}
         }, status=status.HTTP_200_OK)
