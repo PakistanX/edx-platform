@@ -422,13 +422,9 @@ def _get_course_about_context(request, course_id, category=None):  # pylint: dis
             'certificate': course_map['certificate'],
             'publisher_logo': course_map['publisher_logo_url'],
             'group_enrollment_url': course_map['group_enrollment_url'],
-            'about_page_banner_color': course_map['about_page_banner_color'],
-            'is_text_color_dark': course_map['is_text_color_dark'],
+            'about_page_image': course_map['about_page_image_url'],
             'course_rating': get_rating_classes_for_course(course_id),
-            'course_dir': 'rtl' if is_rtl_language(course.language) else '',
-            'enrollment_count': course_map['enrollment_count'],
-            'program_name': course_map['program_name'],
-            'program_url': course_map['program_url']
+            'course_dir': 'rtl' if is_rtl_language(course.language) else ''
         }
 
         return context
@@ -441,7 +437,9 @@ def course_about(request, course_id):
     """
     Display the course's about page.
     """
-    return render_to_response('courseware/course_about_static.html', _get_course_about_context(request, course_id))
+    updated_template_courses = ['course-v1:LUMSx+1+2022', 'course-v1:LUMSx+4+2022', 'course-v1:LUMSx+2+2022']
+    html_template = 'course_about_static.html' if course_id in updated_template_courses else 'course_about.html'
+    return render_to_response('courseware/{}'.format(html_template), _get_course_about_context(request, course_id))
 
 
 # noinspection PyInterpreter

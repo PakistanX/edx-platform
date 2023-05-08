@@ -15,7 +15,6 @@ from django.db.models import Avg, Case, Count, IntegerField, Sum, When
 from django.db.models.functions import Coalesce
 from django.test import RequestFactory
 from django.urls import reverse
-from django.urls.exceptions import NoReverseMatch
 from django.utils.translation import ugettext as _
 from opaque_keys.edx.keys import CourseKey
 from pytz import utc
@@ -96,15 +95,6 @@ def get_course_card_data(course, org_prefetched=False):
         org_description = course_custom_setting.course_set.publisher_org.description if is_blank_str(
             course_custom_setting.publisher_description) else course_custom_setting.publisher_description
 
-    try:
-        program_name, program_id = course_custom_setting.program_detail.split('|')
-        program_url = reverse('program_marketing_view', kwargs={'program_uuid': program_id})
-    except ValueError:
-        program_name = course_custom_setting.program_detail.split('|')
-        program_url = ''
-    except NoReverseMatch:
-        program_url = program_id
-
     return {
         'key': course.id,
         'org_name': org_name,
@@ -122,12 +112,8 @@ def get_course_card_data(course, org_prefetched=False):
         'offered_by': course_custom_setting.offered_by_html,
         'reviews': course_custom_setting.reviews_html,
         'publisher_logo_url': course_custom_setting.publisher_logo_url,
-        'about_page_banner_color': course_custom_setting.about_page_banner_color,
-        'is_text_color_dark': course_custom_setting.is_text_color_dark,
+        'about_page_image_url': course_custom_setting.about_page_image_url,
         'url': reverse('about_course', kwargs={'course_id': text_type(course.id)}),
-        'enrollment_count': course_custom_setting.enrollment_count,
-        'program_name': program_name,
-        'program_url': program_url
     }
 
 

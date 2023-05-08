@@ -97,13 +97,10 @@ class CourseCustomSettingsView(LoginRequiredMixin, View):
         group_enrollment_url = truncate_string_up_to(request.POST['group_enrollment_url'], 256)
         publisher_card_logo_url = truncate_string_up_to(request.POST['publisher_card_logo_url'], 256)
         course_banner_image_url = truncate_string_up_to(request.POST['course_banner_image_url'], 256)
-        about_page_banner_color = truncate_string_up_to(request.POST['about_page_banner_color'], 256)
-        is_text_color_dark = request.POST.get('is_text_color_dark', 'off') == 'on'
+        about_page_image_url = truncate_string_up_to(request.POST['about_page_image_url'], 256)
         days_to_unlock = int(request.POST.get('days-duration') or 0)
         subsection_to_lock = request.POST.get('subsection')
         email_days, email_deadline = self._clean_email_reminder_data(request)
-        enrollment_count = request.POST['enrollment_count']
-        program_detail = truncate_string_up_to(request.POST['program_detail'], 500)
 
         self._add_days_milestone(subsection_to_lock, course_key)
 
@@ -132,10 +129,7 @@ class CourseCustomSettingsView(LoginRequiredMixin, View):
                     'subsection_to_lock': subsection_to_lock,
                     'days_till_next_reminder': email_days,
                     'reminder_stop_date': email_deadline,
-                    'about_page_banner_color': about_page_banner_color,
-                    'is_text_color_dark': is_text_color_dark,
-                    'enrollment_count': enrollment_count,
-                    'program_detail': program_detail
+                    'about_page_image_url': about_page_image_url,
                 }
             )
 
