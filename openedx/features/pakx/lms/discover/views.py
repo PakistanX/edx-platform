@@ -146,7 +146,7 @@ class BusinessCoursesView(CourseDataView):
         if text_type(course.id) == 'course-v1:LUMSx+2+2022':
             default_logo = '/static/pakx/images/lums-k-logo.png'
 
-        data['about_page_url'] = '/{}-about'.format(course.id).translate({ord(i): None for i in ':+'})
+        # data['about_page_url'] = '/{}-about'.format(course.id).translate({ord(i): None for i in ':+'})
 
         data['org_logo_url'] = self.request.build_absolute_uri(pub_logo or default_logo)
         data.pop('course_type')
