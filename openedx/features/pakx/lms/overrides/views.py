@@ -482,10 +482,10 @@ class BaseTemplateView(TemplateView):
 
     def get(self, request, *args, **kwargs):
         """Redirect to discover URL of appropriate page."""
-        return redirect('{}/{}'.format(settings.DISCOVER_URL, self.DISCOVER_EXTENSION_URL))
+        # return redirect('{}/{}'.format(settings.DISCOVER_URL, self.DISCOVER_EXTENSION_URL))
         # Uncomment this if a switch is needed back to our platform.
-        # context = self.get_context_data(request=request)
-        # return render_to_response(self.template_name, context)
+        context = self.get_context_data(request=request)
+        return render_to_response(self.template_name, context)
 
 
 class AboutUsView(BaseTemplateView):

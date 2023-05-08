@@ -36,7 +36,7 @@ from openedx.core.djangoapps.site_configuration import helpers as configuration_
 from openedx.core.lib.request_utils import get_request_or_stub
 from openedx.features.course_experience.utils import get_course_outline_block_tree, get_resume_block
 from openedx.features.pakx.cms.custom_settings.models import CourseOverviewContent
-from pakx_feedback.feedback_app.models import UserFeedbackModel
+# from pakx_feedback.feedback_app.models import UserFeedbackModel
 from student.models import CourseEnrollment
 from util.organizations_helpers import get_organization_by_short_name
 from xmodule import course_metadata_utils
@@ -164,15 +164,16 @@ def get_rating_course(course_id):
 
     :return: (dict) {'rating': 4.3, 'total_responses': 34}
     """
-
-    course_rating = UserFeedbackModel.objects.filter(
-        course_id=course_id
-    ).aggregate(
-        rating=Avg('experience'), total_responses=Count('experience')
-    )
-    if course_rating.get("rating"):
-        course_rating.update({"rating": round(float(course_rating.get("rating")) * 2.0) / 2.0})
-    return course_rating
+    #
+    # course_rating = UserFeedbackModel.objects.filter(
+    #     course_id=course_id
+    # ).aggregate(
+    #     rating=Avg('experience'), total_responses=Count('experience')
+    # )
+    # if course_rating.get("rating"):
+    #     course_rating.update({"rating": round(float(course_rating.get("rating")) * 2.0) / 2.0})
+    # return course_rating
+    return {'rating': 4.3, 'total_responses': 34}
 
 
 def get_rating_classes_for_course(course_id):
