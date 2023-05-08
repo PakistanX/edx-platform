@@ -104,7 +104,6 @@ class CoursesListView(CourseDataView):
             data['course_id'] = text_type(course.id)
         else:
             _, course_price = get_course_prices(course, for_about_page=True)
-            course_price = course_price.replace('PKR', 'Rs.')
 
             if 'free' in course_price.lower():
                 modes = CourseMode.modes_for_course_dict(course.id)
@@ -114,7 +113,7 @@ class CoursesListView(CourseDataView):
                     course_price = "{} {}".format(upgrade_data.currency.upper(), '{:,}'.format(upgrade_data.min_price))
 
             data.update({
-                'course_price': course_price,
+                'course_price': course_price.replace('PKR', 'Rs.'),
             })
 
         return data
