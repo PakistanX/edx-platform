@@ -37,7 +37,5 @@ def course_image_change(sender, instance, **kwargs):  # pylint: disable=unused-a
     Change the default course image whenever new course is created
     """
 
-    if instance.course_image_url.endswith('images_course_image.jpg') or str(
-        ('/studio/' in instance.course_image_url) and (
-            settings.DEFAULT_COURSE_ABOUT_IMAGE_URL in instance.course_image_url)):
+    if instance.course_image_url.endswith('images_course_image.jpg'):
         instance.course_image_url = "/static/" + settings.DEFAULT_COURSE_ABOUT_IMAGE_URL
