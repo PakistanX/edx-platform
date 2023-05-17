@@ -284,8 +284,6 @@ def _get_course_about_context(request, course_id, category=None):  # pylint: dis
         staff_access = bool(has_access(request.user, 'staff', course))
         studio_url = get_studio_url(course, 'settings/details')
 
-        course_block_tree = get_course_outline_block_tree(request, course_id, None)
-
         if request.user.has_perm(VIEW_COURSE_HOME, course):
             course_target = reverse(course_home_url_name(course.id), args=[text_type(course.id)])
         else:
@@ -357,6 +355,7 @@ def _get_course_about_context(request, course_id, category=None):  # pylint: dis
         allow_anonymous = check_public_access(course, [COURSE_VISIBILITY_PUBLIC, COURSE_VISIBILITY_PUBLIC_OUTLINE])
 
         if allow_anonymous and show_courseware_link:
+            course_block_tree = get_course_outline_block_tree(request, course_id, None)
             preview_course_url = get_course_first_unit_lms_url(course_block_tree)
 
         # This local import is due to the circularity of lms and openedx references.
