@@ -122,7 +122,7 @@
                 return this;
             }
 
-            renderEditShowMoreBtn = function(){
+//            renderEditShowMoreBtn = function(){
 //              var span = this.$('span.theme-opener');
 //              if (DiscussionUtil.themeCount > 2){
 //                var text = span.find('span.text');
@@ -132,9 +132,9 @@
 //              else {
 //                span.hide();
 //              }
-            }
+//            }
 
-            toggleThemeEditMobile: function(event){
+//            toggleThemeEditMobile: function(event){
 //                var themeOpener = this.$('span.theme-opener');
 //                if (themeOpener.is(':visible')){
 //                  var themeBoxes = $('div.theme-boxes'), spanText = themeOpener.find('span.text');
@@ -147,8 +147,8 @@
 //                    spanText.html('show less');
 //                  }
 //                }
-                return this;
-            };
+//                return this;
+//            };
         });
     }
 }).call(window);
