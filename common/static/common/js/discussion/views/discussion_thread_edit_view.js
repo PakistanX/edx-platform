@@ -7,7 +7,7 @@
             events: {
                 submit: 'updateHandler',
                 'click .post-cancel': 'cancelHandler',
-                'click span.theme-opener': 'toggleThemeEditMobile',
+                'click span.theme-opener': 'toggleThemeEditMobile'
             },
 
             attributes: {
