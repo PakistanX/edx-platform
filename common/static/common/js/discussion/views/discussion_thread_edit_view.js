@@ -6,8 +6,8 @@
             tagName: 'form',
             events: {
                 submit: 'updateHandler',
-                'click .post-cancel': 'cancelHandler'
-//                'click span.theme-opener': 'toggleThemeEditMobile'
+                'click .post-cancel': 'cancelHandler',
+                'click span.theme-opener': 'toggleThemeEditMobile'
             },
 
             attributes: {
@@ -48,7 +48,7 @@
                     this.addField(this.topicView.render());
                 }
                 DiscussionUtil.makeWmdEditor(this.$el, $.proxy(this.$, this), 'edit-post-body');
-//                this.renderEditShowMoreBtn();
+                this.renderEditShowMoreBtn();
                 return this;
             },
 
