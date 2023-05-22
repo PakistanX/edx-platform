@@ -122,7 +122,7 @@
                 return this;
             },
 
-            renderEditShowMoreBtn = function(){
+            renderEditShowMoreBtn: function(){
               var span = this.$('span.theme-opener');
               if (DiscussionUtil.themeCount > 2){
                 var text = span.find('span.text');
@@ -134,21 +134,21 @@
               }
             },
 
-//            toggleThemeEditMobile: function(event){
-//                var themeOpener = this.$('span.theme-opener');
-//                if (themeOpener.is(':visible')){
-//                  var themeBoxes = $('div.theme-boxes'), spanText = themeOpener.find('span.text');
-//                  if (themeBoxes.hasClass('show')){
-//                    themeBoxes.removeClass('show');
-//                    spanText.html('show more (' + spanText.attr('data-theme-count') + ')');
-//                  }
-//                  else {
-//                    themeBoxes.addClass('show');
-//                    spanText.html('show less');
-//                  }
-//                }
-//                return this;
-//            };
+            toggleThemeEditMobile: function(event){
+              var themeOpener = this.$('span.theme-opener');
+              if (themeOpener.is(':visible')){
+                var themeBoxes = $('div.theme-boxes'), spanText = themeOpener.find('span.text');
+                if (themeBoxes.hasClass('show')){
+                  themeBoxes.removeClass('show');
+                  spanText.html('show more (' + spanText.attr('data-theme-count') + ')');
+                }
+                else {
+                    themeBoxes.addClass('show');
+                    spanText.html('show less');
+                }
+              }
+              return this;
+            }
         });
     }
 }).call(window);
