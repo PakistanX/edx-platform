@@ -120,19 +120,19 @@
                 this.trigger('thread:cancel_edit', event);
                 this.remove();
                 return this;
-            }
+            },
 
-//            renderEditShowMoreBtn = function(){
-//              var span = this.$('span.theme-opener');
-//              if (DiscussionUtil.themeCount > 2){
-//                var text = span.find('span.text');
-//                text.html('show more (' + DiscussionUtil.themeCount + ')');
-//                text.attr('data-theme-count', DiscussionUtil.themeCount);
-//              }
-//              else {
-//                span.hide();
-//              }
-//            }
+            renderEditShowMoreBtn = function(){
+              var span = this.$('span.theme-opener');
+              if (DiscussionUtil.themeCount > 2){
+                var text = span.find('span.text');
+                text.html('show more (' + DiscussionUtil.themeCount + ')');
+                text.attr('data-theme-count', DiscussionUtil.themeCount);
+              }
+              else {
+                span.hide();
+              }
+            },
 
 //            toggleThemeEditMobile: function(event){
 //                var themeOpener = this.$('span.theme-opener');
