@@ -135,18 +135,19 @@
             }
 
             toggleThemeEditMobile: function(event){
-                var themeOpener = this.$('span.theme-opener');
-                if (themeOpener.is(':visible')){
-                  var themeBoxes = $('div.theme-boxes'), spanText = themeOpener.find('span.text');
-                  if (themeBoxes.hasClass('show')){
-                    themeBoxes.removeClass('show');
-                    spanText.html('show more (' + spanText.attr('data-theme-count') + ')');
-                  }
-                  else {
-                    themeBoxes.addClass('show');
-                    spanText.html('show less');
-                  }
-                }
+//                var themeOpener = this.$('span.theme-opener');
+//                if (themeOpener.is(':visible')){
+//                  var themeBoxes = $('div.theme-boxes'), spanText = themeOpener.find('span.text');
+//                  if (themeBoxes.hasClass('show')){
+//                    themeBoxes.removeClass('show');
+//                    spanText.html('show more (' + spanText.attr('data-theme-count') + ')');
+//                  }
+//                  else {
+//                    themeBoxes.addClass('show');
+//                    spanText.html('show less');
+//                  }
+//                }
+                return this;
             };
         });
     }
