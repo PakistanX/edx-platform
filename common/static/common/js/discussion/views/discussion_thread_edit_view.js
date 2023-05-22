@@ -48,6 +48,7 @@
                     this.addField(this.topicView.render());
                 }
                 DiscussionUtil.makeWmdEditor(this.$el, $.proxy(this.$, this), 'edit-post-body');
+                this.renderEditShowMoreBtn();
                 return this;
             },
 
