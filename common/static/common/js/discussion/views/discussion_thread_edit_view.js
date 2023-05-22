@@ -22,7 +22,7 @@
                 this.threadType = this.model.get('thread_type');
                 this.topicId = this.model.get('commentable_id');
                 this.context = options.context || 'course';
-                _.bindAll(this, 'updateHandler', 'cancelHandler');
+                _.bindAll(this, 'updateHandler', 'cancelHandler', 'toggleThemeEditMobile');
                 return this;
             },
 
