@@ -6,8 +6,8 @@
             tagName: 'form',
             events: {
                 submit: 'updateHandler',
-                'click .post-cancel': 'cancelHandler',
-                'click span.theme-opener': 'toggleThemeEditMobile'
+                'click .post-cancel': 'cancelHandler'
+//                'click span.theme-opener': 'toggleThemeEditMobile'
             },
 
             attributes: {
@@ -22,7 +22,7 @@
                 this.threadType = this.model.get('thread_type');
                 this.topicId = this.model.get('commentable_id');
                 this.context = options.context || 'course';
-                _.bindAll(this, 'updateHandler', 'cancelHandler', 'toggleThemeEditMobile');
+                _.bindAll(this, 'updateHandler', 'cancelHandler');
                 return this;
             },
 
