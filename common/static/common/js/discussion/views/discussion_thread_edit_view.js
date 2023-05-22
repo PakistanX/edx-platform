@@ -48,7 +48,7 @@
                     this.addField(this.topicView.render());
                 }
                 DiscussionUtil.makeWmdEditor(this.$el, $.proxy(this.$, this), 'edit-post-body');
-                this.renderEditShowMoreBtn();
+//                this.renderEditShowMoreBtn();
                 return this;
             },
 
@@ -123,15 +123,15 @@
             }
 
             renderEditShowMoreBtn = function(){
-              var span = this.$('span.theme-opener');
-              if (DiscussionUtil.themeCount > 2){
-                var text = span.find('span.text');
-                text.html('show more (' + DiscussionUtil.themeCount + ')');
-                text.attr('data-theme-count', DiscussionUtil.themeCount);
-              }
-              else {
-                span.hide();
-              }
+//              var span = this.$('span.theme-opener');
+//              if (DiscussionUtil.themeCount > 2){
+//                var text = span.find('span.text');
+//                text.html('show more (' + DiscussionUtil.themeCount + ')');
+//                text.attr('data-theme-count', DiscussionUtil.themeCount);
+//              }
+//              else {
+//                span.hide();
+//              }
             }
 
             toggleThemeEditMobile: function(event){
