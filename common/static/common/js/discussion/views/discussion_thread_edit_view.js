@@ -6,7 +6,7 @@
             tagName: 'form',
             events: {
                 submit: 'updateHandler',
-                'click .post-cancel': 'cancelHandler'
+                'click .post-cancel': 'cancelHandler',
                 'click span.theme-opener': 'toggleThemeEditMobile',
             },
 
