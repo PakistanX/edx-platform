@@ -126,8 +126,9 @@
               var span = this.$('span.theme-opener');
               if (DiscussionUtil.themeCount > 2){
                 var text = span.find('span.text');
-                text.html('show more (' + DiscussionUtil.themeCount + ')');
-                text.attr('data-theme-count', DiscussionUtil.themeCount);
+                var count = DiscussionUtil.themeCount - 1;
+                text.html('show more (' + count + ')');
+                text.attr('data-theme-count', count);
               }
               else {
                 span.hide();
