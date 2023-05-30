@@ -166,7 +166,7 @@ class UserProfileViewSet(viewsets.ModelViewSet):
         if request.data.get('profile'):
             request.data['profile']['organization'] = get_request_user_org_id(self.request)
 
-        is_created, res_data = create_user(request.data, request.scheme)
+        is_created, res_data = create_user(request.data, request.scheme, next_url=reverse('account_settings'))
         if is_created:
             return Response(UserSerializer(res_data).data, status=status.HTTP_201_CREATED)
 
