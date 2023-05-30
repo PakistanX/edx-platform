@@ -220,6 +220,7 @@ class UserSerializer(serializers.ModelSerializer):
 
         user = User.objects.create(**validated_data)
         user.set_password(password)
+        user.is_active = True
         user.save()
 
         Registration().register(user)

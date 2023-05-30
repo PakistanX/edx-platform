@@ -8,6 +8,7 @@ from django.contrib.auth.models import User
 from django.contrib.sites.models import Site
 from django.core.mail.message import EmailMultiAlternatives
 from django.db import DatabaseError, transaction
+from django.urls import reverse
 from edx_ace import Recipient, ace
 from opaque_keys.edx.keys import CourseKey
 
@@ -88,7 +89,7 @@ def bulk_user_registration(users_data, recipient, request_url_scheme):
 
     for idx, user in enumerate(users_data, start=1):
         with emulate_http_request(site, req_user):
-            is_created, user_data = create_user(user, request_url_scheme)
+            is_created, user_data = create_user(user, request_url_scheme, next_url=reverse('account_settings'))
         if is_created:
             created_emails.append(user_data.email)
         else:
