@@ -6,7 +6,8 @@
             tagName: 'form',
             events: {
                 submit: 'updateHandler',
-                'click .post-cancel': 'cancelHandler'
+                'click .post-cancel': 'cancelHandler',
+                'click span.theme-opener': 'toggleThemeEditMobile'
             },
 
             attributes: {
@@ -21,7 +22,7 @@
                 this.threadType = this.model.get('thread_type');
                 this.topicId = this.model.get('commentable_id');
                 this.context = options.context || 'course';
-                _.bindAll(this, 'updateHandler', 'cancelHandler');
+                _.bindAll(this, 'updateHandler', 'cancelHandler', 'toggleThemeEditMobile');
                 return this;
             },
 
@@ -47,6 +48,7 @@
                     this.addField(this.topicView.render());
                 }
                 DiscussionUtil.makeWmdEditor(this.$el, $.proxy(this.$, this), 'edit-post-body');
+                this.renderEditShowMoreBtn();
                 return this;
             },
 
@@ -118,6 +120,35 @@
                 this.trigger('thread:cancel_edit', event);
                 this.remove();
                 return this;
+            },
+
+            renderEditShowMoreBtn: function(){
+              var span = this.$('span.theme-opener');
+              if (DiscussionUtil.themeCount > 2){
+                var text = span.find('span.text');
+                var count = DiscussionUtil.themeCount - 1;
+                text.html('show more (' + count + ')');
+                text.attr('data-theme-count', count);
+              }
+              else {
+                span.hide();
+              }
+            },
+
+            toggleThemeEditMobile: function(event){
+              var themeOpener = this.$('span.theme-opener');
+              if (themeOpener.is(':visible')){
+                var themeBoxes = $('div.theme-boxes'), spanText = themeOpener.find('span.text');
+                if (themeBoxes.hasClass('show')){
+                  themeBoxes.removeClass('show');
+                  spanText.html('show more (' + spanText.attr('data-theme-count') + ')');
+                }
+                else {
+                    themeBoxes.addClass('show');
+                    spanText.html('show less');
+                }
+              }
+              return this;
             }
         });
     }
