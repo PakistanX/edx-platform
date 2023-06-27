@@ -1,13 +1,14 @@
 from django.conf import settings
 from django.conf.urls import url
 
-from .views import (
+from openedx.features.pakx.lms.overrides.views import (
     AboutUsView,
     BaseTemplateView,
     BusinessView,
     MarketingCampaignPage,
     PartnerWithUsView,
     PrivacyPolicyView,
+    PSWRedirectView,
     RefundPolicyView,
     TermsOfUseView,
     basket_check,
@@ -28,6 +29,7 @@ urlpatterns = [
         name='overview_tab_view'
     ),
     url(r'^business/$', BusinessView.as_view(), name='home-business'),
+    url(r'^psw/$', PSWRedirectView.as_view(), name='psw'),
     url(r'^terms-of-use/$', TermsOfUseView.as_view(), name='terms-of-use'),
     url(r'^privacy-policy/$', PrivacyPolicyView.as_view(), name='privacy-policy'),
     url(r'^refund-policy/$', RefundPolicyView.as_view(), name='privacy-policy'),

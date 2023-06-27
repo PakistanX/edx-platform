@@ -16,7 +16,7 @@ from django.utils.translation import ugettext as _
 from django.views.decorators.cache import cache_control
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_http_methods
-from django.views.generic.base import TemplateView
+from django.views.generic.base import TemplateView, View
 from opaque_keys.edx.keys import CourseKey
 from pytz import utc
 from six import text_type
@@ -829,3 +829,11 @@ def update_lms_tour_status(request):
         return JsonResponse({'result': 'success', 'msg': 'Profile updated Successfully'}, status=200)
     except UserProfile.DoesNotExist:
         return JsonResponse({'result': 'error', 'msg': 'Profile Does Not Exist'}, status=404)
+
+
+class PSWRedirectView(View):
+    """Redirect to discover PSW page."""
+
+    def get(self, request, *args, **kwargs):
+        """Redirect to PSW page on discover."""
+        return redirect('{}/psw'.format(settings.DISCOVER_URL))
