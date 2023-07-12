@@ -46,10 +46,10 @@ log = getLogger(__name__)
 VIDEO_BLOCK_TYPES = ['video', 'pakx_video']
 CORE_BLOCK_TYPES = ['html', 'video', 'problem', 'pakx_video', 'pakx_video_quiz',
                     'edly_carousel', 'pakx_grid_dropdown', 'openassessment', ]
-PROBLEM_BLOCK_TYPES = ['problem', 'edly_carousel', 'pakx_grid_dropdown', 'pakx_video_quiz', ]
+PROBLEM_BLOCK_TYPES = ['problem', 'edly_carousel', 'pakx_grid_dropdown', 'pakx_video_quiz', 'github_xblock']
 BLOCK_TYPES_TO_FILTER = [
     'course', 'chapter', 'sequential', 'vertical', 'discussion', 'openassessment', 'pb-mcq', 'pb-answer', 'pb-choice',
-    'pb-message', 'pakx_microlearning', 'pakx_completion'
+    'pb-message', 'pakx_microlearning', 'pakx_completion', 'github_xblock'
 ]
 
 
