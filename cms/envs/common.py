@@ -1762,7 +1762,7 @@ ADVANCED_PROBLEM_TYPES = [
         'boilerplate_name': None
     },
     {
-        'component': 'github-xblock',
+        'component': 'github_xblock',
         'boilerplate_name': None
     }
 ]
