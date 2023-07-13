@@ -127,7 +127,9 @@ def get_course_card_data(course, org_prefetched=False):
         'url': reverse('about_course', kwargs={'course_id': text_type(course.id)}),
         'enrollment_count': course_custom_setting.enrollment_count,
         'program_name': program_name,
-        'program_url': program_url
+        'program_url': program_url,
+        'difficulty_level': course_custom_setting.difficulty_level,
+        'discount_percent': course_custom_setting.discount_percent,
     }
 
 
@@ -622,3 +624,11 @@ def create_params_for_locked_till_payment_page(course_language, user_id, course_
         'ecommerce_checkout_link': ecommerce_checkout_link,
     }
     return params
+
+
+def get_discounted_price_for_upgrade_data(upgrade_data, discount_percent):
+    """Calculate discounted price for free and paid courses."""
+    price = upgrade_data.min_price
+    if discount_percent and price:
+        price = int((((100 - discount_percent) / 100) * price))
+    return "{} {}".format(upgrade_data.currency.upper(), '{:,}'.format(price))
