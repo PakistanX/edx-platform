@@ -314,7 +314,8 @@ def _accumulate_total_block_counts(total_block_type_counts):
         'pakx_assessment': 'problem',
         'pakx_video_quiz': 'problem',
         'openassessment': 'problem',
-        'journal_xblock': 'other'
+        'journal_xblock': 'other',
+        'github_xblock': 'problem',
     }
     if total_block_type_counts:
         for block_type, count in total_block_type_counts.items():
