@@ -122,11 +122,12 @@ def get_user_data_from_bulk_registration_file(file_reader, default_org_id):
     return users
 
 
-def create_user(user_data, request_url_scheme):
+def create_user(user_data, request_url_scheme, next_url=''):
     """
     util function
     :param user_data: user data for registration
     :param request_url_scheme: variable containing http or https
+    :param next_url: variable containing next url in email CTA
     :return: error if validation failed else None
     """
     user_data['password'] = uuid4().hex[:8]
@@ -137,7 +138,7 @@ def create_user(user_data, request_url_scheme):
         return False, {**user_serializer.errors}
 
     user = user_serializer.save()
-    send_registration_email(user, user_data['password'], request_url_scheme)
+    send_registration_email(user, user_data['password'], request_url_scheme, next_url=next_url)
     return True, user
 
 
@@ -146,12 +147,11 @@ def get_registration_email_message_context(user, password, protocol, is_public_r
     return context for registration notification email body
     """
     site = Site.objects.get_current()
-    activation_key = Registration.objects.get(user=user).activation_key
     message_context = {
         'site_name': site.domain
     }
     message_context.update(get_base_template_context(site, user=user))
-    link = reverse('activate', kwargs={'key': activation_key})
+    link = reverse('signin_user')
     if next_url:
         link = '{}?next={}'.format(link, next_url)
     message_context.update({
