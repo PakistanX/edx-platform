@@ -13,6 +13,7 @@ from django.contrib.auth.models import Group
 from django.db.models import ExpressionWrapper, F, IntegerField, Prefetch, Q, Sum
 from django.http import Http404, HttpResponse
 from django.middleware import csrf
+from django.urls import reverse
 from django.utils.decorators import method_decorator
 from rest_framework import generics, status, views, viewsets
 from rest_framework.authentication import SessionAuthentication
@@ -166,7 +167,7 @@ class UserProfileViewSet(viewsets.ModelViewSet):
         if request.data.get('profile'):
             request.data['profile']['organization'] = get_request_user_org_id(self.request)
 
-        is_created, res_data = create_user(request.data, request.scheme)
+        is_created, res_data = create_user(request.data, request.scheme, next_url=reverse('account_settings'))
         if is_created:
             return Response(UserSerializer(res_data).data, status=status.HTTP_201_CREATED)
 
