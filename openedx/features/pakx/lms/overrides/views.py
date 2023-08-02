@@ -1,5 +1,5 @@
 """ Overridden views from core """
-from datetime import datetime
+from datetime import datetime, date
 
 from django.conf import settings
 from django.contrib import messages
@@ -315,7 +315,11 @@ def _get_course_about_context(request, course_id, category=None):  # pylint: dis
                 ecommerce_checkout_link, ecommerce_bulk_checkout_link, sku = _get_ecommerce_data(single_paid_mode)
 
         registration_price, course_price = get_course_prices(course, for_about_page=True)
-        if course_map['discount_percent'] and registration_price:
+        if upgrade_data:
+            registration_price = upgrade_data.min_price
+            course_price = format_course_price(registration_price, for_about_page=True)
+        remaining_days = (course_map['discount_date'] - date.today()).days if course_map['discount_date'] else 0
+        if remaining_days and course_map['discount_percent'] and registration_price:
             discounted_price = int((((100 - course_map['discount_percent']) / 100) * registration_price))
             course_price = format_course_price(discounted_price, for_about_page=True)
 
@@ -350,8 +354,8 @@ def _get_course_about_context(request, course_id, category=None):  # pylint: dis
         # Overview
         overview = CourseOverview.get_from_id(course.id)
 
-        starts_in = bool(overview.start_date and overview.start_date > datetime.now(utc))
-        starts_in = starts_in and overview.start_date.strftime('%B %d, %Y')
+        starts_in_valid = bool(overview.start_date and overview.start_date > datetime.now(utc))
+        starts_in = starts_in_valid and overview.start_date.strftime('%B %d, %Y')
 
         sidebar_html_enabled = course_experience_waffle().is_enabled(ENABLE_COURSE_ABOUT_SIDEBAR_HTML)
 
@@ -415,6 +419,7 @@ def _get_course_about_context(request, course_id, category=None):  # pylint: dis
             'org_name': course_map['org_name'],
             'org_short_logo': course_map['org_logo_url'],
             'starts_in': starts_in,
+            'date_today': date.today().strftime('%b %d'),
             'org_description': course_map['org_description'],
             'course_for_you': course_map['course_for_you'],
             'offered_by': course_map['offered_by'],
@@ -432,7 +437,9 @@ def _get_course_about_context(request, course_id, category=None):  # pylint: dis
             'program_name': course_map['program_name'],
             'program_url': course_map['program_url'],
             'difficulty_level': course_map['difficulty_level'],
-            'discount_percent': course_map['discount_percent']
+            'discount_percent': course_map['discount_percent'],
+            'registration_price': format_course_price(registration_price, for_about_page=True),
+            'remaining_days': remaining_days,
         }
 
         return context

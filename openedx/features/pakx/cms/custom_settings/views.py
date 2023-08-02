@@ -106,6 +106,8 @@ class CourseCustomSettingsView(LoginRequiredMixin, View):
         program_detail = truncate_string_up_to(request.POST['program_detail'], 500)
         difficulty_level = request.POST['difficulty_level']
         discount_percent = request.POST['discount_percent']
+        discount_date = request.POST['discount_date']
+        discount_date = datetime.strptime(discount_date, '%Y-%m-%d') if discount_date else None
 
         self._add_days_milestone(subsection_to_lock, course_key)
 
@@ -139,7 +141,8 @@ class CourseCustomSettingsView(LoginRequiredMixin, View):
                     'enrollment_count': enrollment_count,
                     'program_detail': program_detail,
                     'difficulty_level': difficulty_level,
-                    'discount_percent': discount_percent
+                    'discount_percent': discount_percent,
+                    'discount_date': discount_date
                 }
             )
 
