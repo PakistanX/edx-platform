@@ -1,5 +1,5 @@
 """ Overridden views from core """
-from datetime import datetime, date
+from datetime import date, datetime
 
 from django.conf import settings
 from django.contrib import messages
@@ -8,10 +8,9 @@ from django.contrib.auth.models import AnonymousUser, User
 from django.db import transaction
 from django.db.models import prefetch_related_objects
 from django.forms.models import model_to_dict
-from django.http import Http404
+from django.http import Http404, JsonResponse
 from django.shortcuts import redirect
 from django.urls import reverse
-from django.http import JsonResponse
 from django.utils.translation import ugettext as _
 from django.views.decorators.cache import cache_control
 from django.views.decorators.csrf import ensure_csrf_cookie
@@ -22,7 +21,7 @@ from pytz import utc
 from six import text_type
 from waffle import switch_is_active
 
-from course_modes.models import CourseMode, get_course_prices, format_course_price
+from course_modes.models import CourseMode, format_course_price, get_course_prices
 from edxmako.shortcuts import marketing_link, render_to_response
 from lms.djangoapps.ccx.custom_exception import CCXLocatorValidationException
 from lms.djangoapps.commerce.utils import EcommerceService
@@ -68,6 +67,7 @@ from openedx.features.pakx.lms.overrides.forms import AboutUsForm
 from openedx.features.pakx.lms.overrides.tasks import send_contact_us_email
 from openedx.features.pakx.lms.overrides.utils import (
     add_course_progress_to_enrolled_courses,
+    create_discount_data,
     get_active_campaign_data,
     get_course_card_data,
     get_course_first_unit_lms_url,
@@ -318,10 +318,10 @@ def _get_course_about_context(request, course_id, category=None):  # pylint: dis
         if upgrade_data:
             registration_price = upgrade_data.min_price
             course_price = format_course_price(registration_price, for_about_page=True)
-        remaining_days = (course_map['discount_date'] - date.today()).days if course_map['discount_date'] else 0
-        if remaining_days and course_map['discount_percent'] and registration_price:
-            discounted_price = int((((100 - course_map['discount_percent']) / 100) * registration_price))
-            course_price = format_course_price(discounted_price, for_about_page=True)
+
+        course_price, remaining_days = create_discount_data(
+            registration_price, course_price, course_map['discount_percent'], course_map['discount_date']
+        )
 
         # Used to provide context to message to student if enrollment not allowed
         can_enroll = bool(request.user.has_perm(ENROLL_IN_COURSE, course))

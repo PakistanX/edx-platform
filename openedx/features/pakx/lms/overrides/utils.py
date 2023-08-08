@@ -1,7 +1,7 @@
 """ Overrides app util functions """
 
 from collections import OrderedDict
-from datetime import datetime
+from datetime import date, datetime
 from logging import getLogger
 from re import compile as re_compile
 from re import findall
@@ -21,7 +21,7 @@ from opaque_keys.edx.keys import CourseKey
 from pytz import utc
 from six import text_type
 
-from course_modes.models import CourseMode
+from course_modes.models import CourseMode, format_course_price
 from lms.djangoapps.commerce.utils import EcommerceService
 from lms.djangoapps.course_api.blocks.serializers import BlockDictSerializer
 from lms.djangoapps.course_api.blocks.transformers.blocks_api import BlocksAPITransformer
@@ -627,9 +627,10 @@ def create_params_for_locked_till_payment_page(course_language, user_id, course_
     return params
 
 
-def get_discounted_price_for_upgrade_data(upgrade_data, discount_percent):
+def create_discount_data(registration_price, course_price, discount_percent, discount_date):
     """Calculate discounted price for free and paid courses."""
-    price = upgrade_data.min_price
-    if discount_percent and price:
-        price = int((((100 - discount_percent) / 100) * price))
-    return "{} {}".format(upgrade_data.currency.upper(), '{:,}'.format(price))
+    remaining_days = (discount_date - date.today()).days if discount_date else 0
+    if remaining_days and discount_percent and registration_price:
+        discounted_price = int((((100 - discount_percent) / 100) * registration_price))
+        course_price = format_course_price(discounted_price, for_about_page=True)
+    return course_price, remaining_days
