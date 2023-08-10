@@ -319,8 +319,8 @@ def _get_course_about_context(request, course_id, category=None):  # pylint: dis
             registration_price = upgrade_data.min_price
             course_price = format_course_price(registration_price, for_about_page=True)
 
-        course_price, remaining_days = create_discount_data(
-            registration_price, course_price, course_map['discount_percent'], course_map['discount_date']
+        registration_price, remaining_days = create_discount_data(
+            registration_price, course_map['discount_percent'], course_map['discount_date']
         )
 
         # Used to provide context to message to student if enrollment not allowed
@@ -438,7 +438,7 @@ def _get_course_about_context(request, course_id, category=None):  # pylint: dis
             'program_url': course_map['program_url'],
             'difficulty_level': course_map['difficulty_level'],
             'discount_percent': course_map['discount_percent'],
-            'registration_price': format_course_price(registration_price, for_about_page=True),
+            'registration_price': registration_price,
             'remaining_days': remaining_days,
         }
 

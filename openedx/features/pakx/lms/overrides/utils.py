@@ -627,10 +627,10 @@ def create_params_for_locked_till_payment_page(course_language, user_id, course_
     return params
 
 
-def create_discount_data(registration_price, course_price, discount_percent, discount_date):
-    """Calculate discounted price for free and paid courses."""
+def create_discount_data(registration_price, discount_percent, discount_date):
+    """Calculate discounted price for courses."""
     remaining_days = (discount_date - date.today()).days if discount_date else 0
     if remaining_days and discount_percent and registration_price:
-        discounted_price = int((((100 - discount_percent) / 100) * registration_price))
-        course_price = format_course_price(discounted_price, for_about_page=True)
-    return course_price, remaining_days
+        original_price = int((registration_price * 100) / (100 - discount_percent))
+        registration_price = format_course_price(original_price, for_about_page=True)
+    return registration_price, remaining_days

@@ -128,8 +128,8 @@ class CoursesListView(CourseDataView):
                     registration_price = upgrade_data.min_price
                     course_price = format_course_price(registration_price, for_about_page=True)
 
-            course_price, remaining_days = create_discount_data(
-                registration_price, course_price, data['discount_percent'], data['discount_date']
+            registration_price, remaining_days = create_discount_data(
+                registration_price, data['discount_percent'], data['discount_date']
             )
 
             data.update({
