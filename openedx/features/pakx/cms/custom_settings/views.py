@@ -105,7 +105,7 @@ class CourseCustomSettingsView(LoginRequiredMixin, View):
         enrollment_count = request.POST['enrollment_count']
         program_detail = truncate_string_up_to(request.POST['program_detail'], 500)
         difficulty_level = request.POST['difficulty_level']
-        discount_percent = int(request.POST['discount_percent'] or 0)
+        discount_percent = int(float(request.POST.get('discount_percent', '0.0')) or 0)
         discount_date = request.POST['discount_date']
         discount_date = datetime.strptime(discount_date, '%Y-%m-%d') if discount_date else None
 
