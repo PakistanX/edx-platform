@@ -212,8 +212,7 @@ def get_course_outline_block_tree(request, course_id, user=None, allow_start_dat
         'pakx_microlearning',
         'pakx_completion',
         'openassessment',
-        'journal_xblock',
-        'github_xblock',
+        'journal_xblock'
     ]
     all_blocks = get_blocks(
         request,

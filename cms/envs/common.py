@@ -1760,10 +1760,6 @@ ADVANCED_PROBLEM_TYPES = [
     {
         'component': 'journal_xblock',
         'boilerplate_name': None
-    },
-    {
-        'component': 'github_xblock',
-        'boilerplate_name': None
     }
 ]
 
