@@ -7,7 +7,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from six import text_type
 
-from course_modes.models import CourseMode, get_course_prices
+from course_modes.models import CourseMode, format_course_price, get_course_prices
 from lms.djangoapps.courseware.courses import (
     get_course_about_section,
     get_course_with_access,
@@ -16,7 +16,11 @@ from lms.djangoapps.courseware.courses import (
 from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
 from openedx.core.djangoapps.user_api.accounts.image_helpers import get_profile_image_urls_for_user
 from openedx.features.pakx.lms.discover.authentications import DiscoverAuthentication
-from openedx.features.pakx.lms.overrides.utils import get_or_create_course_overview_content, is_blank_str
+from openedx.features.pakx.lms.overrides.utils import (
+    create_discount_data,
+    get_or_create_course_overview_content,
+    is_blank_str
+)
 from util.organizations_helpers import get_organization_by_short_name
 from xmodule.modulestore.django import modulestore
 
@@ -47,6 +51,15 @@ class CourseDataView(APIView):
         """Extract URL from organization."""
         org_logo = organization.get('logo')
         return org_logo.url if org_logo else org_logo
+
+    @staticmethod
+    def pop_extra_data(data):
+        """Remove unneeded key value pairs from data."""
+        keys_to_pop = ['discount_date', 'discount_percent']
+        for key in keys_to_pop:
+            data.pop(key, '')
+
+        return data
 
     def get_course_card_data(self, course, is_upcoming=False):
         """
@@ -80,7 +93,9 @@ class CourseDataView(APIView):
             'course_description': course_custom_setting.card_description,
             'course_type': course_experience_type,
             'about_page_url': about_page_url,
-            'tag': 'Course'
+            'tag': 'Course',
+            'discount_percent': course_custom_setting.discount_percent,
+            'discount_date': course_custom_setting.discount_date
         }
         return self.create_course_card_dict(data, org_logo_url, org_name, course, is_upcoming,
                                             course_custom_setting.publisher_logo_url)
@@ -102,18 +117,25 @@ class CoursesListView(CourseDataView):
         if is_upcoming:
             data.pop('about_page_url')
             data['course_id'] = text_type(course.id)
+            data = self.pop_extra_data(data)
         else:
-            _, course_price = get_course_prices(course, for_about_page=True)
+            registration_price, course_price = get_course_prices(course, for_about_page=True)
 
             if 'free' in course_price.lower():
                 modes = CourseMode.modes_for_course_dict(course.id)
                 upgrade_data = modes.get('verified')
-                print('\n\n\n{}\n\n\n'.format(modes))
                 if upgrade_data:
-                    course_price = "{} {}".format(upgrade_data.currency.upper(), '{:,}'.format(upgrade_data.min_price))
+                    registration_price = upgrade_data.min_price
+                    course_price = format_course_price(registration_price, for_about_page=True)
+
+            registration_price, remaining_days = create_discount_data(
+                registration_price, data['discount_percent'], data['discount_date']
+            )
 
             data.update({
-                'course_price': course_price.replace('PKR', 'Rs.'),
+                'course_price': course_price,
+                'registration_price': registration_price,
+                'remaining_days': remaining_days
             })
 
         return data
@@ -149,6 +171,7 @@ class BusinessCoursesView(CourseDataView):
 
         data['org_logo_url'] = self.request.build_absolute_uri(pub_logo or default_logo)
         data.pop('course_type')
+        data = self.pop_extra_data(data)
         return data
 
     def post(self, request):

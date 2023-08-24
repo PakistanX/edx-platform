@@ -104,6 +104,10 @@ class CourseCustomSettingsView(LoginRequiredMixin, View):
         email_days, email_deadline = self._clean_email_reminder_data(request)
         enrollment_count = request.POST['enrollment_count']
         program_detail = truncate_string_up_to(request.POST['program_detail'], 500)
+        difficulty_level = request.POST['difficulty_level']
+        discount_percent = int(float(request.POST.get('discount_percent') or '0.0') or 0)
+        discount_date = request.POST['discount_date']
+        discount_date = datetime.strptime(discount_date, '%Y-%m-%d') if discount_date else None
 
         self._add_days_milestone(subsection_to_lock, course_key)
 
@@ -135,7 +139,10 @@ class CourseCustomSettingsView(LoginRequiredMixin, View):
                     'about_page_banner_color': about_page_banner_color,
                     'is_text_color_dark': is_text_color_dark,
                     'enrollment_count': enrollment_count,
-                    'program_detail': program_detail
+                    'program_detail': program_detail,
+                    'difficulty_level': difficulty_level,
+                    'discount_percent': discount_percent,
+                    'discount_date': discount_date
                 }
             )
 
