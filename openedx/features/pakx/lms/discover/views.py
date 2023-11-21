@@ -15,11 +15,13 @@ from lms.djangoapps.courseware.courses import (
 )
 from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
 from openedx.core.djangoapps.user_api.accounts.image_helpers import get_profile_image_urls_for_user
+from openedx.features.pakx.lms.overrides.constants import COURSE_SLUG_MAPPING, TRAINING_SLUG_MAPPING
 from openedx.features.pakx.lms.discover.authentications import DiscoverAuthentication
 from openedx.features.pakx.lms.overrides.utils import (
     create_discount_data,
     get_or_create_course_overview_content,
-    is_blank_str
+    is_blank_str,
+    get_key_from_value
 )
 from util.organizations_helpers import get_organization_by_short_name
 from xmodule.modulestore.django import modulestore
@@ -78,8 +80,15 @@ class CourseDataView(APIView):
         course_experience_type = 'VIDEO' if course_custom_setting.course_experience else 'NORMAL'
         pakx_short_logo = '/static/pakx/images/mooc/pakx-logo.png'
 
-        if text_type(course.id) == 'course-v1:LUMSx+2+2022':
-            about_page_url = self.request.build_absolute_uri(reverse('5emodel-course-about'))
+        course_id = text_type(course.id)
+        if course_id in COURSE_SLUG_MAPPING.values():
+            about_page_url = self.request.build_absolute_uri(reverse(
+                'custom-cap-url-courses', args=[get_key_from_value(COURSE_SLUG_MAPPING, course_id)]
+            ))
+        elif course_id in TRAINING_SLUG_MAPPING.values():
+            about_page_url = self.request.build_absolute_uri(reverse(
+                'custom-cap-url-trainings', args=[get_key_from_value(COURSE_SLUG_MAPPING, course_id)]
+            ))
         else:
             about_page_url = self.request.build_absolute_uri(
                 reverse('about_course', kwargs={'course_id': text_type(course.id)})
