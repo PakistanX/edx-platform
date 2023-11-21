@@ -811,7 +811,6 @@ def course_about_static(request):
 
 # noinspection PyInterpreter
 @ensure_csrf_cookie
-@ensure_valid_course_key
 @cache_if_anonymous()
 def custom_cap_url_courses(request, course_id):
     """Custom URL for course about page for different courses."""
@@ -824,7 +823,6 @@ def custom_cap_url_courses(request, course_id):
 
 # noinspection PyInterpreter
 @ensure_csrf_cookie
-@ensure_valid_course_key
 @cache_if_anonymous()
 def custom_cap_url_trainings(request, course_id):
     """Custom URL for course about page for different courses."""
