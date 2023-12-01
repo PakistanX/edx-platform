@@ -636,3 +636,10 @@ def create_discount_data(registration_price, discount_percent, discount_date):
         original_price = int((registration_price * 100) / (100 - discount_percent))
     registration_price = format_course_price(original_price, for_about_page=True)
     return registration_price, remaining_days
+
+
+def get_key_from_value(dictionary, target_value):
+    for key, value in dictionary.items():
+        if value == target_value:
+            return key
+    return None
