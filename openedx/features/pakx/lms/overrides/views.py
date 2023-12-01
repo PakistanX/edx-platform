@@ -63,6 +63,7 @@ from openedx.features.pakx.common.utils import (
     get_partner_space_meta,
     set_partner_space_in_session
 )
+from openedx.features.pakx.lms.overrides.constants import COURSE_SLUG_MAPPING, TRAINING_SLUG_MAPPING
 from openedx.features.pakx.lms.overrides.forms import AboutUsForm
 from openedx.features.pakx.lms.overrides.tasks import send_contact_us_email
 from openedx.features.pakx.lms.overrides.utils import (
@@ -805,6 +806,30 @@ def course_about_static(request):
     return render_to_response('courseware/course_about_static.html', _get_course_about_context(
         request,
         'course-v1:LUMSx+2+2022'
+    ))
+
+
+# noinspection PyInterpreter
+@ensure_csrf_cookie
+@cache_if_anonymous()
+def custom_cap_url_courses(request, course_id):
+    """Custom URL for course about page for different courses."""
+
+    return render_to_response('courseware/course_about_static.html', _get_course_about_context(
+        request,
+        COURSE_SLUG_MAPPING[course_id]
+    ))
+
+
+# noinspection PyInterpreter
+@ensure_csrf_cookie
+@cache_if_anonymous()
+def custom_cap_url_trainings(request, course_id):
+    """Custom URL for course about page for different courses."""
+
+    return render_to_response('courseware/course_about_static.html', _get_course_about_context(
+        request,
+        TRAINING_SLUG_MAPPING[course_id]
     ))
 
 
