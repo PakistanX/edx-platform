@@ -132,6 +132,7 @@ def get_course_card_data(course, org_prefetched=False):
         'difficulty_level': course_custom_setting.difficulty_level,
         'discount_percent': course_custom_setting.discount_percent,
         'discount_date': course_custom_setting.discount_date,
+        'seo_words': course_custom_setting.seo_words
     }
 
 
