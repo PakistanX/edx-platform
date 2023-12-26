@@ -71,6 +71,7 @@ class CourseOverviewContent(TimeStampedModel):
     difficulty_level = models.CharField(max_length=100, blank=True, default='')
     discount_percent = models.PositiveSmallIntegerField(default=0)
     discount_date = models.DateField(default=None, null=True, blank=True)
+    seo_words = models.CharField(null=True, blank=True, max_length=255)
 
     def __str__(self):
         return 'CourseOverviewContent for course {id}'.format(id=self.course.id)

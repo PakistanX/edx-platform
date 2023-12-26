@@ -439,6 +439,7 @@ def _get_course_about_context(request, course_id, category=None):  # pylint: dis
             'program_url': course_map['program_url'],
             'difficulty_level': course_map['difficulty_level'],
             'discount_percent': course_map['discount_percent'],
+            'seo_words': course_map['seo_words'],
             'registration_price': registration_price,
             'remaining_days': remaining_days,
         }
