@@ -61,6 +61,7 @@ from openedx.core.djangoapps.user_authn.views.registration_form import (
     RegistrationFormFactory
 )
 from openedx.core.djangoapps.waffle_utils import WaffleFlag, WaffleFlagNamespace
+from openedx.features.pakx.lms.overrides.tasks import trigger_active_campaign_event
 from student.helpers import (
     authenticate_new_user,
     create_or_set_user_attribute_created_on_site,
@@ -555,6 +556,7 @@ class RegistrationView(APIView):
 
         response = self._create_response(request, {}, status_code=200)
         set_logged_in_cookies(request, response, user)
+        trigger_active_campaign_event('join_now', user.email, user_name=user.name)
         return response
 
     def _handle_duplicate_email_username(self, request, data):
