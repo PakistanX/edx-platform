@@ -34,4 +34,4 @@ def optimize_attachment_response_signal(sender, instance, created, **kwargs):
     """Signal to optimize the attachment response"""
     if created:
         user = instance.user
-        trigger_active_campaign_event.delay('join_now', user.email, user_name=user.name)
+        trigger_active_campaign_event.delay('join_now', user.email, user_name=user.get_full_name())

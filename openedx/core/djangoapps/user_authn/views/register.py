@@ -556,7 +556,7 @@ class RegistrationView(APIView):
 
         response = self._create_response(request, {}, status_code=200)
         set_logged_in_cookies(request, response, user)
-        trigger_active_campaign_event('join_now', user.email, user_name=user.name)
+        trigger_active_campaign_event('join_now', user.email, user_name=get_full_name())
         return response
 
     def _handle_duplicate_email_username(self, request, data):
