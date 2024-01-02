@@ -2,6 +2,7 @@
 Progress Email related signal handlers.
 """
 
+from django.db.models.signals import post_save
 from django.dispatch import receiver
 from social_django.models import UserSocialAuth
 
