@@ -61,7 +61,6 @@ from openedx.core.djangoapps.user_authn.views.registration_form import (
     RegistrationFormFactory
 )
 from openedx.core.djangoapps.waffle_utils import WaffleFlag, WaffleFlagNamespace
-from openedx.features.pakx.lms.overrides.tasks import trigger_active_campaign_event
 from student.helpers import (
     authenticate_new_user,
     create_or_set_user_attribute_created_on_site,
@@ -536,6 +535,7 @@ class RegistrationView(APIView):
                 address already exists
             HttpResponse: 403 operation not allowed
         """
+        from openedx.features.pakx.lms.overrides.tasks import trigger_active_campaign_event
         data = request.POST.copy()
         self._handle_terms_of_service(data)
 
