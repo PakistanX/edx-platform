@@ -43,6 +43,15 @@
                     data: data,
                     headers: headers,
                     success: function() {
+                        try{
+                          gtag("event", "login", {
+                            method: "Google"
+                          }, 'GTM-NPS6F4W');
+                        } catch (error){
+                          console.log('gtag failed');
+                          console.log(error)
+                        }
+
                         model.trigger('sync');
                     },
                     error: function(error) {
