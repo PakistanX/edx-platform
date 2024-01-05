@@ -13,6 +13,7 @@ COURSE_SLUG_MAPPING = {
     'learn-farsi-for-beginners': 'course-v1:LUMSx+4+2022',
     'learn-pashto-for-beginners': 'course-v1:LUMSx+9+2023',
     'machine-learning': 'course-v1:LUMSx+6+2023',
+    'project-management': 'course-v1:LUMSx+5+2023',
 }
 
 TRAINING_SLUG_MAPPING = {
