@@ -262,7 +262,7 @@ def trigger_active_campaign_event(event_name, email, course_key=None, user_name=
         response = requests.post(settings.AC_EVENT_URL, data=data)
         result = response.json()
         if result["success"]:
-            log.info('\n\n\nSuccess! {}\n\n\n'.format(result['message']))
+            log.info('Success! {}'.format(result['message']))
         else:
             log.info('Error: {}'.format(result['message']))
     except requests.RequestException as e:
