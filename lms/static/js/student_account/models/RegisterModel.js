@@ -45,9 +45,11 @@
                         headers: headers,
                         success: function() {
                             try{
-                              gtag("event", "sign_up", {
-                                method: "Google"
-                              }, 'GTM-NPS6F4W');
+                              window.dataLayer = window.dataLayer || [];
+                              window.dataLayer.push({
+                                event: "sign_up",
+                                method: "Direct"
+                              });
                             } catch (error){
                               console.log('gtag failed');
                               console.log(error);
