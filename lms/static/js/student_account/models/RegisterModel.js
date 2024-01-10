@@ -48,7 +48,7 @@
                               window.dataLayer = window.dataLayer || [];
                               window.dataLayer.push({
                                 event: "sign_up",
-                                method: "Google"
+                                method: "Direct"
                               });
                             } catch (error){
                               console.log('gtag failed');
