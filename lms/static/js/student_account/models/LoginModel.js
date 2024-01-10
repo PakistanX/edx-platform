@@ -44,9 +44,11 @@
                     headers: headers,
                     success: function() {
                         try{
-                          gtag("event", "login", {
-                            method: "Google"
-                          }, 'GTM-NPS6F4W');
+                          window.dataLayer = window.dataLayer || [];
+                          window.dataLayer.push({
+                            event: "login",
+                            method: "Direct"
+                          });
                         } catch (error){
                           console.log('gtag failed');
                           console.log(error)
