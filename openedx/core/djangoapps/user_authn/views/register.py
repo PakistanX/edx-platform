@@ -535,7 +535,6 @@ class RegistrationView(APIView):
                 address already exists
             HttpResponse: 403 operation not allowed
         """
-        from openedx.features.pakx.lms.overrides.tasks import trigger_active_campaign_event
         data = request.POST.copy()
         self._handle_terms_of_service(data)
 
@@ -556,7 +555,6 @@ class RegistrationView(APIView):
 
         response = self._create_response(request, {}, status_code=200)
         set_logged_in_cookies(request, response, user)
-        trigger_active_campaign_event('join_now', user.email, user_name=user.get_full_name())
         return response
 
     def _handle_duplicate_email_username(self, request, data):
