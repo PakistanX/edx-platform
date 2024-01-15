@@ -1,9 +1,7 @@
 """Celery tasks for to update user progress and send reminder emails"""
 
-import json
 from logging import getLogger
 
-import requests
 from celery import task
 from django.conf import settings
 from django.contrib.auth.models import User
@@ -235,35 +233,3 @@ def verify_user_and_change_enrollment(user, course_key):
         if len(modes) == 1:
             log.info('Starting mode change for user: {} and course {}'.format(user.id, course_key))
             CourseEnrollment.objects.filter(user_id=user.id, course=course_key, mode='audit').update(mode='verified')
-
-
-@task(name='trigger_active_campaign_event')
-def trigger_active_campaign_event(event_name, email, course_key=None, user_name=None):
-    """Trigger active campaign event."""
-    if not settings.AC_ACCOUNT_ID:
-        return
-
-    event_data = {'email': email}
-    if course_key:
-        course = CourseOverview.objects.get(id=course_key)
-        event_data['course_name'] = course.display_name
-
-    if user_name:
-        event_data['user_name'] = user_name
-
-    data = {
-        'actid': settings.AC_ACCOUNT_ID,
-        'key': settings.AC_KEY,
-        'event': event_name,
-        'eventdata': json.dumps(event_data),
-    }
-
-    try:
-        response = requests.post(settings.AC_EVENT_URL, data=data)
-        result = response.json()
-        if result["success"]:
-            log.info('Success! {}'.format(result['message']))
-        else:
-            log.info('Error: {}'.format(result['message']))
-    except requests.RequestException as e:
-        log.error('Request failed: {}'.format(e))

@@ -65,7 +65,7 @@ from openedx.features.pakx.common.utils import (
 )
 from openedx.features.pakx.lms.overrides.constants import COURSE_SLUG_MAPPING, TRAINING_SLUG_MAPPING
 from openedx.features.pakx.lms.overrides.forms import AboutUsForm
-from openedx.features.pakx.lms.overrides.tasks import send_contact_us_email, trigger_active_campaign_event
+from openedx.features.pakx.lms.overrides.tasks import send_contact_us_email
 from openedx.features.pakx.lms.overrides.utils import (
     add_course_progress_to_enrolled_courses,
     create_discount_data,
@@ -846,7 +846,6 @@ def basket_check(request, course_key_string, sku):
     redirect_url = '{}/basket/add/?sku={}'.format(settings.ECOMMERCE_PUBLIC_URL_ROOT, sku)
     course_enrollment = CourseEnrollment.get_enrollment(user=request.user, course_key=course_key_string)
     if course_enrollment is None:
-        trigger_active_campaign_event.delay('cart_page_view', request.user.email, course_key_string)
         return redirect(redirect_url)
 
     course_modes = CourseMode.modes_for_course(course_key_string)
@@ -857,7 +856,6 @@ def basket_check(request, course_key_string, sku):
     if course_enrollment.is_verified_enrollment():
         return render_to_response('courseware/error.html')
 
-    trigger_active_campaign_event.delay('cart_page_view', request.user.email, course_key_string)
     return redirect(redirect_url)
 
 
