@@ -1,6 +1,7 @@
 """ Django admin pages for student app """
 
-
+from csv import writer as csv_writer
+from datetime import datetime
 from functools import wraps
 
 from config_models.admin import ConfigurationModelAdmin
@@ -14,20 +15,19 @@ from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.forms import ReadOnlyPasswordHashField
 from django.contrib.auth.forms import UserChangeForm as BaseUserChangeForm
 from django.db import models, router, transaction
-from django.http import HttpResponseRedirect
+from django.http import HttpResponse, HttpResponseRedirect
 from django.http.request import QueryDict
 from django.urls import reverse
 from django.utils.translation import ngettext
 from django.utils.translation import ugettext_lazy as _
 from opaque_keys import InvalidKeyError
 from opaque_keys.edx.keys import CourseKey
-
-from openedx.core.djangoapps.waffle_utils import WaffleSwitch
-from openedx.core.lib.courses import clean_course_id
 from student import STUDENT_WAFFLE_NAMESPACE
 from student.models import (
     AccountRecovery,
+    AccountRecoveryConfiguration,
     AllowedAuthUser,
+    BulkUnenrollConfiguration,
     CourseAccessRole,
     CourseEnrollment,
     CourseEnrollmentAllowed,
@@ -39,12 +39,13 @@ from student.models import (
     RegistrationCookieConfiguration,
     UserAttribute,
     UserProfile,
-    UserTestGroup,
-    BulkUnenrollConfiguration,
-    AccountRecoveryConfiguration
+    UserTestGroup
 )
 from student.roles import REGISTERED_ACCESS_ROLES
 from xmodule.modulestore.django import modulestore
+
+from openedx.core.djangoapps.waffle_utils import WaffleSwitch
+from openedx.core.lib.courses import clean_course_id
 
 User = get_user_model()  # pylint:disable=invalid-name
 
@@ -337,8 +338,6 @@ class UserChangeForm(BaseUserChangeForm):
 
 class UserAdmin(BaseUserAdmin):
     """ Admin interface for the User model. """
-    inlines = (UserProfileInline, AccountRecoveryInline)
-    form = UserChangeForm
 
     def get_readonly_fields(self, request, obj=None):
         """
@@ -349,6 +348,37 @@ class UserAdmin(BaseUserAdmin):
         if obj:
             return django_readonly + ('username',)
         return django_readonly
+    
+    def download_as_csv(model_admin, request, queryset):    # pylint: disable=unused-argument
+        opts = model_admin.model._meta  # pylint: disable=protected-access
+        content_disposition = 'attachment; filename={}.csv'.format(opts.verbose_name)
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = content_disposition
+        writer = csv_writer(response)
+
+        fields = [
+            field for field in opts.get_fields() if (
+                not field.many_to_many and not field.one_to_many and not field.one_to_one and field.name != 'password'
+            )
+        ]
+        # Write a first row with header information
+        writer.writerow([field.verbose_name for field in fields])
+        # Write data rows
+        for obj in queryset:
+            data_row = []
+            for field in fields:
+                value = getattr(obj, field.name)
+                if isinstance(value, datetime):
+                    value = value.strftime('%d/%m/%Y')
+                data_row.append(value)
+            writer.writerow(data_row)
+        return response
+
+    download_as_csv.short_description = 'Download as CSV'
+
+    inlines = (UserProfileInline, AccountRecoveryInline)
+    form = UserChangeForm
+    actions = [download_as_csv]
 
 
 @admin.register(UserAttribute)
