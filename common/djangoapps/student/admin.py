@@ -22,6 +22,8 @@ from django.utils.translation import ngettext
 from django.utils.translation import ugettext_lazy as _
 from opaque_keys import InvalidKeyError
 from opaque_keys.edx.keys import CourseKey
+from openedx.core.djangoapps.waffle_utils import WaffleSwitch
+from openedx.core.lib.courses import clean_course_id
 from student import STUDENT_WAFFLE_NAMESPACE
 from student.models import (
     AccountRecovery,
@@ -43,9 +45,6 @@ from student.models import (
 )
 from student.roles import REGISTERED_ACCESS_ROLES
 from xmodule.modulestore.django import modulestore
-
-from openedx.core.djangoapps.waffle_utils import WaffleSwitch
-from openedx.core.lib.courses import clean_course_id
 
 User = get_user_model()  # pylint:disable=invalid-name
 
@@ -348,7 +347,7 @@ class UserAdmin(BaseUserAdmin):
         if obj:
             return django_readonly + ('username',)
         return django_readonly
-    
+
     def download_as_csv(model_admin, request, queryset):    # pylint: disable=unused-argument
         opts = model_admin.model._meta  # pylint: disable=protected-access
         content_disposition = 'attachment; filename={}.csv'.format(opts.verbose_name)
@@ -358,7 +357,8 @@ class UserAdmin(BaseUserAdmin):
 
         fields = [
             field for field in opts.get_fields() if (
-                not field.many_to_many and not field.one_to_many and not field.one_to_one and field.name != 'password'
+                not field.many_to_many and not field.one_to_many and \
+                not field.one_to_one and field.name != 'password'
             )
         ]
         # Write a first row with header information
