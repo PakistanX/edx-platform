@@ -93,7 +93,6 @@ class CourseCustomSettingsView(LoginRequiredMixin, View):
         card_description = truncate_string_up_to(request.POST['card-description'], 256)
         is_public = request.POST.get('is_public', 'off') == 'on'
         course_experience = request.POST.get('course_experience', 0)
-        course_description = truncate_string_up_to(request.POST['course_description'], 256)
         publisher_logo_url = truncate_string_up_to(request.POST['publisher-logo-url'], 256)
         group_enrollment_url = truncate_string_up_to(request.POST['group_enrollment_url'], 256)
         publisher_card_logo_url = truncate_string_up_to(request.POST['publisher_card_logo_url'], 256)
@@ -129,7 +128,6 @@ class CourseCustomSettingsView(LoginRequiredMixin, View):
                     'publisher_name': publisher_name,
                     'publisher_description': publisher_description,
                     'card_description': card_description,
-                    'course_description': course_description,
                     'course_experience': course_experience,
                     'publisher_logo_url': publisher_logo_url,
                     'group_enrollment_url': group_enrollment_url,
