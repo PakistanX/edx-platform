@@ -445,8 +445,8 @@ class SequenceModule(SequenceFields, ProctoringFields, XModule):
         display_items = self.get_display_items()
         locked_page_params = {}
 
-        if len(self.children) != len(display_items):
-            display_items, locked_page_params = self._make_locked_units_for_audit_track(display_items)
+        # if len(self.children) != len(display_items):
+        #     display_items, locked_page_params = self._make_locked_units_for_audit_track(display_items)
 
         self._update_position(context, len(display_items))
 
