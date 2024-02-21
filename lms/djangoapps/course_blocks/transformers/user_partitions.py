@@ -109,7 +109,7 @@ class UserPartitionTransformer(FilteringTransformerMixin, BlockStructureTransfor
 
             if access_denying_partition:
                 user_group = user_groups.get(access_denying_partition.id)
-                if (
+                if False and (                          # Forced false to disable show_locked functionality, TO-DO: Add a waffle flag 
                     user_group and user_group.id == 1
                     and user_group.name == 'Audit'
                     and isinstance(access_denying_partition, EnrollmentTrackUserPartition)
@@ -135,8 +135,8 @@ class UserPartitionTransformer(FilteringTransformerMixin, BlockStructureTransfor
                 block_structure.get_transformer_block_field(
                     block_key, self, 'merged_group_access'
                 ).get_access_denying_partition(user_groups) is not None and
-                block_structure.get_xblock_field(block_key, 'authorization_denial_message') is None and
-                block_structure.get_xblock_field(block_key, 'show_locked', default=False) is False
+                block_structure.get_xblock_field(block_key, 'authorization_denial_message') is None
+                # and block_structure.get_xblock_field(block_key, 'show_locked', default=False) is False
             )
         )
         result_list.append(group_access_filter)
