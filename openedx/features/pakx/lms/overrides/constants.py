@@ -14,6 +14,7 @@ COURSE_SLUG_MAPPING = {
     'learn-pashto-for-beginners': 'course-v1:LUMSx+9+2023',
     'machine-learning': 'course-v1:LUMSx+6+2023',
     'project-management': 'course-v1:LUMSx+5+2023',
+    'business-communication': 'course-v1:LUMSx+8+2023',
 }
 
 TRAINING_SLUG_MAPPING = {
