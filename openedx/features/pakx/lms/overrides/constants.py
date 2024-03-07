@@ -5,6 +5,12 @@ TEACHING_PRACTICE_COURSE_IDS = [
     'course-v1:Jadid_Dastgir+2+2022',
 ]
 
+LUMS_CERTIFICATE_ORGANIZATIONS = [
+    'LUMSx',
+    'Happy_Home',
+    'TCF',
+]
+
 COURSE_SLUG_MAPPING = {
     '5e-model-teacher-training': 'course-v1:LUMSx+2+2022',
     'ayurveda-health-wellness': 'course-v1:LUMSx+10+2023',
