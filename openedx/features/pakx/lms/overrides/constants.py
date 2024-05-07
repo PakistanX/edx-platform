@@ -9,6 +9,7 @@ LUMS_CERTIFICATE_ORGANIZATIONS = [
     'LUMSx',
     'Happy_Home',
     'TCF',
+    'Jadid_Dastgir',
 ]
 
 COURSE_SLUG_MAPPING = {
