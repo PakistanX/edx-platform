@@ -82,7 +82,7 @@ def cache_if_anonymous(*get_parameters):
                         response.write(item)
                 else:
                     response = view_func(request, *args, **kwargs)
-                    cache.set(cache_key, response, 60 * 3)
+                    cache.set(cache_key, response, 60 * 60)
 
                 return response
 
