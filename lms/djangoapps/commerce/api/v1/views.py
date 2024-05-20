@@ -27,7 +27,7 @@ from openedx.core.djangoapps.site_configuration import helpers as configuration_
 from openedx.core.lib.api.authentication import BearerAuthentication
 from openedx.core.lib.api.mixins import PutAsCreateMixin
 from openedx.core.lib.celery.task_utils import emulate_http_request
-from openedx.features.pakx.lms.pakx_admin_app.message_types import CommerceEnrol
+from openedx.features.pakx.lms.pakx_admin_app.message_types import CommerceEnrol, CommerceCODOrder
 from student.models import CourseEnrollment
 from util.json_request import JsonResponse
 
@@ -157,5 +157,51 @@ class EnrollmentNotification(APIView):
             return JsonResponse(status=response_code)
 
         self._send_course_enrolment_email(username, course_id)
+
+        return JsonResponse(status=200)
+
+
+class CodOrderNotification(APIView):
+    """Send cod order notification to user."""
+
+    @staticmethod
+    def _send_cod_order_email(username, course_key, tracking_id):
+        """
+        send a cod order notification via email
+        :param user: (User) request User
+        :param course_key: (str) course key
+        :param tracking_id: (str) tracking id
+        """
+        site = Site.objects.get_current()
+        user = User.objects.filter(username=username).first()
+        email_context = get_base_template_context(site, user)
+        course_overview = CourseOverview.objects.get(id=CourseKey.from_string(course_key))
+        email_context.update({
+            'course': course_overview.display_name,
+            'image_url': 'https://' + site.domain + course_overview.course_image_url,
+            'url': "https://{}/courses/{}/overview".format(site.domain, course_key),
+        })
+
+        with emulate_http_request(site, user):
+            email_context.update({
+                'site_name': site.domain,
+                'dashboard_url': 'https://' + site.domain + '/dashboard',
+                'platform_name': configuration_helpers.get_value('PLATFORM_NAME', settings.PLATFORM_NAME),
+                'tracking_id': tracking_id,
+            })
+
+            message = CommerceCODOrder().personalize(
+                recipient=Recipient(email_context['username'], email_context['email']),
+                language='en',
+                user_context=email_context,
+            )
+            ace.send(message)
+
+
+    def get(self, request, username, course_id, tracking_id):
+        """Send COD order notification to user from ecommerce."""
+        log.info('COD order email notification request for {} and {}'.format(username, course_id))
+
+        self._send_cod_order_email(username, course_id, tracking_id)
 
         return JsonResponse(status=200)

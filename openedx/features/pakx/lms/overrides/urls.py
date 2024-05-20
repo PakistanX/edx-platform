@@ -12,7 +12,7 @@ from openedx.features.pakx.lms.overrides.views import (
     RefundPolicyView,
     TermsOfUseView,
     basket_check,
-    course_about_static,
+    course_about_fiveemodel,
     custom_cap_url_courses,
     custom_cap_url_trainings,
     overview_tab_view,
@@ -38,7 +38,7 @@ urlpatterns = [
     url(r'^partner-with-us/$', PartnerWithUsView.as_view(), name='partner-with-us'),
     url(r'^workplace-essentials-showcase/$', BusinessView.as_view(), name='we-showcase'),
     url(r'^workplace-harassment/$', MarketingCampaignPage.as_view(), name='workplace-harassment'),
-    url(r'^5emodel/signup/$', course_about_static, name='5emodel-course-about'),
+    url(r'^5emodel/signup/$', course_about_fiveemodel, name='5emodel-course-about'),
     url(r'^courses/{}/$'.format(r'(?P<course_id>[\w-]+)'), custom_cap_url_courses, name='custom-cap-url-courses'),
     url(r'^trainings/{}/$'.format(r'(?P<course_id>[\w-]+)'), custom_cap_url_trainings, name='custom-cap-url-trainings'),
     url(r'^basket_check/{}/{}$'.format(
