@@ -797,7 +797,7 @@ def _progress(request, course_key, student_id):
 @ensure_csrf_cookie
 @ensure_valid_course_key
 @cache_if_anonymous()
-def course_about_static(request):
+def course_about_fiveemodel(request):
     """
     Display the course's about page.
 
