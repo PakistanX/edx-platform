@@ -15,6 +15,7 @@ LUMS_CERTIFICATE_ORGANIZATIONS = [
     'Happy_Palace_Group_of_Schools.',
     'Farooqi_School',
     'Lumiere_Learnings_PVT_Ltd_KGS',
+    'Risk_Associates',
 ]
 
 COURSE_SLUG_MAPPING = {
