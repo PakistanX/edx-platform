@@ -16,6 +16,7 @@ LUMS_CERTIFICATE_ORGANIZATIONS = [
     'Farooqi_School',
     'Lumiere_Learnings_PVT_Ltd_KGS',
     'Risk_Associates',
+    'Amal_Academy',
 ]
 
 COURSE_SLUG_MAPPING = {
