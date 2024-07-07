@@ -18,3 +18,7 @@ class CourseReminder(BaseMessageType):
 
 class CommerceEnrol(BaseMessageType):
     pass
+
+
+class CommerceCODOrder(BaseMessageType):
+    pass
