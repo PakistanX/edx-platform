@@ -22,6 +22,7 @@ from openedx.core.djangoapps.lang_pref import LANGUAGE_KEY
 from openedx.core.djangoapps.site_configuration import helpers as configuration_helpers
 from openedx.core.djangoapps.user_api.preferences.api import get_user_preference
 from openedx.core.lib.celery.task_utils import emulate_http_request
+from openedx.features.pakx.lms.overrides.constants import SKIP_UPDATE_COURSE_PROGRESS_COURSE_IDS 
 from openedx.features.pakx.lms.overrides.message_types import ContactUs, CourseProgress
 from openedx.features.pakx.lms.overrides.models import CourseProgressStats
 from openedx.features.pakx.lms.overrides.post_assessment import check_and_unlock_user_milestone
@@ -160,6 +161,8 @@ def update_course_progress_stats():
     for item in progress_models:
         user = item.enrollment.user
         course_id = item.enrollment.course_id
+        if course_id in SKIP_UPDATE_COURSE_PROGRESS_COURSE_IDS:
+            continue
         course_progress = float(
             get_course_progress_percentage(create_dummy_request(Site.objects.get_current(), user),
                                            text_type(course_id)))
