@@ -39,3 +39,7 @@ TRAINING_SLUG_MAPPING = {
     'digital-transformation-trade-pakistan': 'course-v1:PSW+TL04+2023',
     'fundamentals-of-international-trade': 'course-v1:PSW+TL05+2023',
 }
+
+SKIP_UPDATE_COURSE_PROGRESS_COURSE_IDS = {
+    'course-v1:pakX+WE101+2021',
+}
