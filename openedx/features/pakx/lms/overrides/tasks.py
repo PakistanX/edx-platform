@@ -161,8 +161,8 @@ def update_course_progress_stats():
     for item in progress_models:
         user = item.enrollment.user
         course_id = item.enrollment.course_id
-        if course_id in SKIP_UPDATE_COURSE_PROGRESS_COURSE_IDS:
-            continue
+        # if course_id in SKIP_UPDATE_COURSE_PROGRESS_COURSE_IDS:
+        #     continue
         course_progress = float(
             get_course_progress_percentage(create_dummy_request(Site.objects.get_current(), user),
                                            text_type(course_id)))
