@@ -19,7 +19,7 @@ def copy_active_course_enrollment(sender, event=None, user=None, **kwargs):  # p
     Awards enrollment badge to the given user on new enrollments.
     """
     course_key = str(kwargs.get('course_id', "Null"))
-    if event == EnrollStatusChange.enroll:
+    if event in [EnrollStatusChange.enroll, EnrollStatusChange.paid_complete, EnrollStatusChange.upgrade_complete]:
         add_enrollment_record(user.id, course_key)
         verify_user_and_change_enrollment(user, course_key)
     elif event == EnrollStatusChange.unenroll:

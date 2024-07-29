@@ -4,6 +4,7 @@ TEACHING_PRACTICE_COURSE_IDS = [
     'course-v1:LGS_JT+2+2022',
     'course-v1:Jadid_Dastgir+2+2022',
     'course-v1:Happy_Palace_Group_of_Schools.+2+2024',
+    'course-v1:Farooqi_School+2+2024',
 ]
 
 LUMS_CERTIFICATE_ORGANIZATIONS = [
@@ -11,6 +12,11 @@ LUMS_CERTIFICATE_ORGANIZATIONS = [
     'Happy_Home',
     'TCF',
     'Jadid_Dastgir',
+    'Happy_Palace_Group_of_Schools.',
+    'Farooqi_School',
+    'Lumiere_Learnings_PVT_Ltd_KGS',
+    'Risk_Associates',
+    'Amal_Academy',
 ]
 
 COURSE_SLUG_MAPPING = {
@@ -32,4 +38,8 @@ TRAINING_SLUG_MAPPING = {
     'export-goods-services-pakistan': 'course-v1:PSW+TL03+2023',
     'digital-transformation-trade-pakistan': 'course-v1:PSW+TL04+2023',
     'fundamentals-of-international-trade': 'course-v1:PSW+TL05+2023',
+}
+
+SKIP_UPDATE_COURSE_PROGRESS_COURSE_IDS = {
+    'course-v1:pakX+WE101+2021',
 }
