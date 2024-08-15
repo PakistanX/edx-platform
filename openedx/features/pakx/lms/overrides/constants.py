@@ -30,6 +30,7 @@ COURSE_SLUG_MAPPING = {
     'project-management': 'course-v1:LUMSx+5+2023',
     'business-communication': 'course-v1:LUMSx+8+2023',
     'artificial-intelligence-classroom': 'course-v1:LUMSx+11+2024',
+    'introduction-to-data-science': 'course-v1:LUMSx+12+2024',
 }
 
 TRAINING_SLUG_MAPPING = {
