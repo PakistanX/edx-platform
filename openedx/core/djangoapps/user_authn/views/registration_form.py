@@ -568,7 +568,7 @@ class RegistrationFormFactory(object):
         """
         # Translators: This label appears above a dropdown menu on the registration
         # form used to select the user's highest completed level of education.
-        education_level_label = _(u"Highest level of education completed")
+        education_level_label = _(u"Status")
         error_msg = accounts.REQUIRED_FIELD_LEVEL_OF_EDUCATION_MSG
 
         # The labels are marked for translation in UserProfile model definition.

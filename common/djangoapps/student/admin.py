@@ -361,8 +361,21 @@ class UserAdmin(BaseUserAdmin):
                 not field.one_to_one and field.name != 'password'
             )
         ]
+        gender_dict = {
+            'm': 'Male',
+            'f': 'Female',
+            'o': 'Other',
+        }
+        status_dict = {
+            'u': 'Undergraduate',
+            'g': 'Graduate',
+            'elp': 'Entry Level Professional',
+            'mslp': 'Mid-Senior Level Professional',
+            'other': 'Other',
+        }
+
         # Write a first row with header information
-        writer.writerow([field.verbose_name for field in fields])
+        writer.writerow([field.verbose_name for field in fields]+['gender', 'status'])
         # Write data rows
         for obj in queryset:
             data_row = []
@@ -371,6 +384,8 @@ class UserAdmin(BaseUserAdmin):
                 if isinstance(value, datetime):
                     value = value.strftime('%d/%m/%Y')
                 data_row.append(value)
+            data_row.append(gender_dict.get(obj.profile.gender) if obj.profile.gender else '')
+            data_row.append(status_dict.get(obj.profile.level_of_education) if obj.profile.level_of_education else '')
             writer.writerow(data_row)
         return response
 

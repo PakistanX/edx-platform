@@ -299,15 +299,15 @@
     margin: ($baseline/2) 0 0 0;
 
 
-    &.select-year_of_birth {
-      @include margin-left(15px);
-    }
+    // &.select-year_of_birth {
+    //   @include margin-left(15px);
+    // }
 
-    &.select-gender,
-    &.select-year_of_birth {
-      display: inline-block;
-      width: calc(50% - 10px);
-    }
+    // &.select-gender,
+    // &.select-year_of_birth {
+    //   display: inline-block;
+    //   width: calc(50% - 10px);
+    // }
 
     /** FROM _accounts.scss - start **/
     label,
