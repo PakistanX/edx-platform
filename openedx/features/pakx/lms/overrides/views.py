@@ -459,7 +459,7 @@ def _get_course_about_context(request, course_id, category=None):  # pylint: dis
 
 @ensure_csrf_cookie
 @ensure_valid_course_key
-# @cache_if_anonymous()
+@cache_if_anonymous()
 def course_about(request, course_id):
     """
     Display the course's about page.
