@@ -123,6 +123,8 @@ def get_course_card_data(course, org_prefetched=False):
         'offered_by': course_custom_setting.offered_by_html,
         'reviews': course_custom_setting.reviews_html,
         'publisher_logo_url': course_custom_setting.publisher_logo_url,
+        'recommended_courses': course_custom_setting.recommended_courses,
+        'is_professional_certificate': course_custom_setting.is_professional_certificate,
         'about_page_banner_color': course_custom_setting.about_page_banner_color,
         'is_text_color_dark': course_custom_setting.is_text_color_dark,
         'url': reverse('about_course', kwargs={'course_id': text_type(course.id)}),
@@ -132,7 +134,7 @@ def get_course_card_data(course, org_prefetched=False):
         'difficulty_level': course_custom_setting.difficulty_level,
         'discount_percent': course_custom_setting.discount_percent,
         'discount_date': course_custom_setting.discount_date,
-        'seo_words': course_custom_setting.seo_words
+        'seo_words': course_custom_setting.seo_words,
     }
 
 

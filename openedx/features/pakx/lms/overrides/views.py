@@ -431,6 +431,7 @@ def _get_course_about_context(request, course_id, category=None):  # pylint: dis
             'certificate': course_map['certificate'],
             'publisher_logo': course_map['publisher_logo_url'],
             'group_enrollment_url': course_map['group_enrollment_url'],
+            'is_professional_certificate': course_map['is_professional_certificate'],
             'about_page_banner_color': course_map['about_page_banner_color'],
             'is_text_color_dark': course_map['is_text_color_dark'],
             'course_rating': get_rating_classes_for_course(course_id),
@@ -444,6 +445,14 @@ def _get_course_about_context(request, course_id, category=None):  # pylint: dis
             'registration_price': registration_price,
             'remaining_days': remaining_days,
         }
+
+        if course_map['recommended_courses']:
+            recommended_courses_ids = course_map['recommended_courses'].split(',')
+            fetch_recommended_courses = CourseOverview.objects.filter(id__in=recommended_courses_ids)
+            recommended_courses = [get_course_card_data(course) for course in fetch_recommended_courses]
+            context.update({
+                'recommended_courses': recommended_courses
+            })
 
         return context
 
