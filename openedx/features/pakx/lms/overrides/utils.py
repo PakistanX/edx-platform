@@ -36,6 +36,7 @@ from openedx.core.djangoapps.site_configuration import helpers as configuration_
 from openedx.core.lib.request_utils import get_request_or_stub
 from openedx.features.course_experience.utils import get_course_outline_block_tree, get_resume_block
 from openedx.features.pakx.cms.custom_settings.models import CourseOverviewContent
+from openedx.features.pakx.lms.overrides.constants import COURSE_SLUG_MAPPING
 from pakx_feedback.feedback_app.models import UserFeedbackModel
 from student.models import CourseEnrollment
 from util.organizations_helpers import get_organization_by_short_name
@@ -127,7 +128,9 @@ def get_course_card_data(course, org_prefetched=False):
         'is_professional_certificate': course_custom_setting.is_professional_certificate,
         'about_page_banner_color': course_custom_setting.about_page_banner_color,
         'is_text_color_dark': course_custom_setting.is_text_color_dark,
-        'url': reverse('about_course', kwargs={'course_id': text_type(course.id)}),
+        'url': reverse(
+                'custom-cap-url-courses', args=[get_key_from_value(COURSE_SLUG_MAPPING, text_type(course.id))]
+            ) if text_type(course.id) in COURSE_SLUG_MAPPING.values() else reverse('about_course', kwargs={'course_id': text_type(course.id)}),
         'enrollment_count': course_custom_setting.enrollment_count,
         'program_name': program_name,
         'program_url': program_url,

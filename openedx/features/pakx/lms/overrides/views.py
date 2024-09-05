@@ -447,12 +447,16 @@ def _get_course_about_context(request, course_id, category=None):  # pylint: dis
         }
 
         if course_map['recommended_courses']:
-            recommended_courses_ids = course_map['recommended_courses'].split(',')
-            fetch_recommended_courses = CourseOverview.objects.filter(id__in=recommended_courses_ids)
-            recommended_courses = [get_course_card_data(course) for course in fetch_recommended_courses]
-            context.update({
-                'recommended_courses': recommended_courses
-            })
+            try:
+                recommended_courses_ids = course_map['recommended_courses'].split(',')
+                if recommended_courses_ids:
+                    fetch_recommended_courses = CourseOverview.objects.filter(id__in=recommended_courses_ids)
+                    recommended_courses = [get_course_card_data(course) for course in fetch_recommended_courses]
+                    context.update({
+                        'recommended_courses': recommended_courses
+                    })
+            except Exception:
+                pass
 
         return context
 
