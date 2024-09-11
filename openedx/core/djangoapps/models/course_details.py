@@ -316,6 +316,8 @@ class CourseDetails(object):
         keystring_matcher = re.search(r'(?<=embed/)[a-zA-Z0-9_-]+', raw_video)
         if keystring_matcher is None:
             keystring_matcher = re.search(r'<?=\d+:[a-zA-Z0-9_-]+', raw_video)
+        if keystring_matcher is None:
+            keystring_matcher = re.search(r'(?<=videoid=")[a-zA-Z0-9_-]+', raw_video)
 
         if keystring_matcher:
             return keystring_matcher.group(0)
@@ -334,7 +336,8 @@ class CourseDetails(object):
         result = None
         if video_key:
             result = (
-                HTML(u'<iframe title="YouTube Video" width="560" height="315" src="//www.youtube.com/embed/{}?rel=0" '
-                     'frameborder="0" allowfullscreen=""></iframe>').format(video_key)
+                HTML(
+                    u'<lite-youtube videoid="{}" videotitle="Youtube Video" params="rel=0"></lite-youtube>'
+                ).format(video_key)
             )
         return result
