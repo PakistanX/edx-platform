@@ -10,6 +10,8 @@ ENROLLMENT_COURSE_EXPIRED_MSG = 'Enrollment date is passed for selected courses.
 ENROLLMENT_COURSE_DIFF_ORG_ERROR_MSG = "Your organization does not match with selected course(s)."
 ENROLLMENT_SUCCESS_MESSAGE = 'Enrollment task has been started successfully!\n' \
                              'Please refresh the page after couple of minutes to get the updated stats.'
+USER_ACCOUNT_DEACTIVATED_MSG = 'This account has been deactivated.'
+SELF_PASSWORD_RESET_ERROR_MSG = "User can't request password reset for their own account."
 
 ORG_ADMIN = 1
 STAFF = 2
