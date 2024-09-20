@@ -35,7 +35,9 @@ from .constants import (
     GROUP_TRAINING_MANAGERS,
     ORG_ADMIN,
     SELF_ACTIVE_STATUS_CHANGE_ERROR_MSG,
-    TRAINING_MANAGER
+    SELF_PASSWORD_RESET_ERROR_MSG,
+    TRAINING_MANAGER,
+    USER_ACCOUNT_DEACTIVATED_MSG
 )
 from .pagination import CourseEnrollmentPagination, PakxAdminAppPagination
 from .permissions import CanAccessPakXAdminPanel, IsSameOrganization
@@ -285,6 +287,28 @@ class UserProfileViewSet(viewsets.ModelViewSet):
             return Response(status=status.HTTP_200_OK)
 
         return Response(status=status.HTTP_404_NOT_FOUND)
+    
+    def reset_user_password(self, request, *args, **kwargs):
+        """
+        method to send a password reset link for a user
+        :param email: send password reset link to registered email
+        :return: response with respective status
+        """
+        from django.contrib.auth.models import User
+        from openedx.core.djangoapps.user_authn.views.password_reset import send_password_reset_email_for_user, destroy_oauth_tokens
+
+        email = request.data["email"]
+        if [str(self.request.user.email)] == email:
+            return Response(SELF_PASSWORD_RESET_ERROR_MSG, status=status.HTTP_403_FORBIDDEN)
+        
+        user = User.objects.get(email=email)
+        if not user.is_active:
+            return Response(USER_ACCOUNT_DEACTIVATED_MSG, status=status.HTTP_400_BAD_REQUEST)
+
+        send_password_reset_email_for_user(user, request)
+        destroy_oauth_tokens(user)
+
+        return Response(status=status.HTTP_200_OK)
 
 
 class CourseEnrolmentViewSet(viewsets.ModelViewSet):
