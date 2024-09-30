@@ -291,22 +291,31 @@ class UserProfileViewSet(viewsets.ModelViewSet):
     def reset_user_password(self, request, *args, **kwargs):
         """
         method to send a password reset link for a user
-        :param email: send password reset link to registered email
+        :param ids: send password reset link for these user ids
         :return: response with respective status
         """
         from django.contrib.auth.models import User
         from openedx.core.djangoapps.user_authn.views.password_reset import send_password_reset_email_for_user, destroy_oauth_tokens
 
-        email = request.data["email"]
-        if [str(self.request.user.email)] == email:
+        ids = request.data["ids"]
+        if [str(self.request.user.id)] == ids:
             return Response(SELF_PASSWORD_RESET_ERROR_MSG, status=status.HTTP_403_FORBIDDEN)
         
-        user = User.objects.get(email=email)
-        if not user.is_active:
-            return Response(USER_ACCOUNT_DEACTIVATED_MSG, status=status.HTTP_400_BAD_REQUEST)
+        if type(ids) == int:
+            user = User.objects.get(id=ids)
+            send_password_reset_email_for_user(user, request)
+            destroy_oauth_tokens(user)
 
-        send_password_reset_email_for_user(user, request)
-        destroy_oauth_tokens(user)
+            return Response(status=status.HTTP_200_OK)
+        
+        if ids == "all":
+            users = self.get_queryset().all()
+        else:
+            users = User.objects.filter(id__in=ids)
+        
+        for user in users:
+            send_password_reset_email_for_user(user, request)
+            destroy_oauth_tokens(user)
 
         return Response(status=status.HTTP_200_OK)
 
