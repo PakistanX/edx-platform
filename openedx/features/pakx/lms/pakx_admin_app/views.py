@@ -10,10 +10,12 @@ import six
 from dateutil.parser import parse
 from django.conf import settings
 from django.contrib.auth.models import Group
-from django.db.models import ExpressionWrapper, F, IntegerField, Prefetch, Q, Sum
+from django.db.models import Count, ExpressionWrapper, F, IntegerField, Prefetch, Q, Sum
+from django.db.models.functions import TruncDay, TruncMonth, TruncQuarter
 from django.http import Http404, HttpResponse
 from django.middleware import csrf
 from django.urls import reverse
+from django.utils import timezone
 from django.utils.decorators import method_decorator
 from rest_framework import generics, status, views, viewsets
 from rest_framework.authentication import SessionAuthentication
@@ -361,7 +363,9 @@ class AnalyticsStats(views.APIView):
             "completed_course_count": 1,
             "course_assignment_count": 7,
             "course_in_progress": 6,
-            "learner_count": 4
+            "learner_count": 4,
+            "daily_learner_count": 2,
+            "monthly_learner_count": 4,
         }
     """
     authentication_classes = [SessionAuthentication]
@@ -373,6 +377,11 @@ class AnalyticsStats(views.APIView):
         """
         user_qs = get_org_users_qs(self.request.user)
         user_ids = user_qs.values_list('id', flat=True)
+
+        today = timezone.now().date()
+        start_of_month = timezone.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        daily_active_user = user_qs.filter(last_login__date=today).exclude(last_login__isnull=True).count()
+        monthly_active_user = user_qs.filter(last_login__gte=start_of_month).exclude(last_login__isnull=True).count()
 
         completed_count, in_progress_count = get_completed_course_count_filters(
             exclude_staff_superuser=True, req_user=self.request.user
@@ -386,12 +395,102 @@ class AnalyticsStats(views.APIView):
 
         data = {
             'learner_count': len(user_ids),
+            'daily_learner_count': daily_active_user,
+            'monthly_learner_count': monthly_active_user,
             'course_in_progress': course_stats.get('pending') or 0,
             'completed_course_count': course_stats.get('completions') or 0
         }
 
         data['course_assignment_count'] = data['course_in_progress'] + data['completed_course_count']
         return Response(status=status.HTTP_200_OK, data=data)
+
+
+class AnalyticsLoginStats(views.APIView):
+    """
+    API view for organization level lo login analytics stats
+    <lms>/adminpanel/analytics/login/
+
+    :return:
+        {
+           'labels': ['2024-09-01', '2024-09-02', '2024-09-03', '2024-09-04', '2024-09-05'],
+            'data': [10, 20, 15, 25, 30],
+        }
+    """
+    authentication_classes = [SessionAuthentication]
+    permission_classes = [CanAccessPakXAdminPanel]
+
+    def get(self, request, *args, **kwargs):  # pylint: disable=unused-argument
+        user_qs = get_org_users_qs(self.request.user)
+        start_date_str = request.GET.get('startDate')
+        end_date_str = request.GET.get('endDate')
+        granularity = request.GET.get('granularity', 'days')  # default granularity is days
+
+        # If no date is provided, default to the last 30 days
+        if not start_date_str or not end_date_str:
+            end_date = timezone.now()
+            start_date = end_date - timezone.timedelta(days=30)
+        else:
+            start_date = timezone.datetime.strptime(start_date_str, '%Y-%m-%d')
+            end_date = timezone.datetime.strptime(end_date_str, '%Y-%m-%d')
+
+        if granularity == 'days':
+            logins_by_day = user_qs.filter(last_login__range=[start_date, end_date])\
+                .annotate(day=TruncDay('last_login'))\
+                .values('day')\
+                .annotate(login_count=Count('id'))\
+                .values('day', 'login_count')
+
+            data = {login['day'].date(): login['login_count'] for login in logins_by_day}
+
+            labels = []
+            login_data = []
+            current_date = start_date.date()
+            while current_date <= end_date.date():
+                labels.append(current_date.strftime('%Y-%m-%d'))
+                login_data.append(data.get(current_date, 0))
+                current_date += timedelta(days=1)
+
+        elif granularity == 'months':
+            logins_by_month = user_qs.filter(last_login__range=[start_date, end_date])\
+                .annotate(month=TruncMonth('last_login'))\
+                .values('month')\
+                .annotate(login_count=Count('id'))\
+                .values('month', 'login_count')
+
+            data = {login['month'].strftime('%Y-%m'): login['login_count'] for login in logins_by_month}
+
+            labels = []
+            login_data = []
+            current_date = start_date.replace(day=1)
+            while current_date <= end_date:
+                month_str = current_date.strftime('%b')
+                labels.append(month_str)
+                login_data.append(data.get(current_date.strftime('%Y-%m'), 0))
+                current_date += timedelta(days=32)
+                current_date = current_date.replace(day=1)
+
+        elif granularity == 'quarters':
+            logins_by_quarter = user_qs.filter(last_login__range=[start_date, end_date])\
+                .annotate(quarter=TruncQuarter('last_login'))\
+                .values('quarter')\
+                .annotate(login_count=Count('id'))\
+                .values('quarter', 'login_count')
+
+            data = {((login['quarter'].month - 1) // 3 + 1): login['login_count'] for login in logins_by_quarter}
+
+            labels = []
+            login_data = []
+            for i in range(1, 5):
+                labels.append('Q' + str(i))
+                login_data.append(data.get(i, 0))
+
+        return Response(
+            status=status.HTTP_200_OK, 
+            data={
+                'labels': labels,
+                'data': login_data,
+            }
+        )
 
 
 class CourseStatsListAPI(generics.ListAPIView):

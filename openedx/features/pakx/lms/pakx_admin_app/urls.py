@@ -6,6 +6,7 @@ from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
 from .views import (
+    AnalyticsLoginStats,
     AnalyticsStats,
     CourseEnrolmentViewSet,
     CourseListAPI,
@@ -33,6 +34,7 @@ urlpatterns = [
     url(r'^userinfo/$', UserInfo.as_view()),
     url(r'^users/search/$', UserSearchInputListAPI.as_view()),
     url(r'^analytics/stats/$', AnalyticsStats.as_view()),
+    url(r'^analytics/login/$', AnalyticsLoginStats.as_view()),
     url(r'^analytics/learners/$', LearnerListAPI.as_view()),
     url(r'^analytics/download$', DownloadCSVView.as_view()),
     url(r'^courses/$', CourseListAPI.as_view()),
