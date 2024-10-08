@@ -22,3 +22,9 @@ class CommerceEnrol(BaseMessageType):
 
 class CommerceCODOrder(BaseMessageType):
     pass
+
+class OraStaffNotification(BaseMessageType):
+    pass
+
+class OraGradeNotification(BaseMessageType):
+    pass

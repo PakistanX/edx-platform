@@ -60,6 +60,8 @@ class CourseOverviewContent(TimeStampedModel):
     is_text_color_dark = models.BooleanField(default=False)
     days_till_next_reminder = models.PositiveSmallIntegerField(default=0)
     reminder_stop_date = models.DateField(default=None, null=True, blank=True)
+    recommended_courses = models.CharField(max_length=256, blank=True, null=True)
+    is_professional_certificate = models.BooleanField(default=False)
     course_for_you_html = models.TextField(blank=True, default='')
     instructors_html = models.TextField(blank=True, default='')
     certificate_html = models.TextField(blank=True, default='')
