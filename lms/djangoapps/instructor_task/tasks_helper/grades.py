@@ -449,8 +449,8 @@ class CourseGradeReport(object):
             (['Team Name'] if context.teams_enabled else []) +
             ['Enrollment Track', 'Verification Status'] +
             ['Certificate Eligible', 'Certificate Delivered', 'Certificate Type'] +
-            ['Enrollment Status', 'Course Progress', 'Total Blocks, Total Completed Blocks'] +
-            ['Total Block Types', 'Total Completed Block Types', ' Completed Units', 'Incomplete Units']
+            ['Enrollment Status', 'Course Progress', 'Total Block Types'] +
+            ['Total Completed Block Types', ' Completed Units', 'Incomplete Units']
         )
 
     def _error_headers(self):
@@ -732,9 +732,8 @@ class CourseGradeReport(object):
                         self._user_verification_mode(user, context, bulk_context.enrollments) +
                         self._user_certificate_info(user, context, course_grade, bulk_context.certs) +
                         [_user_enrollment_status(user, context.course_id)] +
-                        [block_info['user_progress']] + [block_info['total_blocks']] +
-                        [block_info['total_completed_blocks']] + [block_info['total_block_types']] +
-                        [block_info['total_completed_block_types']] + completed_units + incomplete_units
+                        [float(block_info['user_progress'])] + [block_info['total_block_types']] +
+                        [block_info['total_completed_block_types']] + [completed_units] + [incomplete_units]
                     )
             return success_rows, error_rows
 
