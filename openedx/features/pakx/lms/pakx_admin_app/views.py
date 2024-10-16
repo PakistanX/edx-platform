@@ -430,8 +430,14 @@ class AnalyticsLoginStats(views.APIView):
             end_date = timezone.now()
             start_date = end_date - timezone.timedelta(days=30)
         else:
-            start_date = timezone.datetime.strptime(start_date_str, '%Y-%m-%d')
-            end_date = timezone.datetime.strptime(end_date_str, '%Y-%m-%d')
+            start_date = timezone.datetime.strptime(start_date_str, '%Y-%m-%d').date()
+            end_date = timezone.datetime.strptime(end_date_str, '%Y-%m-%d').date()
+            if end_date > timezone.now().date():
+                end_date = timezone.now().date()
+            if start_date > end_date:
+                start_date = end_date - timezone.timedelta(days=30)
+
+        user_qs = user_qs.filter(last_login__range=[start_date, end_date])
 
         if granularity == 'days':
             logins_by_day = user_qs.filter(last_login__range=[start_date, end_date])\
@@ -444,8 +450,8 @@ class AnalyticsLoginStats(views.APIView):
 
             labels = []
             login_data = []
-            current_date = start_date.date()
-            while current_date <= end_date.date():
+            current_date = start_date
+            while current_date <= end_date:
                 labels.append(current_date.strftime('%Y-%m-%d'))
                 login_data.append(data.get(current_date, 0))
                 current_date += timedelta(days=1)
@@ -463,7 +469,7 @@ class AnalyticsLoginStats(views.APIView):
             login_data = []
             current_date = start_date.replace(day=1)
             while current_date <= end_date:
-                month_str = current_date.strftime('%b')
+                month_str = current_date.strftime('%b %Y')
                 labels.append(month_str)
                 login_data.append(data.get(current_date.strftime('%Y-%m'), 0))
                 current_date += timedelta(days=32)
@@ -476,13 +482,18 @@ class AnalyticsLoginStats(views.APIView):
                 .annotate(login_count=Count('id'))\
                 .values('quarter', 'login_count')
 
-            data = {((login['quarter'].month - 1) // 3 + 1): login['login_count'] for login in logins_by_quarter}
-
+            data = {(login['quarter'].year, (login['quarter'].month - 1) // 3 + 1): login['login_count']
+                    for login in logins_by_quarter}
             labels = []
             login_data = []
-            for i in range(1, 5):
-                labels.append('Q' + str(i))
-                login_data.append(data.get(i, 0))
+            for year in range(start_date.year, end_date.year + 1):
+                for i in range(1, 5):
+                    if year == start_date.year and i < ((start_date.month - 1) // 3 + 1):
+                        continue
+                    if year == end_date.year and i > ((end_date.month - 1) // 3 + 1):
+                        break
+                    labels.append('Q{} {}'.format(i, year))
+                    login_data.append(data.get((year, i), 0))
 
         return Response(
             status=status.HTTP_200_OK, 
