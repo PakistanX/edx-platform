@@ -690,15 +690,15 @@ class CourseGradeReport(object):
             completed_units = []
             incomplete_units = []
         
-            def _recurse_children(children):
+            def _recurse_children(children, parent_name=""):
                 for child in children:
                     if 'children' in child and child['children']:
-                        _recurse_children(child['children'])
+                        _recurse_children(child['children'], child.get('display_name'))
                     else:
                         if child.get('complete'):
-                            completed_units.append(child.get('display_name'))
+                            completed_units.append('_'.join(parent_name, child.get('display_name')))
                         else:
-                            incomplete_units.append(child.get('display_name'))
+                            incomplete_units.append('_'.join(parent_name, child.get('display_name')))
             
             _recurse_children(blocks.get('children', []))
             return completed_units, incomplete_units
