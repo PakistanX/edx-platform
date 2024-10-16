@@ -6,6 +6,7 @@ from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
 from .views import (
+    AnalyticsLoginStats,
     AnalyticsStats,
     CourseEnrolmentViewSet,
     CourseListAPI,
@@ -16,7 +17,7 @@ from .views import (
     UserInfo,
     UserProfileViewSet,
     UserSearchInputListAPI,
-    UserUpdateEnrollmentMode
+    UserUpdateEnrollmentMode,
 )
 
 user_viewset_router = DefaultRouter()
@@ -25,6 +26,7 @@ user_viewset_router.register('users', UserProfileViewSet, basename='users')
 urlpatterns = [
     url(r'^users/activate/$', UserProfileViewSet.as_view({"post": "activate_users"})),
     url(r'^users/deactivate/$', UserProfileViewSet.as_view({"post": "deactivate_users"})),
+    url(r'^users/reset-password/$', UserProfileViewSet.as_view({"post": "reset_user_password"})),
     url(r'^users/bulk-registration/$', UserProfileViewSet.as_view({"post": "bulk_registration"})),
     url(r'^users/enroll/$', CourseEnrolmentViewSet.as_view({'post': 'enroll_users'})),
     url(r'^user-course-enrollments/(?P<user_id>\d+)/$', UserCourseEnrollmentsListAPI.as_view()),
@@ -32,6 +34,7 @@ urlpatterns = [
     url(r'^userinfo/$', UserInfo.as_view()),
     url(r'^users/search/$', UserSearchInputListAPI.as_view()),
     url(r'^analytics/stats/$', AnalyticsStats.as_view()),
+    url(r'^analytics/login/$', AnalyticsLoginStats.as_view()),
     url(r'^analytics/learners/$', LearnerListAPI.as_view()),
     url(r'^analytics/download$', DownloadCSVView.as_view()),
     url(r'^courses/$', CourseListAPI.as_view()),

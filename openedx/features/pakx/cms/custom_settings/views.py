@@ -108,6 +108,8 @@ class CourseCustomSettingsView(LoginRequiredMixin, View):
         discount_percent = int(float(request.POST.get('discount_percent') or '0.0') or 0)
         discount_date = request.POST['discount_date']
         discount_date = datetime.strptime(discount_date, '%Y-%m-%d') if discount_date else None
+        recommended_courses = truncate_string_up_to(request.POST['recommended_courses'], 256)
+        is_professional_certificate = request.POST.get('is_professional_certificate', 'off') == 'on'
         seo_words = request.POST['seo_words']
 
         self._add_days_milestone(subsection_to_lock, course_key)
@@ -137,6 +139,8 @@ class CourseCustomSettingsView(LoginRequiredMixin, View):
                     'subsection_to_lock': subsection_to_lock,
                     'days_till_next_reminder': email_days,
                     'reminder_stop_date': email_deadline,
+                    'recommended_courses': recommended_courses,
+                    'is_professional_certificate': is_professional_certificate,
                     'about_page_banner_color': about_page_banner_color,
                     'is_text_color_dark': is_text_color_dark,
                     'enrollment_count': enrollment_count,
