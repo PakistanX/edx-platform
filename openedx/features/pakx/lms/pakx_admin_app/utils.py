@@ -7,6 +7,7 @@ from uuid import uuid4
 
 import pytz
 from django.conf import settings
+from django.contrib.auth import login as django_login
 from django.contrib.auth.models import Group, User
 from django.contrib.sites.models import Site
 from django.db.models import Count, Q
@@ -18,7 +19,7 @@ from openedx.core.djangoapps.ace_common.template_context import get_base_templat
 from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
 from openedx.core.djangoapps.site_configuration import helpers as configuration_helpers
 from openedx.features.pakx.lms.overrides.models import CourseProgressStats
-from student.models import Registration
+from student.helpers import authenticate_new_user
 
 from .constants import GROUP_ORGANIZATION_ADMIN, GROUP_TRAINING_MANAGERS, LEARNER, ORG_ADMIN, TRAINING_MANAGER
 from .message_types import RegistrationNotification
@@ -122,7 +123,7 @@ def get_user_data_from_bulk_registration_file(file_reader, default_org_id):
     return users
 
 
-def create_user(user_data, request_url_scheme, next_url=''):
+def create_user(user_data, request_url_scheme, next_url='', auto_login=False, request=None):
     """
     util function
     :param user_data: user data for registration
@@ -139,6 +140,11 @@ def create_user(user_data, request_url_scheme, next_url=''):
 
     user = user_serializer.save()
     send_registration_email(user, user_data['password'], request_url_scheme, next_url=next_url)
+
+    if auto_login and request:
+        new_user = authenticate_new_user(request, user_data['username'], user_data['password'])
+        django_login(request, new_user)
+        request.session.set_expiry(0)
     return True, user
 
 
