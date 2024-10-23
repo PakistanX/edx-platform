@@ -902,7 +902,9 @@ def checkout_lumsx(request):
     city = data.get('city')
     state = data.get('state')
     sku = data.get('sku')
-    lumsx_org_id = data.get('lumsx_org_id', 1)
+
+    LUMSx_ORGANIZATION_ID_PROD = 16
+    lumsx_org_id = data.get('lumsx_org_id', LUMSx_ORGANIZATION_ID_PROD)
 
     user_data = {
         'role': LEARNER,
