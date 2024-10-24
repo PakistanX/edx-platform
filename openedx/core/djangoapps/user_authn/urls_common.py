@@ -35,6 +35,12 @@ urlpatterns = [
         name='registration_validation'
     ),
 
+    url(
+        r'^api/user/v1/validation/registration/lumsx$',
+        register.LUMSxRegistrationValidationView.as_view(),
+        name='registration_validation_lumsx'
+    ),
+
     url(r'^login_ajax$', login.login_user, name="login_api"),
 
     # Moved from user_api/legacy_urls.py

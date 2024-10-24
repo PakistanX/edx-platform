@@ -13,7 +13,7 @@ from django.shortcuts import redirect
 from django.urls import reverse
 from django.utils.translation import ugettext as _
 from django.views.decorators.cache import cache_control
-from django.views.decorators.csrf import ensure_csrf_cookie
+from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt
 from django.views.decorators.http import require_http_methods
 from django.views.generic.base import TemplateView, View
 from opaque_keys.edx.keys import CourseKey
@@ -431,6 +431,7 @@ def _get_course_about_context(request, course_id, category=None):  # pylint: dis
             'certificate': course_map['certificate'],
             'publisher_logo': course_map['publisher_logo_url'],
             'group_enrollment_url': course_map['group_enrollment_url'],
+            'is_professional_certificate': course_map['is_professional_certificate'],
             'about_page_banner_color': course_map['about_page_banner_color'],
             'is_text_color_dark': course_map['is_text_color_dark'],
             'course_rating': get_rating_classes_for_course(course_id),
@@ -444,6 +445,18 @@ def _get_course_about_context(request, course_id, category=None):  # pylint: dis
             'registration_price': registration_price,
             'remaining_days': remaining_days,
         }
+
+        if course_map['recommended_courses']:
+            try:
+                recommended_courses_ids = course_map['recommended_courses'].split(',')
+                if recommended_courses_ids:
+                    fetch_recommended_courses = CourseOverview.objects.filter(id__in=recommended_courses_ids)
+                    recommended_courses = [get_course_card_data(course) for course in fetch_recommended_courses]
+                    context.update({
+                        'recommended_courses': recommended_courses
+                    })
+            except Exception:
+                pass
 
         return context
 
@@ -845,6 +858,10 @@ def basket_check(request, course_key_string, sku):
     manually enrolling users as well, we need to check if user is already enrolled or not.
     """
     redirect_url = '{}/basket/add/?sku={}'.format(settings.ECOMMERCE_PUBLIC_URL_ROOT, sku)
+    token = request.GET.get('token', None)
+    if token:
+        redirect_url += '&token={}'.format(token)
+
     course_enrollment = CourseEnrollment.get_enrollment(user=request.user, course_key=course_key_string)
     if course_enrollment is None:
         return redirect(redirect_url)
@@ -859,6 +876,84 @@ def basket_check(request, course_key_string, sku):
 
     return redirect(redirect_url)
 
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def checkout_lumsx(request):
+    import json
+    import jwt
+    from datetime import timedelta
+    from openedx.core.djangoapps.user_authn.cookies import set_logged_in_cookies
+    from openedx.features.pakx.lms.pakx_admin_app.constants import LEARNER
+    from openedx.features.pakx.lms.pakx_admin_app.utils import create_user
+
+    if not request.body:
+        return JsonResponse({'error': 'Missing required JSON request body'}, status=400)
+
+    data = json.loads(request.body.decode('utf-8'))
+    required_fields = ['sku', 'course_id', 'email', 'username', 'fullname', 'phone_number', 'city', 'state', 'address', 'postal_code']
+    missing_fields = [field for field in required_fields if not data.get(field)]
+    
+    if missing_fields:
+        return JsonResponse({'error': 'Missing required fields: {}'.format(", ".join(missing_fields))})
+
+    fullname = data.get('fullname')
+    email = data.get('email')
+    phone_number = data.get('phone_number')
+    username = data.get('username')
+    address = data.get('address')
+    postal_code = data.get('postal_code')
+    city = data.get('city')
+    state = data.get('state')
+    sku = data.get('sku')
+    course_id = data.get('course_id')
+
+    LUMSx_ORGANIZATION_ID_PROD = 16
+    lumsx_org_id = data.get('lumsx_org_id', LUMSx_ORGANIZATION_ID_PROD)
+
+    user_data = {
+        'role': LEARNER,
+        'profile': {
+            'employee_id': '',
+            'organization': lumsx_org_id,
+            'language_code': {
+                'code': 'en'
+                }, 
+            'name': fullname
+            },
+        'username': username,
+        'email': email
+    }
+
+    checkout_form_data = {
+        'name': fullname,
+        'email': email,
+        'phone_number': phone_number,
+        'username': username,
+        'address': address,
+        'postal_code': postal_code,
+        'city': city,
+        'state': state
+    }
+
+    payload = {
+        "checkout_data": checkout_form_data,
+        "exp": datetime.utcnow() + timedelta(minutes=5)
+    }
+
+    JWT_AUTH = 'JWT_AUTH'
+    JWT_SECRET_KEY = getattr(settings, JWT_AUTH)['JWT_SECRET_KEY'] if hasattr(settings, JWT_AUTH) else ''
+    token = jwt.encode(payload, JWT_SECRET_KEY).decode('utf-8')
+
+    is_created, res_data = create_user(user_data, request.scheme, next_url=reverse('account_settings'), auto_login=True, request=request)
+    if is_created:
+        response = redirect('{}/basket/add/?sku={}&token={}'.format(settings.ECOMMERCE_PUBLIC_URL_ROOT, sku, token))
+        set_logged_in_cookies(request, response, res_data)
+    else:
+        response = redirect('{}/basket_check/{}/{}?token={}'.format(settings.LMS_ROOT_URL, course_id, sku, token))
+
+    return response
+     
 
 def update_lms_tour_status(request):
     try:

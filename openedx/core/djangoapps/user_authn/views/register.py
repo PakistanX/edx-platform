@@ -776,14 +776,15 @@ class RegistrationValidationView(APIView):
         country = request.data.get('country')
         return get_country_validation_error(country)
 
-    validation_handlers = {
-        "name": name_handler,
-        "username": username_handler,
-        "email": email_handler,
-        "confirm_email": confirm_email_handler,
-        "password": password_handler,
-        "country": country_handler
-    }
+    def validation_handlers(self):
+        return {
+            "name": self.name_handler,
+            "username": self.username_handler,
+            "email": self.email_handler,
+            "confirm_email": self.confirm_email_handler,
+            "password": self.password_handler,
+            "country": self.country_handler
+        }
 
     def post(self, request):
         """
@@ -806,12 +807,61 @@ class RegistrationValidationView(APIView):
         like when the password may not equal the username.
         """
         validation_decisions = {}
-        for form_field_key in self.validation_handlers:
+        for form_field_key in self.validation_handlers().keys():
             # For every field requiring validation from the client,
             # request a decision for it from the appropriate handler.
             if form_field_key in request.data:
-                handler = self.validation_handlers[form_field_key]
+                handler = self.validation_handlers()[form_field_key]
                 validation_decisions.update({
-                    form_field_key: handler(self, request)
+                    form_field_key: handler(request)
                 })
         return Response({"validation_decisions": validation_decisions})
+
+
+# pylint: disable=line-too-long
+class LUMSxRegistrationValidationView(RegistrationValidationView):
+    """
+        **Use Cases**
+
+            Get validation information about user data during registration.
+            Client-side may request validation for any number of form fields,
+            and the API will return a conclusion from its analysis for each
+            input (i.e. valid or not valid, or a custom, detailed message).
+
+        **Example Requests and Responses**
+
+            - Checks the validity of the username and email inputs separately.
+            POST /api/user/v1/validation/lumsx/
+            >>> {
+            >>>     "username": "hi_im_new",
+            >>>     "email": "newguy101@edx.org"
+            >>> }
+            RESPONSE
+            >>> {
+            >>>     "validation_decisions": {
+            >>>         "username": "",
+            >>>         "email": ""
+            >>>     }
+            >>> }
+            Empty strings indicate that there was no problem with the input.
+
+            Note that a validation decision is returned *for all* inputs, whether
+            positive or negative.
+
+        **Available Handlers**
+
+            "name":
+                A handler to check the validity of the user's real name.
+            "username":
+                A handler to check the validity of usernames.
+            "email":
+                A handler to check the validity of emails.
+    """
+
+    def validation_handlers(self):
+        return {
+            "name": super().name_handler,
+            "username": super().username_handler,
+            "email": super().email_handler
+        }
+
