@@ -858,6 +858,10 @@ def basket_check(request, course_key_string, sku):
     manually enrolling users as well, we need to check if user is already enrolled or not.
     """
     redirect_url = '{}/basket/add/?sku={}'.format(settings.ECOMMERCE_PUBLIC_URL_ROOT, sku)
+    token = request.GET.get('token', None)
+    if token:
+        redirect_url += '&token={}'.format(token)
+
     course_enrollment = CourseEnrollment.get_enrollment(user=request.user, course_key=course_key_string)
     if course_enrollment is None:
         return redirect(redirect_url)
@@ -887,7 +891,7 @@ def checkout_lumsx(request):
         return JsonResponse({'error': 'Missing required JSON request body'}, status=400)
 
     data = json.loads(request.body.decode('utf-8'))
-    required_fields = ['sku', 'email', 'username', 'fullname', 'phone_number', 'city', 'state', 'address', 'postal_code']
+    required_fields = ['sku', 'course_id', 'email', 'username', 'fullname', 'phone_number', 'city', 'state', 'address', 'postal_code']
     missing_fields = [field for field in required_fields if not data.get(field)]
     
     if missing_fields:
@@ -902,6 +906,7 @@ def checkout_lumsx(request):
     city = data.get('city')
     state = data.get('state')
     sku = data.get('sku')
+    course_id = data.get('course_id')
 
     LUMSx_ORGANIZATION_ID_PROD = 16
     lumsx_org_id = data.get('lumsx_org_id', LUMSx_ORGANIZATION_ID_PROD)
@@ -945,9 +950,7 @@ def checkout_lumsx(request):
         response = redirect('{}/basket/add/?sku={}&token={}'.format(settings.ECOMMERCE_PUBLIC_URL_ROOT, sku, token))
         set_logged_in_cookies(request, response, res_data)
     else:
-        # TO:DO
-        # redirect to login and save token
-        return JsonResponse({'error': 'User already registered on ilmX platform'}, status=400)
+        response = redirect('{}/basket_check/{}/{}?token={}'.format(settings.LMS_ROOT_URL, course_id, sku, token))
 
     return response
      
