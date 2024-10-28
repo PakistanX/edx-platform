@@ -111,6 +111,9 @@ class CourseCustomSettingsView(LoginRequiredMixin, View):
         recommended_courses = truncate_string_up_to(request.POST['recommended_courses'], 256)
         is_professional_certificate = request.POST.get('is_professional_certificate', 'off') == 'on'
         seo_words = request.POST['seo_words']
+        course_type = truncate_string_up_to(request.POST['course_type'], 256)
+        prerequisites = truncate_string_up_to(request.POST['prerequisites'], 256)
+        custom_language = truncate_string_up_to(request.POST['custom_language'], 256)
 
         self._add_days_milestone(subsection_to_lock, course_key)
 
@@ -149,6 +152,9 @@ class CourseCustomSettingsView(LoginRequiredMixin, View):
                     'discount_percent': discount_percent,
                     'discount_date': discount_date,
                     'seo_words': seo_words,
+                    'course_type': course_type,
+                    'prerequisites': prerequisites,
+                    'custom_language': custom_language,
                 }
             )
 
