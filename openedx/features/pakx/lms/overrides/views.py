@@ -442,6 +442,9 @@ def _get_course_about_context(request, course_id, category=None):  # pylint: dis
             'difficulty_level': course_map['difficulty_level'],
             'discount_percent': course_map['discount_percent'],
             'seo_words': course_map['seo_words'],
+            'course_type': course_map['course_type'],
+            'prerequisites': course_map['prerequisites'],
+            'custom_language': course_map['custom_language'],
             'registration_price': registration_price,
             'remaining_days': remaining_days,
         }
@@ -883,6 +886,7 @@ def checkout_lumsx(request):
     import json
     import jwt
     from datetime import timedelta
+    from openedx.core.djangoapps.user_api.accounts.api import get_is_real_email_error
     from openedx.core.djangoapps.user_authn.cookies import set_logged_in_cookies
     from openedx.features.pakx.lms.pakx_admin_app.constants import LEARNER
     from openedx.features.pakx.lms.pakx_admin_app.utils import create_user
@@ -895,7 +899,7 @@ def checkout_lumsx(request):
     missing_fields = [field for field in required_fields if not data.get(field)]
     
     if missing_fields:
-        return JsonResponse({'error': 'Missing required fields: {}'.format(", ".join(missing_fields))})
+        return JsonResponse({'error': 'Missing required fields: {}'.format(", ".join(missing_fields))}, status=400)
 
     fullname = data.get('fullname')
     email = data.get('email')
@@ -910,6 +914,9 @@ def checkout_lumsx(request):
 
     LUMSx_ORGANIZATION_ID_PROD = 16
     lumsx_org_id = data.get('lumsx_org_id', LUMSx_ORGANIZATION_ID_PROD)
+
+    if get_is_real_email_error(email):
+        return JsonResponse({'error': 'Provided email is not valid.'}, status=400)
 
     user_data = {
         'role': LEARNER,

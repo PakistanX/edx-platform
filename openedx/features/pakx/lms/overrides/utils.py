@@ -138,6 +138,9 @@ def get_course_card_data(course, org_prefetched=False):
         'discount_percent': course_custom_setting.discount_percent,
         'discount_date': course_custom_setting.discount_date,
         'seo_words': course_custom_setting.seo_words,
+        'course_type': course_custom_setting.course_type,
+        'prerequisites': course_custom_setting.prerequisites,
+        'custom_language': course_custom_setting.custom_language,
     }
 
 
