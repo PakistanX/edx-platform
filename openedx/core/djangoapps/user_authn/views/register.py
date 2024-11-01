@@ -24,12 +24,17 @@ from django.utils.translation import get_language
 from django.utils.translation import ugettext as _
 from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from django.views.decorators.debug import sensitive_post_parameters
+from ipware.ip import get_ip
 from pytz import UTC
 from requests import HTTPError
+from rest_framework.response import Response
+from rest_framework.throttling import AnonRateThrottle
+from rest_framework.views import APIView
 from six import text_type
+from social_core.exceptions import AuthAlreadyAssociated, AuthException
+from social_django import utils as social_utils
 
 import third_party_auth
-from ipware.ip import get_ip
 # Note that this lives in LMS, so this dependency should be refactored.
 # TODO Have the discussions code subscribe to the REGISTER_USER signal instead.
 from lms.djangoapps.discussion.notification_prefs.views import enable_notifications
@@ -56,11 +61,6 @@ from openedx.core.djangoapps.user_authn.views.registration_form import (
     get_registration_extension_form
 )
 from openedx.core.djangoapps.waffle_utils import WaffleFlag, WaffleFlagNamespace
-from rest_framework.response import Response
-from rest_framework.throttling import AnonRateThrottle
-from rest_framework.views import APIView
-from social_core.exceptions import AuthAlreadyAssociated, AuthException
-from social_django import utils as social_utils
 from student.helpers import (
     AccountValidationError,
     authenticate_new_user,
