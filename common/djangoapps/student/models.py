@@ -23,7 +23,6 @@ from functools import total_ordering
 from importlib import import_module
 
 import six
-from config_models.models import ConfigurationModel
 from django.apps import apps
 from django.conf import settings
 from django.contrib.auth.models import User
@@ -41,24 +40,18 @@ from django.utils.encoding import python_2_unicode_compatible
 from django.utils.functional import cached_property
 from django.utils.translation import ugettext_lazy as _
 from django.utils.translation import ugettext_noop
+from pytz import UTC
+from six import text_type
+from six.moves import range
+from six.moves.urllib.parse import urlencode
+
+import openedx.core.djangoapps.django_comment_common.comment_client as cc
+from config_models.models import ConfigurationModel
+from course_modes.models import CourseMode, get_cosmetic_verified_display_price
 from django_countries.fields import CountryField
 from edx_django_utils.cache import RequestCache
 from edx_rest_api_client.exceptions import SlumberBaseException
 from eventtracking import tracker
-from model_utils.models import TimeStampedModel
-from opaque_keys.edx.django.models import CourseKeyField
-from opaque_keys.edx.keys import CourseKey
-from pytz import UTC
-from simple_history.models import HistoricalRecords
-from six import text_type
-from six.moves import range
-from six.moves.urllib.parse import urlencode
-from slumber.exceptions import HttpClientError, HttpServerError
-from user_util import user_util
-from organizations.models import Organization
-
-import openedx.core.djangoapps.django_comment_common.comment_client as cc
-from course_modes.models import CourseMode, get_cosmetic_verified_display_price
 from lms.djangoapps.certificates.models import GeneratedCertificate
 from lms.djangoapps.courseware.models import (
     CourseDynamicUpgradeDeadlineConfiguration,
@@ -66,6 +59,9 @@ from lms.djangoapps.courseware.models import (
     OrgDynamicUpgradeDeadlineConfiguration
 )
 from lms.djangoapps.verify_student.models import SoftwareSecurePhotoVerification
+from model_utils.models import TimeStampedModel
+from opaque_keys.edx.django.models import CourseKeyField
+from opaque_keys.edx.keys import CourseKey
 from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
 from openedx.core.djangoapps.enrollments.api import (
     _default_course_mode,
@@ -75,8 +71,12 @@ from openedx.core.djangoapps.enrollments.api import (
 from openedx.core.djangoapps.site_configuration import helpers as configuration_helpers
 from openedx.core.djangoapps.xmodule_django.models import NoneToEmptyManager
 from openedx.core.djangolib.model_mixins import DeletableByUserValue
+from organizations.models import Organization
+from simple_history.models import HistoricalRecords
+from slumber.exceptions import HttpClientError, HttpServerError
 from student.signals import ENROLL_STATUS_CHANGE, ENROLLMENT_TRACK_UPDATED, UNENROLL_DONE
 from track import contexts, segment
+from user_util import user_util
 from util.milestones_helpers import is_entrance_exams_enabled
 from util.model_utils import emit_field_changed_events, get_changed_fields_dict
 from util.query import use_read_replica_if_available

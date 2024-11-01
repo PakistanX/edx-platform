@@ -17,15 +17,15 @@ from django.middleware import csrf
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.decorators import method_decorator
-from rest_framework import generics, status, views, viewsets
-from rest_framework.authentication import SessionAuthentication
-from rest_framework.filters import OrderingFilter
-from rest_framework.response import Response
 
 from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
 from openedx.core.djangoapps.cors_csrf.decorators import ensure_csrf_cookie_cross_domain
 from openedx.core.djangoapps.user_api.accounts.image_helpers import get_profile_image_urls_for_user
 from openedx.features.pakx.lms.overrides.models import CourseProgressStats
+from rest_framework import generics, status, views, viewsets
+from rest_framework.authentication import SessionAuthentication
+from rest_framework.filters import OrderingFilter
+from rest_framework.response import Response
 from student.models import CourseAccessRole, CourseEnrollment, LanguageProficiency
 
 from .constants import (
@@ -289,7 +289,7 @@ class UserProfileViewSet(viewsets.ModelViewSet):
             return Response(status=status.HTTP_200_OK)
 
         return Response(status=status.HTTP_404_NOT_FOUND)
-    
+
     def reset_user_password(self, request, *args, **kwargs):
         """
         method to send a password reset link for a user
@@ -302,19 +302,19 @@ class UserProfileViewSet(viewsets.ModelViewSet):
         ids = request.data["ids"]
         if [str(self.request.user.id)] == ids:
             return Response(SELF_PASSWORD_RESET_ERROR_MSG, status=status.HTTP_403_FORBIDDEN)
-        
-        if type(ids) == int:
+
+        if isinstance(ids, int):
             user = User.objects.get(id=ids)
             send_password_reset_email_for_user(user, request)
             destroy_oauth_tokens(user)
 
             return Response(status=status.HTTP_200_OK)
-        
+
         if ids == "all":
             users = self.get_queryset().all()
         else:
             users = User.objects.filter(id__in=ids)
-        
+
         for user in users:
             send_password_reset_email_for_user(user, request)
             destroy_oauth_tokens(user)
@@ -496,7 +496,7 @@ class AnalyticsLoginStats(views.APIView):
                     login_data.append(data.get((year, i), 0))
 
         return Response(
-            status=status.HTTP_200_OK, 
+            status=status.HTTP_200_OK,
             data={
                 'labels': labels,
                 'data': login_data,

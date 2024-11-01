@@ -13,13 +13,11 @@ from django.shortcuts import redirect
 from django.urls import reverse
 from django.utils.translation import ugettext as _
 from django.views.decorators.cache import cache_control
-from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt
+from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from django.views.decorators.http import require_http_methods
 from django.views.generic.base import TemplateView, View
-from opaque_keys.edx.keys import CourseKey
 from pytz import utc
 from six import text_type
-from waffle import switch_is_active
 
 from course_modes.models import CourseMode, format_course_price, get_course_prices
 from edxmako.shortcuts import marketing_link, render_to_response
@@ -45,6 +43,7 @@ from lms.djangoapps.courseware.views.views import (
 from lms.djangoapps.experiments.utils import get_experiment_user_metadata_context
 from lms.djangoapps.grades.api import CourseGradeFactory
 from lms.djangoapps.instructor.enrollment import uses_shib
+from opaque_keys.edx.keys import CourseKey
 from openedx.core.djangoapps.catalog.utils import get_programs_with_type
 from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
 from openedx.core.djangoapps.enrollments.permissions import ENROLL_IN_COURSE
@@ -86,6 +85,7 @@ from util.cache import cache_if_anonymous
 from util.db import outer_atomic
 from util.milestones_helpers import get_prerequisite_courses_display
 from util.views import ensure_valid_course_key
+from waffle import switch_is_active
 from xmodule.course_module import COURSE_VISIBILITY_PUBLIC, COURSE_VISIBILITY_PUBLIC_OUTLINE
 from xmodule.modulestore.django import modulestore
 
@@ -897,7 +897,7 @@ def checkout_lumsx(request):
     data = json.loads(request.body.decode('utf-8'))
     required_fields = ['sku', 'course_id', 'email', 'username', 'fullname', 'phone_number', 'city', 'state', 'address', 'postal_code']
     missing_fields = [field for field in required_fields if not data.get(field)]
-    
+
     if missing_fields:
         return JsonResponse({'error': 'Missing required fields: {}'.format(", ".join(missing_fields))}, status=400)
 
@@ -929,9 +929,9 @@ def checkout_lumsx(request):
             'organization': lumsx_org_id,
             'language_code': {
                 'code': 'en'
-                }, 
-            'name': fullname
             },
+            'name': fullname
+        },
         'username': username,
         'email': email
     }
@@ -964,7 +964,7 @@ def checkout_lumsx(request):
         response = redirect('{}/basket_check/{}/{}?token={}'.format(settings.LMS_ROOT_URL, course_id, sku, token))
 
     return response
-     
+
 
 def update_lms_tour_status(request):
     try:

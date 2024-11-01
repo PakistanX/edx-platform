@@ -13,14 +13,13 @@ import six
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.sites.models import Site
-from lazy import lazy
-from opaque_keys.edx.keys import UsageKey
 from pytz import UTC
 from six import text_type
 from six.moves import zip, zip_longest
 
 from course_blocks.api import get_course_blocks
 from course_modes.models import CourseMode
+from lazy import lazy
 from lms.djangoapps.certificates.models import CertificateWhitelist, GeneratedCertificate, certificate_info_for_user
 from lms.djangoapps.courseware.courses import get_course_by_id
 from lms.djangoapps.courseware.user_state_client import DjangoXBlockUserStateClient
@@ -35,15 +34,13 @@ from lms.djangoapps.instructor_task.config.waffle import (
 )
 from lms.djangoapps.teams.models import CourseTeamMembership
 from lms.djangoapps.verify_student.services import IDVerificationService
-from openedx.core.lib.cache_utils import get_cache
+from opaque_keys.edx.keys import UsageKey
 from openedx.core.djangoapps.content.block_structure.api import get_course_in_cache
 from openedx.core.djangoapps.course_groups.cohorts import bulk_cache_cohorts, get_cohort, is_course_cohorted
 from openedx.core.djangoapps.user_api.course_tag.api import BulkCourseTags
+from openedx.core.lib.cache_utils import get_cache
 from openedx.features.course_experience.utils import get_course_outline_block_tree
-from openedx.features.pakx.lms.overrides.utils import (
-    create_dummy_request,
-    get_progress_statistics_by_block_types,
-)
+from openedx.features.pakx.lms.overrides.utils import create_dummy_request, get_progress_statistics_by_block_types
 from student.models import CourseEnrollment
 from student.roles import BulkRoleCache
 from xmodule.modulestore.django import modulestore
@@ -689,7 +686,7 @@ class CourseGradeReport(object):
         def _flatten_course_block_tree(blocks):
             completed_units = []
             incomplete_units = []
-        
+
             def _recurse_children(children, parent_name=""):
                 for child in children:
                     if 'children' in child and child['children']:
@@ -699,7 +696,7 @@ class CourseGradeReport(object):
                             completed_units.append(parent_name + '--' + child.get('display_name'))
                         else:
                             incomplete_units.append(parent_name + '--' + child.get('display_name'))
-            
+
             _recurse_children(blocks.get('children', []))
             return completed_units, incomplete_units
 

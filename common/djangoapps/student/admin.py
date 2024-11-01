@@ -4,7 +4,6 @@ from csv import writer as csv_writer
 from datetime import datetime
 from functools import wraps
 
-from config_models.admin import ConfigurationModelAdmin
 from django import forms
 from django.conf import settings
 from django.contrib import admin
@@ -20,6 +19,8 @@ from django.http.request import QueryDict
 from django.urls import reverse
 from django.utils.translation import ngettext
 from django.utils.translation import ugettext_lazy as _
+
+from config_models.admin import ConfigurationModelAdmin
 from opaque_keys import InvalidKeyError
 from opaque_keys.edx.keys import CourseKey
 from openedx.core.djangoapps.waffle_utils import WaffleSwitch
@@ -357,7 +358,7 @@ class UserAdmin(BaseUserAdmin):
 
         fields = [
             field for field in opts.get_fields() if (
-                not field.many_to_many and not field.one_to_many and \
+                not field.many_to_many and not field.one_to_many and
                 not field.one_to_one and field.name != 'password'
             )
         ]
@@ -375,7 +376,7 @@ class UserAdmin(BaseUserAdmin):
         }
 
         # Write a first row with header information
-        writer.writerow([field.verbose_name for field in fields]+['gender', 'status'])
+        writer.writerow([field.verbose_name for field in fields] + ['gender', 'status'])
         # Write data rows
         for obj in queryset:
             data_row = []

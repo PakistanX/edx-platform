@@ -129,8 +129,8 @@ def get_course_card_data(course, org_prefetched=False):
         'about_page_banner_color': course_custom_setting.about_page_banner_color,
         'is_text_color_dark': course_custom_setting.is_text_color_dark,
         'url': reverse(
-                'custom-cap-url-courses', args=[get_key_from_value(COURSE_SLUG_MAPPING, text_type(course.id))]
-            ) if text_type(course.id) in COURSE_SLUG_MAPPING.values() else reverse('about_course', kwargs={'course_id': text_type(course.id)}),
+            'custom-cap-url-courses', args=[get_key_from_value(COURSE_SLUG_MAPPING, text_type(course.id))]
+        ) if text_type(course.id) in COURSE_SLUG_MAPPING.values() else reverse('about_course', kwargs={'course_id': text_type(course.id)}),
         'enrollment_count': course_custom_setting.enrollment_count,
         'program_name': program_name,
         'program_url': program_url,

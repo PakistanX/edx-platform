@@ -4,11 +4,10 @@ Objects and utilities used to construct registration forms.
 
 
 import copy
-from importlib import import_module
 import re
+from importlib import import_module
 
 import six
-
 from django import forms
 from django.conf import settings
 from django.contrib.auth.models import User
@@ -17,24 +16,20 @@ from django.core.validators import RegexValidator, ValidationError, slug_re
 from django.forms import widgets
 from django.urls import reverse
 from django.utils.translation import ugettext as _
-from django_countries import countries
 
 import third_party_auth
+from django_countries import countries
 from edxmako.shortcuts import marketing_link
 from openedx.core.djangoapps.site_configuration import helpers as configuration_helpers
 from openedx.core.djangoapps.user_api import accounts
 from openedx.core.djangoapps.user_api.helpers import FormDescription
 from openedx.core.djangolib.markup import HTML, Text
 from openedx.features.enterprise_support.api import enterprise_customer_for_request
-from student.models import (
-    CourseEnrollmentAllowed,
-    UserProfile,
-    email_exists_or_retired,
-)
+from student.models import CourseEnrollmentAllowed, UserProfile, email_exists_or_retired
 from util.password_policy_validators import (
     password_validators_instruction_texts,
     password_validators_restrictions,
-    validate_password,
+    validate_password
 )
 
 

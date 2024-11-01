@@ -17,24 +17,19 @@ from django.core.validators import ValidationError
 from django.db import transaction
 from django.dispatch import Signal
 from django.http import HttpResponse, HttpResponseForbidden
-from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
-from django.views.decorators.debug import sensitive_post_parameters
+from django.shortcuts import redirect
 from django.urls import reverse
 from django.utils.decorators import method_decorator
 from django.utils.translation import get_language
 from django.utils.translation import ugettext as _
-from django.shortcuts import redirect
+from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
+from django.views.decorators.debug import sensitive_post_parameters
 from pytz import UTC
 from requests import HTTPError
 from six import text_type
-from ipware.ip import get_ip
-from rest_framework.response import Response
-from rest_framework.throttling import AnonRateThrottle
-from rest_framework.views import APIView
-from social_core.exceptions import AuthAlreadyAssociated, AuthException
-from social_django import utils as social_utils
 
 import third_party_auth
+from ipware.ip import get_ip
 # Note that this lives in LMS, so this dependency should be refactored.
 # TODO Have the discussions code subscribe to the REGISTER_USER signal instead.
 from lms.djangoapps.discussion.notification_prefs.views import enable_notifications
@@ -46,33 +41,38 @@ from openedx.core.djangoapps.user_api.accounts.api import (
     get_country_validation_error,
     get_email_existence_validation_error,
     get_email_validation_error,
+    get_is_real_email_error,
     get_name_validation_error,
     get_password_validation_error,
     get_username_existence_validation_error,
-    get_username_validation_error,
-    get_is_real_email_error
+    get_username_validation_error
 )
-from openedx.core.djangoapps.user_authn.utils import generate_password
 from openedx.core.djangoapps.user_api.preferences import api as preferences_api
 from openedx.core.djangoapps.user_authn.cookies import set_logged_in_cookies
+from openedx.core.djangoapps.user_authn.utils import generate_password
 from openedx.core.djangoapps.user_authn.views.registration_form import (
-    get_registration_extension_form,
     AccountCreationForm,
-    RegistrationFormFactory
+    RegistrationFormFactory,
+    get_registration_extension_form
 )
 from openedx.core.djangoapps.waffle_utils import WaffleFlag, WaffleFlagNamespace
+from rest_framework.response import Response
+from rest_framework.throttling import AnonRateThrottle
+from rest_framework.views import APIView
+from social_core.exceptions import AuthAlreadyAssociated, AuthException
+from social_django import utils as social_utils
 from student.helpers import (
+    AccountValidationError,
     authenticate_new_user,
     create_or_set_user_attribute_created_on_site,
-    do_create_account,
-    AccountValidationError,
+    do_create_account
 )
 from student.models import (
     RegistrationCookieConfiguration,
     UserAttribute,
     create_comments_service_user,
     email_exists_or_retired,
-    username_exists_or_retired,
+    username_exists_or_retired
 )
 from student.views import compose_and_send_activation_email
 from third_party_auth import pipeline, provider
@@ -864,4 +864,3 @@ class LUMSxRegistrationValidationView(RegistrationValidationView):
             "username": super().username_handler,
             "email": super().email_handler
         }
-
