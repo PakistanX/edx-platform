@@ -16,10 +16,8 @@ from django.views.decorators.cache import cache_control
 from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from django.views.decorators.http import require_http_methods
 from django.views.generic.base import TemplateView, View
-from opaque_keys.edx.keys import CourseKey
 from pytz import utc
 from six import text_type
-from waffle import switch_is_active
 
 from course_modes.models import CourseMode, format_course_price, get_course_prices
 from edxmako.shortcuts import marketing_link, render_to_response
@@ -45,6 +43,7 @@ from lms.djangoapps.courseware.views.views import (
 from lms.djangoapps.experiments.utils import get_experiment_user_metadata_context
 from lms.djangoapps.grades.api import CourseGradeFactory
 from lms.djangoapps.instructor.enrollment import uses_shib
+from opaque_keys.edx.keys import CourseKey
 from openedx.core.djangoapps.catalog.utils import get_programs_with_type
 from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
 from openedx.core.djangoapps.enrollments.permissions import ENROLL_IN_COURSE
@@ -86,6 +85,7 @@ from util.cache import cache_if_anonymous
 from util.db import outer_atomic
 from util.milestones_helpers import get_prerequisite_courses_display
 from util.views import ensure_valid_course_key
+from waffle import switch_is_active
 from xmodule.course_module import COURSE_VISIBILITY_PUBLIC, COURSE_VISIBILITY_PUBLIC_OUTLINE
 from xmodule.modulestore.django import modulestore
 
@@ -910,6 +910,7 @@ def checkout_lumsx(request):
     city = data.get('city')
     state = data.get('state')
     sku = data.get('sku')
+    bundle_code = data.get('bundle_code', None)
     course_id = data.get('course_id')
 
     LUMSx_ORGANIZATION_ID_PROD = 16
@@ -958,7 +959,10 @@ def checkout_lumsx(request):
 
     is_created, res_data = create_user(user_data, request.scheme, next_url=reverse('account_settings'), auto_login=True, request=request)
     if is_created:
-        response = redirect('{}/basket/add/?sku={}&token={}'.format(settings.ECOMMERCE_PUBLIC_URL_ROOT, sku, token))
+        if bundle_code:
+            response = redirect('{}/basket/add/?sku={}&bundle={}&&token={}'.format(settings.ECOMMERCE_PUBLIC_URL_ROOT, sku, bundle_code, token))
+        else:
+            response = redirect('{}/basket/add/?sku={}&token={}'.format(settings.ECOMMERCE_PUBLIC_URL_ROOT, sku, token))
         set_logged_in_cookies(request, response, res_data)
     else:
         response = redirect('{}/basket_check/{}/{}?token={}'.format(settings.LMS_ROOT_URL, course_id, sku, token))
