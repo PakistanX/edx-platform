@@ -31,6 +31,7 @@ COURSE_SLUG_MAPPING = {
     'business-communication': 'course-v1:LUMSx+8+2023',
     'artificial-intelligence-classroom': 'course-v1:LUMSx+11+2024',
     'introduction-to-data-science': 'course-v1:LUMSx+12+2024',
+    'art-of-persuasion': 'course-v1:LUMSx+13+2024',
 }
 
 TRAINING_SLUG_MAPPING = {
