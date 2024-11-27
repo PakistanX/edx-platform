@@ -1,5 +1,6 @@
 """ Overrides app util functions """
 
+import json
 from collections import OrderedDict
 from datetime import date, datetime
 from logging import getLogger
@@ -20,6 +21,7 @@ from django.utils.translation import ugettext as _
 from opaque_keys.edx.keys import CourseKey
 from pytz import utc
 from six import text_type
+from waffle.models import Switch
 
 from course_modes.models import CourseMode, format_course_price
 from lms.djangoapps.commerce.utils import EcommerceService
@@ -36,7 +38,7 @@ from openedx.core.djangoapps.site_configuration import helpers as configuration_
 from openedx.core.lib.request_utils import get_request_or_stub
 from openedx.features.course_experience.utils import get_course_outline_block_tree, get_resume_block
 from openedx.features.pakx.cms.custom_settings.models import CourseOverviewContent
-from openedx.features.pakx.lms.overrides.constants import COURSE_SLUG_MAPPING
+from openedx.features.pakx.lms.overrides.constants import COURSE_SLUG_MAPPING, TRAINING_SLUG_MAPPING
 from pakx_feedback.feedback_app.models import UserFeedbackModel
 from student.models import CourseEnrollment
 from util.organizations_helpers import get_organization_by_short_name
@@ -53,6 +55,8 @@ BLOCK_TYPES_TO_FILTER = [
     'pb-message', 'pakx_microlearning', 'pakx_completion', 'google_drive', 'google-drive', 'google_document',
     'google-document'
 ]
+COURSE_SLUG_MAPPING_ = 'course_slug_mapping'
+TRAINING_SLUG_MAPPING_ = 'training_slug_mapping'
 
 
 def get_or_create_course_overview_content(course_key, custom_setting=None):
@@ -90,7 +94,6 @@ def get_course_card_data(course, org_prefetched=False):
         org_name = course_org.get('name') if is_blank_str(course_custom_setting.publisher_name) else \
             course_custom_setting.publisher_name
     else:
-
         org_name = course_custom_setting.course_set.publisher_org.name if is_blank_str(
             course_custom_setting.publisher_name) else course_custom_setting.publisher_name
         org_logo_url = course_custom_setting.publisher_card_logo_url or course_custom_setting.\
@@ -106,6 +109,14 @@ def get_course_card_data(course, org_prefetched=False):
         program_url = ''
     except NoReverseMatch:
         program_url = program_id
+
+    course_id = text_type(course.id)
+    if text_type(course.id) in get_course_slug_mapping().values():
+        custom_cap_url = reverse('custom-cap-url-courses', args=[get_key_from_value(get_course_slug_mapping(), course_id)])
+    elif text_type(course.id) in get_training_slug_mapping().values():
+        custom_cap_url = reverse('custom-cap-url-trainings', args=[get_key_from_value(get_training_slug_mapping(), course_id)])
+    else:
+        custom_cap_url = reverse('about_course', kwargs={'course_id': course_id}),
 
     return {
         'key': course.id,
@@ -128,9 +139,7 @@ def get_course_card_data(course, org_prefetched=False):
         'is_professional_certificate': course_custom_setting.is_professional_certificate,
         'about_page_banner_color': course_custom_setting.about_page_banner_color,
         'is_text_color_dark': course_custom_setting.is_text_color_dark,
-        'url': reverse(
-            'custom-cap-url-courses', args=[get_key_from_value(COURSE_SLUG_MAPPING, text_type(course.id))]
-        ) if text_type(course.id) in COURSE_SLUG_MAPPING.values() else reverse('about_course', kwargs={'course_id': text_type(course.id)}),
+        'url': custom_cap_url,
         'enrollment_count': course_custom_setting.enrollment_count,
         'program_name': program_name,
         'program_url': program_url,
@@ -653,3 +662,21 @@ def get_key_from_value(dictionary, target_value):
         if value == target_value:
             return key
     return None
+
+
+def get_course_slug_mapping():
+    try:
+        course_slug_mapping = Switch.objects.get(name=COURSE_SLUG_MAPPING_).note
+        return {**COURSE_SLUG_MAPPING, **(json.loads(course_slug_mapping) if course_slug_mapping.strip() else {})}
+    except Exception:  # pylint: disable=broad-except
+        log.warning('Exception getting course_slug_mapping data from Switch note')
+        return COURSE_SLUG_MAPPING
+
+
+def get_training_slug_mapping():
+    try:
+        training_slug_mapping = Switch.objects.get(name=TRAINING_SLUG_MAPPING_).note
+        return {**TRAINING_SLUG_MAPPING, **(json.loads(training_slug_mapping) if training_slug_mapping.strip() else {})}
+    except Exception:  # pylint: disable=broad-except
+        log.warning('Exception getting training_slug_mapping data from Switch note')
+        return TRAINING_SLUG_MAPPING

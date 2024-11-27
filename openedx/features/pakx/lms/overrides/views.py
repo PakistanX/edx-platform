@@ -62,7 +62,6 @@ from openedx.features.pakx.common.utils import (
     get_partner_space_meta,
     set_partner_space_in_session
 )
-from openedx.features.pakx.lms.overrides.constants import COURSE_SLUG_MAPPING, TRAINING_SLUG_MAPPING
 from openedx.features.pakx.lms.overrides.forms import AboutUsForm
 from openedx.features.pakx.lms.overrides.tasks import send_contact_us_email
 from openedx.features.pakx.lms.overrides.utils import (
@@ -72,11 +71,13 @@ from openedx.features.pakx.lms.overrides.utils import (
     get_course_card_data,
     get_course_first_unit_lms_url,
     get_course_progress_percentage,
+    get_course_slug_mapping,
     get_courses_for_user,
     get_featured_course_set,
     get_progress_statistics_by_block_types,
     get_rating_classes_for_course,
     get_resume_course_info,
+    get_training_slug_mapping,
     is_course_enroll_able,
     is_rtl_language
 )
@@ -835,7 +836,7 @@ def custom_cap_url_courses(request, course_id):
 
     return render_to_response('courseware/course_about_static.html', _get_course_about_context(
         request,
-        COURSE_SLUG_MAPPING[course_id]
+        get_course_slug_mapping()[course_id]
     ))
 
 
@@ -847,7 +848,7 @@ def custom_cap_url_trainings(request, course_id):
 
     return render_to_response('courseware/course_about_static.html', _get_course_about_context(
         request,
-        TRAINING_SLUG_MAPPING[course_id]
+        get_training_slug_mapping()[course_id]
     ))
 
 
