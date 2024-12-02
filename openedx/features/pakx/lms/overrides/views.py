@@ -467,7 +467,7 @@ def _get_course_about_context(request, course_id, category=None):  # pylint: dis
 
 @ensure_csrf_cookie
 @ensure_valid_course_key
-@cache_if_anonymous()
+# @cache_if_anonymous()
 def course_about(request, course_id):
     """
     Display the course's about page.
@@ -813,7 +813,7 @@ def _progress(request, course_key, student_id):
 # noinspection PyInterpreter
 @ensure_csrf_cookie
 @ensure_valid_course_key
-@cache_if_anonymous()
+# @cache_if_anonymous()
 def course_about_fiveemodel(request):
     """
     Display the course's about page.
@@ -830,7 +830,7 @@ def course_about_fiveemodel(request):
 
 # noinspection PyInterpreter
 @ensure_csrf_cookie
-@cache_if_anonymous()
+# @cache_if_anonymous()
 def custom_cap_url_courses(request, course_id):
     """Custom URL for course about page for different courses."""
 
@@ -842,7 +842,7 @@ def custom_cap_url_courses(request, course_id):
 
 # noinspection PyInterpreter
 @ensure_csrf_cookie
-@cache_if_anonymous()
+# @cache_if_anonymous()
 def custom_cap_url_trainings(request, course_id):
     """Custom URL for course about page for different courses."""
 
@@ -855,28 +855,28 @@ def custom_cap_url_trainings(request, course_id):
 @login_required
 @ensure_csrf_cookie
 @require_http_methods(["GET"])
-def basket_check(request, course_key_string, sku):
+def basket_checkout(request):
     """Check if user is already enrolled in course.
 
     Open edX checks if the user is already enrolled in course through orders on the ecommerce site. Since we are
     manually enrolling users as well, we need to check if user is already enrolled or not.
     """
+    courses = request.GET.get('course').split(',')
+    for course_key_string in courses:
+        course_enrollment = CourseEnrollment.get_enrollment(user=request.user, course_key=course_key_string)
+        if course_enrollment is not None:
+            course_modes = CourseMode.modes_for_course(course_key_string)
+            if len(course_modes) == 1 or course_enrollment.is_verified_enrollment():
+                return render_to_response('courseware/error.html')
+
+    sku = request.GET.get('sku')
+    bundle_code = request.GET.get('bundle')
+    token = request.GET.get('token')
     redirect_url = '{}/basket/add/?sku={}'.format(settings.ECOMMERCE_PUBLIC_URL_ROOT, sku)
-    token = request.GET.get('token', None)
+    if bundle_code:
+        redirect_url += '&bundle={}'.format(bundle_code)
     if token:
         redirect_url += '&token={}'.format(token)
-
-    course_enrollment = CourseEnrollment.get_enrollment(user=request.user, course_key=course_key_string)
-    if course_enrollment is None:
-        return redirect(redirect_url)
-
-    course_modes = CourseMode.modes_for_course(course_key_string)
-
-    if len(course_modes) == 1:
-        return render_to_response('courseware/error.html')
-
-    if course_enrollment.is_verified_enrollment():
-        return render_to_response('courseware/error.html')
 
     return redirect(redirect_url)
 
@@ -884,7 +884,6 @@ def basket_check(request, course_key_string, sku):
 @csrf_exempt
 @require_http_methods(["POST"])
 def checkout_lumsx(request):
-    import json
     import jwt
     from datetime import timedelta
     from openedx.core.djangoapps.user_api.accounts.api import get_is_real_email_error
@@ -892,30 +891,29 @@ def checkout_lumsx(request):
     from openedx.features.pakx.lms.pakx_admin_app.constants import LEARNER
     from openedx.features.pakx.lms.pakx_admin_app.utils import create_user
 
-    if not request.body:
-        return JsonResponse({'error': 'Missing required JSON request body'}, status=400)
+    if not request.POST:
+        return JsonResponse({'error': 'Missing required form data'}, status=400)
 
-    data = json.loads(request.body.decode('utf-8'))
     required_fields = ['sku', 'course_id', 'email', 'username', 'fullname', 'phone_number', 'city', 'state', 'address', 'postal_code']
-    missing_fields = [field for field in required_fields if not data.get(field)]
+    missing_fields = [field for field in required_fields if not request.POST.get(field)]
 
     if missing_fields:
         return JsonResponse({'error': 'Missing required fields: {}'.format(", ".join(missing_fields))}, status=400)
 
-    fullname = data.get('fullname')
-    email = data.get('email')
-    phone_number = data.get('phone_number')
-    username = data.get('username')
-    address = data.get('address')
-    postal_code = data.get('postal_code')
-    city = data.get('city')
-    state = data.get('state')
-    sku = data.get('sku')
-    bundle_code = data.get('bundle_code', None)
-    course_id = data.get('course_id')
+    fullname = request.POST.get('fullname')
+    email = request.POST.get('email')
+    phone_number = request.POST.get('phone_number')
+    username = request.POST.get('username')
+    address = request.POST.get('address')
+    postal_code = request.POST.get('postal_code')
+    city = request.POST.get('city')
+    state = request.POST.get('state')
+    sku = request.POST.get('sku')
+    bundle_code = request.POST.get('bundle_code')
+    course_id = request.POST.get('course_id')
 
     LUMSx_ORGANIZATION_ID_PROD = 16
-    lumsx_org_id = data.get('lumsx_org_id', LUMSx_ORGANIZATION_ID_PROD)
+    lumsx_org_id = request.POST.get('lumsx_org_id', LUMSx_ORGANIZATION_ID_PROD)
 
     if get_is_real_email_error(email):
         return JsonResponse({'error': 'Provided email is not valid.'}, status=400)
@@ -966,7 +964,10 @@ def checkout_lumsx(request):
             response = redirect('{}/basket/add/?sku={}&token={}'.format(settings.ECOMMERCE_PUBLIC_URL_ROOT, sku, token))
         set_logged_in_cookies(request, response, res_data)
     else:
-        response = redirect('{}/basket_check/{}/{}?token={}'.format(settings.LMS_ROOT_URL, course_id, sku, token))
+        if bundle_code:
+            response = redirect('{}/basket_checkout?course={}&sku={}&bundle={}&token={}'.format(settings.LMS_ROOT_URL, course_id, sku, bundle_code, token))
+        else:
+            response = redirect('{}/basket_checkout?course={}&sku={}&token={}'.format(settings.LMS_ROOT_URL, course_id, sku, token))
 
     return response
 

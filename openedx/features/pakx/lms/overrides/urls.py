@@ -11,7 +11,7 @@ from openedx.features.pakx.lms.overrides.views import (
     PSWRedirectView,
     RefundPolicyView,
     TermsOfUseView,
-    basket_check,
+    basket_checkout,
     checkout_lumsx,
     course_about_fiveemodel,
     custom_cap_url_courses,
@@ -42,10 +42,7 @@ urlpatterns = [
     url(r'^5emodel/signup/$', course_about_fiveemodel, name='5emodel-course-about'),
     url(r'^courses/{}/$'.format(r'(?P<course_id>[\w-]+)'), custom_cap_url_courses, name='custom-cap-url-courses'),
     url(r'^trainings/{}/$'.format(r'(?P<course_id>[\w-]+)'), custom_cap_url_trainings, name='custom-cap-url-trainings'),
-    url(r'^basket_check/{}/{}$'.format(
-        settings.COURSE_KEY_PATTERN,
-        r'(?P<sku>[A-Za-z0-9]+)'
-    ), basket_check, name='basket-check'),
+    url(r'^basket_checkout$'.format, basket_checkout, name='basket-checkout'),
     url(r'^checkout_lumsx$', checkout_lumsx, name='checkout-lumsx'),
     url(r'^$', BaseTemplateView.as_view(), name="landing-page"),
     url(r'^update-lms-tour-status/$', update_lms_tour_status, name='update_lms_tour_status'),

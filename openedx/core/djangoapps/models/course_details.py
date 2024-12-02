@@ -337,7 +337,7 @@ class CourseDetails(object):
         if video_key:
             result = (
                 HTML(
-                    u'<lite-youtube videoid="{}" videotitle="Youtube Video" params="rel=0"></lite-youtube>'
+                    u'<lite-youtube videoid="{}" videotitle="Youtube Video" params="rel=0" posterloading="eager"></lite-youtube>'
                 ).format(video_key)
             )
         return result
