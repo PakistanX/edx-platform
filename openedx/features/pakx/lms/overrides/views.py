@@ -13,13 +13,11 @@ from django.shortcuts import redirect
 from django.urls import reverse
 from django.utils.translation import ugettext as _
 from django.views.decorators.cache import cache_control
-from django.views.decorators.csrf import ensure_csrf_cookie
+from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from django.views.decorators.http import require_http_methods
 from django.views.generic.base import TemplateView, View
-from opaque_keys.edx.keys import CourseKey
 from pytz import utc
 from six import text_type
-from waffle import switch_is_active
 
 from course_modes.models import CourseMode, format_course_price, get_course_prices
 from edxmako.shortcuts import marketing_link, render_to_response
@@ -45,6 +43,7 @@ from lms.djangoapps.courseware.views.views import (
 from lms.djangoapps.experiments.utils import get_experiment_user_metadata_context
 from lms.djangoapps.grades.api import CourseGradeFactory
 from lms.djangoapps.instructor.enrollment import uses_shib
+from opaque_keys.edx.keys import CourseKey
 from openedx.core.djangoapps.catalog.utils import get_programs_with_type
 from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
 from openedx.core.djangoapps.enrollments.permissions import ENROLL_IN_COURSE
@@ -63,7 +62,6 @@ from openedx.features.pakx.common.utils import (
     get_partner_space_meta,
     set_partner_space_in_session
 )
-from openedx.features.pakx.lms.overrides.constants import COURSE_SLUG_MAPPING, TRAINING_SLUG_MAPPING
 from openedx.features.pakx.lms.overrides.forms import AboutUsForm
 from openedx.features.pakx.lms.overrides.tasks import send_contact_us_email
 from openedx.features.pakx.lms.overrides.utils import (
@@ -73,11 +71,13 @@ from openedx.features.pakx.lms.overrides.utils import (
     get_course_card_data,
     get_course_first_unit_lms_url,
     get_course_progress_percentage,
+    get_course_slug_mapping,
     get_courses_for_user,
     get_featured_course_set,
     get_progress_statistics_by_block_types,
     get_rating_classes_for_course,
     get_resume_course_info,
+    get_training_slug_mapping,
     is_course_enroll_able,
     is_rtl_language
 )
@@ -86,6 +86,7 @@ from util.cache import cache_if_anonymous
 from util.db import outer_atomic
 from util.milestones_helpers import get_prerequisite_courses_display
 from util.views import ensure_valid_course_key
+from waffle import switch_is_active
 from xmodule.course_module import COURSE_VISIBILITY_PUBLIC, COURSE_VISIBILITY_PUBLIC_OUTLINE
 from xmodule.modulestore.django import modulestore
 
@@ -431,6 +432,7 @@ def _get_course_about_context(request, course_id, category=None):  # pylint: dis
             'certificate': course_map['certificate'],
             'publisher_logo': course_map['publisher_logo_url'],
             'group_enrollment_url': course_map['group_enrollment_url'],
+            'is_professional_certificate': course_map['is_professional_certificate'],
             'about_page_banner_color': course_map['about_page_banner_color'],
             'is_text_color_dark': course_map['is_text_color_dark'],
             'course_rating': get_rating_classes_for_course(course_id),
@@ -441,16 +443,31 @@ def _get_course_about_context(request, course_id, category=None):  # pylint: dis
             'difficulty_level': course_map['difficulty_level'],
             'discount_percent': course_map['discount_percent'],
             'seo_words': course_map['seo_words'],
+            'course_type': course_map['course_type'],
+            'prerequisites': course_map['prerequisites'],
+            'custom_language': course_map['custom_language'],
             'registration_price': registration_price,
             'remaining_days': remaining_days,
         }
+
+        if course_map['recommended_courses']:
+            try:
+                recommended_courses_ids = course_map['recommended_courses'].split(',')
+                if recommended_courses_ids:
+                    fetch_recommended_courses = CourseOverview.objects.filter(id__in=recommended_courses_ids)
+                    recommended_courses = [get_course_card_data(course) for course in fetch_recommended_courses]
+                    context.update({
+                        'recommended_courses': recommended_courses
+                    })
+            except Exception:
+                pass
 
         return context
 
 
 @ensure_csrf_cookie
 @ensure_valid_course_key
-@cache_if_anonymous()
+# @cache_if_anonymous()
 def course_about(request, course_id):
     """
     Display the course's about page.
@@ -796,7 +813,7 @@ def _progress(request, course_key, student_id):
 # noinspection PyInterpreter
 @ensure_csrf_cookie
 @ensure_valid_course_key
-@cache_if_anonymous()
+# @cache_if_anonymous()
 def course_about_fiveemodel(request):
     """
     Display the course's about page.
@@ -813,51 +830,146 @@ def course_about_fiveemodel(request):
 
 # noinspection PyInterpreter
 @ensure_csrf_cookie
-@cache_if_anonymous()
+# @cache_if_anonymous()
 def custom_cap_url_courses(request, course_id):
     """Custom URL for course about page for different courses."""
 
     return render_to_response('courseware/course_about_static.html', _get_course_about_context(
         request,
-        COURSE_SLUG_MAPPING[course_id]
+        get_course_slug_mapping()[course_id]
     ))
 
 
 # noinspection PyInterpreter
 @ensure_csrf_cookie
-@cache_if_anonymous()
+# @cache_if_anonymous()
 def custom_cap_url_trainings(request, course_id):
     """Custom URL for course about page for different courses."""
 
     return render_to_response('courseware/course_about_static.html', _get_course_about_context(
         request,
-        TRAINING_SLUG_MAPPING[course_id]
+        get_training_slug_mapping()[course_id]
     ))
 
 
 @login_required
 @ensure_csrf_cookie
 @require_http_methods(["GET"])
-def basket_check(request, course_key_string, sku):
+def basket_checkout(request):
     """Check if user is already enrolled in course.
 
     Open edX checks if the user is already enrolled in course through orders on the ecommerce site. Since we are
     manually enrolling users as well, we need to check if user is already enrolled or not.
     """
+    courses = request.GET.get('course').split(',')
+    for course_key_string in courses:
+        course_enrollment = CourseEnrollment.get_enrollment(user=request.user, course_key=course_key_string)
+        if course_enrollment is not None:
+            course_modes = CourseMode.modes_for_course(course_key_string)
+            if len(course_modes) == 1 or course_enrollment.is_verified_enrollment():
+                return render_to_response('courseware/error.html')
+
+    sku = request.GET.get('sku')
+    bundle_code = request.GET.get('bundle')
+    token = request.GET.get('token')
     redirect_url = '{}/basket/add/?sku={}'.format(settings.ECOMMERCE_PUBLIC_URL_ROOT, sku)
-    course_enrollment = CourseEnrollment.get_enrollment(user=request.user, course_key=course_key_string)
-    if course_enrollment is None:
-        return redirect(redirect_url)
-
-    course_modes = CourseMode.modes_for_course(course_key_string)
-
-    if len(course_modes) == 1:
-        return render_to_response('courseware/error.html')
-
-    if course_enrollment.is_verified_enrollment():
-        return render_to_response('courseware/error.html')
+    if bundle_code:
+        redirect_url += '&bundle={}'.format(bundle_code)
+    if token:
+        redirect_url += '&token={}'.format(token)
 
     return redirect(redirect_url)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def checkout_lumsx(request):
+    import jwt
+    from datetime import timedelta
+    from openedx.core.djangoapps.user_api.accounts.api import get_is_real_email_error
+    from openedx.core.djangoapps.user_authn.cookies import set_logged_in_cookies
+    from openedx.features.pakx.lms.pakx_admin_app.constants import LEARNER
+    from openedx.features.pakx.lms.pakx_admin_app.utils import create_user
+
+    if not request.POST:
+        return JsonResponse({'error': 'Missing required form data'}, status=400)
+
+    required_fields = ['sku', 'course_id', 'email', 'username', 'fullname', 'phone_number', 'city', 'state', 'address', 'postal_code']
+    missing_fields = [field for field in required_fields if not request.POST.get(field)]
+
+    if missing_fields:
+        return JsonResponse({'error': 'Missing required fields: {}'.format(", ".join(missing_fields))}, status=400)
+
+    fullname = request.POST.get('fullname')
+    email = request.POST.get('email')
+    phone_number = request.POST.get('phone_number')
+    username = request.POST.get('username')
+    address = request.POST.get('address')
+    postal_code = request.POST.get('postal_code')
+    city = request.POST.get('city')
+    state = request.POST.get('state')
+    sku = request.POST.get('sku')
+    bundle_code = request.POST.get('bundle_code')
+    course_id = request.POST.get('course_id')
+
+    LUMSx_ORGANIZATION_ID_PROD = 16
+    lumsx_org_id = request.POST.get('lumsx_org_id', LUMSx_ORGANIZATION_ID_PROD)
+
+    if get_is_real_email_error(email):
+        return JsonResponse({'error': 'Provided email is not valid.'}, status=400)
+    elif not (phone_number.isdigit() and len(phone_number) == 11 and phone_number.startswith("03")):
+        return JsonResponse({'error': 'Provided phone number is not valid.'}, status=400)
+    elif not (postal_code.isdigit() and len(postal_code) == 5):
+        return JsonResponse({'error': 'Provided postal code is not valid.'}, status=400)
+
+    user_data = {
+        'role': LEARNER,
+        'profile': {
+            'employee_id': '',
+            'organization': lumsx_org_id,
+            'language_code': {
+                'code': 'en'
+            },
+            'name': fullname
+        },
+        'username': username,
+        'email': email
+    }
+
+    checkout_form_data = {
+        'name': fullname,
+        'email': email,
+        'phone_number': phone_number,
+        'username': username,
+        'address': address,
+        'postal_code': postal_code,
+        'city': city,
+        'state': state
+    }
+
+    payload = {
+        "checkout_data": checkout_form_data,
+        "exp": datetime.utcnow() + timedelta(minutes=5)
+    }
+
+    JWT_AUTH = 'JWT_AUTH'
+    JWT_SECRET_KEY = getattr(settings, JWT_AUTH)['JWT_SECRET_KEY'] if hasattr(settings, JWT_AUTH) else ''
+    token = jwt.encode(payload, JWT_SECRET_KEY).decode('utf-8')
+
+    is_created, res_data = create_user(user_data, request.scheme, next_url=reverse('account_settings'), auto_login=True, request=request)
+    if is_created:
+        if bundle_code:
+            response = redirect('{}/basket/add/?sku={}&bundle={}&&token={}'.format(settings.ECOMMERCE_PUBLIC_URL_ROOT, sku, bundle_code, token))
+        else:
+            response = redirect('{}/basket/add/?sku={}&token={}'.format(settings.ECOMMERCE_PUBLIC_URL_ROOT, sku, token))
+        set_logged_in_cookies(request, response, res_data)
+    else:
+        if bundle_code:
+            response = redirect('{}/basket_checkout?course={}&sku={}&bundle={}&token={}'.format(settings.LMS_ROOT_URL, course_id, sku, bundle_code, token))
+        else:
+            response = redirect('{}/basket_checkout?course={}&sku={}&token={}'.format(settings.LMS_ROOT_URL, course_id, sku, token))
+
+    return response
 
 
 def update_lms_tour_status(request):

@@ -4,11 +4,10 @@ Objects and utilities used to construct registration forms.
 
 
 import copy
-from importlib import import_module
 import re
+from importlib import import_module
 
 import six
-
 from django import forms
 from django.conf import settings
 from django.contrib.auth.models import User
@@ -26,15 +25,11 @@ from openedx.core.djangoapps.user_api import accounts
 from openedx.core.djangoapps.user_api.helpers import FormDescription
 from openedx.core.djangolib.markup import HTML, Text
 from openedx.features.enterprise_support.api import enterprise_customer_for_request
-from student.models import (
-    CourseEnrollmentAllowed,
-    UserProfile,
-    email_exists_or_retired,
-)
+from student.models import CourseEnrollmentAllowed, UserProfile, email_exists_or_retired
 from util.password_policy_validators import (
     password_validators_instruction_texts,
     password_validators_restrictions,
-    validate_password,
+    validate_password
 )
 
 
@@ -568,7 +563,7 @@ class RegistrationFormFactory(object):
         """
         # Translators: This label appears above a dropdown menu on the registration
         # form used to select the user's highest completed level of education.
-        education_level_label = _(u"Highest level of education completed")
+        education_level_label = _(u"Status")
         error_msg = accounts.REQUIRED_FIELD_LEVEL_OF_EDUCATION_MSG
 
         # The labels are marked for translation in UserProfile model definition.

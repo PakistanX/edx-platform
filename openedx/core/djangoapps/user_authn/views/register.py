@@ -17,20 +17,20 @@ from django.core.validators import ValidationError
 from django.db import transaction
 from django.dispatch import Signal
 from django.http import HttpResponse, HttpResponseForbidden
-from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
-from django.views.decorators.debug import sensitive_post_parameters
+from django.shortcuts import redirect
 from django.urls import reverse
 from django.utils.decorators import method_decorator
 from django.utils.translation import get_language
 from django.utils.translation import ugettext as _
-from django.shortcuts import redirect
+from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
+from django.views.decorators.debug import sensitive_post_parameters
+from ipware.ip import get_ip
 from pytz import UTC
 from requests import HTTPError
-from six import text_type
-from ipware.ip import get_ip
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
 from rest_framework.views import APIView
+from six import text_type
 from social_core.exceptions import AuthAlreadyAssociated, AuthException
 from social_django import utils as social_utils
 
@@ -46,33 +46,34 @@ from openedx.core.djangoapps.user_api.accounts.api import (
     get_country_validation_error,
     get_email_existence_validation_error,
     get_email_validation_error,
+    get_is_real_email_error,
     get_name_validation_error,
     get_password_validation_error,
+    get_same_username_email_existence_validation_error,
     get_username_existence_validation_error,
-    get_username_validation_error,
-    get_is_real_email_error
+    get_username_validation_error
 )
-from openedx.core.djangoapps.user_authn.utils import generate_password
 from openedx.core.djangoapps.user_api.preferences import api as preferences_api
 from openedx.core.djangoapps.user_authn.cookies import set_logged_in_cookies
+from openedx.core.djangoapps.user_authn.utils import generate_password
 from openedx.core.djangoapps.user_authn.views.registration_form import (
-    get_registration_extension_form,
     AccountCreationForm,
-    RegistrationFormFactory
+    RegistrationFormFactory,
+    get_registration_extension_form
 )
 from openedx.core.djangoapps.waffle_utils import WaffleFlag, WaffleFlagNamespace
 from student.helpers import (
+    AccountValidationError,
     authenticate_new_user,
     create_or_set_user_attribute_created_on_site,
-    do_create_account,
-    AccountValidationError,
+    do_create_account
 )
 from student.models import (
     RegistrationCookieConfiguration,
     UserAttribute,
     create_comments_service_user,
     email_exists_or_retired,
-    username_exists_or_retired,
+    username_exists_or_retired
 )
 from student.views import compose_and_send_activation_email
 from third_party_auth import pipeline, provider
@@ -776,14 +777,15 @@ class RegistrationValidationView(APIView):
         country = request.data.get('country')
         return get_country_validation_error(country)
 
-    validation_handlers = {
-        "name": name_handler,
-        "username": username_handler,
-        "email": email_handler,
-        "confirm_email": confirm_email_handler,
-        "password": password_handler,
-        "country": country_handler
-    }
+    def validation_handlers(self):
+        return {
+            "name": self.name_handler,
+            "username": self.username_handler,
+            "email": self.email_handler,
+            "confirm_email": self.confirm_email_handler,
+            "password": self.password_handler,
+            "country": self.country_handler
+        }
 
     def post(self, request):
         """
@@ -806,12 +808,66 @@ class RegistrationValidationView(APIView):
         like when the password may not equal the username.
         """
         validation_decisions = {}
-        for form_field_key in self.validation_handlers:
+        for form_field_key in self.validation_handlers().keys():
             # For every field requiring validation from the client,
             # request a decision for it from the appropriate handler.
-            if form_field_key in request.data:
-                handler = self.validation_handlers[form_field_key]
+            if form_field_key in [*request.data, 'same_user_username_email']:
+                handler = self.validation_handlers()[form_field_key]
                 validation_decisions.update({
-                    form_field_key: handler(self, request)
+                    form_field_key: handler(request)
                 })
         return Response({"validation_decisions": validation_decisions})
+
+
+# pylint: disable=line-too-long
+class LUMSxRegistrationValidationView(RegistrationValidationView):
+    """
+        **Use Cases**
+
+            Get validation information about user data during registration.
+            Client-side may request validation for any number of form fields,
+            and the API will return a conclusion from its analysis for each
+            input (i.e. valid or not valid, or a custom, detailed message).
+
+        **Example Requests and Responses**
+
+            - Checks the validity of the username and email inputs separately.
+            POST /api/user/v1/validation/lumsx
+            >>> {
+            >>>     "username": "hi_im_new",
+            >>>     "email": "newguy101@edx.org"
+            >>> }
+            RESPONSE
+            >>> {
+            >>>     "validation_decisions": {
+            >>>         "username": "",
+            >>>         "email": ""
+            >>>     }
+            >>> }
+            Empty strings indicate that there was no problem with the input.
+
+            Note that a validation decision is returned *for all* inputs, whether
+            positive or negative.
+
+        **Available Handlers**
+
+            "name":
+                A handler to check the validity of the user's real name.
+            "username":
+                A handler to check the validity of usernames.
+            "email":
+                A handler to check the validity of emails.
+    """
+
+    def same_user_username_email_handler(self, request):
+        """ Validates whether the username and email address belongs to same user. """
+        return get_same_username_email_existence_validation_error(request.data.get('username'), request.data.get('email'))
+
+
+    def validation_handlers(self):
+        return {
+            "name": super().name_handler,
+            "username": super().username_handler,
+            "email": super().email_handler,
+            "same_user_username_email": self.same_user_username_email_handler
+        }

@@ -22,6 +22,7 @@ from django.utils.translation import ngettext
 from django.utils.translation import ugettext_lazy as _
 from opaque_keys import InvalidKeyError
 from opaque_keys.edx.keys import CourseKey
+
 from openedx.core.djangoapps.waffle_utils import WaffleSwitch
 from openedx.core.lib.courses import clean_course_id
 from student import STUDENT_WAFFLE_NAMESPACE
@@ -357,12 +358,25 @@ class UserAdmin(BaseUserAdmin):
 
         fields = [
             field for field in opts.get_fields() if (
-                not field.many_to_many and not field.one_to_many and \
+                not field.many_to_many and not field.one_to_many and
                 not field.one_to_one and field.name != 'password'
             )
         ]
+        gender_dict = {
+            'm': 'Male',
+            'f': 'Female',
+            'o': 'Other',
+        }
+        status_dict = {
+            'u': 'Undergraduate',
+            'g': 'Graduate',
+            'elp': 'Entry Level Professional',
+            'mslp': 'Mid-Senior Level Professional',
+            'other': 'Other',
+        }
+
         # Write a first row with header information
-        writer.writerow([field.verbose_name for field in fields])
+        writer.writerow([field.verbose_name for field in fields] + ['gender', 'status'])
         # Write data rows
         for obj in queryset:
             data_row = []
@@ -371,6 +385,8 @@ class UserAdmin(BaseUserAdmin):
                 if isinstance(value, datetime):
                     value = value.strftime('%d/%m/%Y')
                 data_row.append(value)
+            data_row.append(gender_dict.get(obj.profile.gender) if obj.profile.gender else '')
+            data_row.append(status_dict.get(obj.profile.level_of_education) if obj.profile.level_of_education else '')
             writer.writerow(data_row)
         return response
 

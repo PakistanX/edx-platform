@@ -12,6 +12,7 @@ from time import time
 import six
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.contrib.sites.models import Site
 from lazy import lazy
 from opaque_keys.edx.keys import UsageKey
 from pytz import UTC
@@ -34,10 +35,12 @@ from lms.djangoapps.instructor_task.config.waffle import (
 )
 from lms.djangoapps.teams.models import CourseTeamMembership
 from lms.djangoapps.verify_student.services import IDVerificationService
-from openedx.core.lib.cache_utils import get_cache
 from openedx.core.djangoapps.content.block_structure.api import get_course_in_cache
 from openedx.core.djangoapps.course_groups.cohorts import bulk_cache_cohorts, get_cohort, is_course_cohorted
 from openedx.core.djangoapps.user_api.course_tag.api import BulkCourseTags
+from openedx.core.lib.cache_utils import get_cache
+from openedx.features.course_experience.utils import get_course_outline_block_tree
+from openedx.features.pakx.lms.overrides.utils import create_dummy_request, get_progress_statistics_by_block_types
 from student.models import CourseEnrollment
 from student.roles import BulkRoleCache
 from xmodule.modulestore.django import modulestore
@@ -443,7 +446,8 @@ class CourseGradeReport(object):
             (['Team Name'] if context.teams_enabled else []) +
             ['Enrollment Track', 'Verification Status'] +
             ['Certificate Eligible', 'Certificate Delivered', 'Certificate Type'] +
-            ['Enrollment Status']
+            ['Enrollment Status', 'Course Progress', 'Total Block Types'] +
+            ['Total Completed Block Types', ' Completed Units', 'Incomplete Units']
         )
 
     def _error_headers(self):
@@ -594,13 +598,15 @@ class CourseGradeReport(object):
         subsection_grades = []
         grade_results = []
         for subsection_location in subsection_headers:
-            subsection_grade = course_grade.subsection_grade(subsection_location)
-            if subsection_grade.attempted_graded or subsection_grade.override:
-                grade_result = subsection_grade.percent_graded
-            else:
-                grade_result = u'Not Attempted'
+            grade_result = u'Not Attempted'
+            try:
+                subsection_grade = course_grade.subsection_grade(subsection_location)
+                if subsection_grade.attempted_graded or subsection_grade.override:
+                    grade_result = subsection_grade.percent_graded
+                subsection_grades.append(subsection_grade)
+            except:
+                pass
             grade_results.append([grade_result])
-            subsection_grades.append(subsection_grade)
         return subsection_grades, grade_results
 
     def _user_assignment_average(self, course_grade, subsection_grades, assignment_info):
@@ -678,6 +684,24 @@ class CourseGradeReport(object):
         """
         Returns a list of rows for the given users for this report.
         """
+
+        def _flatten_course_block_tree(blocks):
+            completed_units = []
+            incomplete_units = []
+
+            def _recurse_children(children, parent_name=""):
+                for child in children:
+                    if 'children' in child and child['children']:
+                        _recurse_children(child['children'], child.get('display_name'))
+                    else:
+                        if child.get('complete'):
+                            completed_units.append(parent_name + '--' + child.get('display_name'))
+                        else:
+                            incomplete_units.append(parent_name + '--' + child.get('display_name'))
+
+            _recurse_children(blocks.get('children', []))
+            return completed_units, incomplete_units
+
         with modulestore().bulk_operations(context.course_id):
             bulk_context = _CourseGradeBulkContext(context, users)
 
@@ -692,6 +716,12 @@ class CourseGradeReport(object):
                     # An empty gradeset means we failed to grade a student.
                     error_rows.append([user.id, user.username, text_type(error)])
                 else:
+                    block_info, __ = get_progress_statistics_by_block_types(
+                        create_dummy_request(Site.objects.get_current(), user), text_type(context.course_id))
+                    course_block_tree = get_course_outline_block_tree(
+                        create_dummy_request(Site.objects.get_current(), user), text_type(context.course_id), user, allow_start_dates_in_future=True
+                    )
+                    completed_units, incomplete_units = _flatten_course_block_tree(course_block_tree)
                     success_rows.append(
                         [user.id, user.email, user.username] +
                         self._user_grades(course_grade, context) +
@@ -700,7 +730,9 @@ class CourseGradeReport(object):
                         self._user_team_names(user, bulk_context.teams) +
                         self._user_verification_mode(user, context, bulk_context.enrollments) +
                         self._user_certificate_info(user, context, course_grade, bulk_context.certs) +
-                        [_user_enrollment_status(user, context.course_id)]
+                        [_user_enrollment_status(user, context.course_id)] +
+                        [float(block_info['user_progress'])] + [block_info['total_block_types']] +
+                        [block_info['total_completed_block_types']] + [completed_units] + [incomplete_units]
                     )
             return success_rows, error_rows
 

@@ -68,6 +68,10 @@ USERNAME_CONFLICT_MSG = _(
     u"Try again with a different username."
 )
 
+USERNAME_EMAIL_CONFLICT_MSG = _(
+    u"It looks like {username} and {email_address} belongs to same existing account. "
+)
+
 # Translators: This message is shown to users who enter a name/username/email/password
 # with an inappropriate length (too short or too long).
 NAME_BAD_LENGTH_MSG = format_lazy(
@@ -100,5 +104,5 @@ REQUIRED_FIELD_PROFESSION_TEXT_MSG = _(u"Enter your profession.")
 REQUIRED_FIELD_SPECIALTY_TEXT_MSG = _(u"Enter your specialty.")
 REQUIRED_FIELD_CITY_MSG = _(u"Enter your city.")
 REQUIRED_FIELD_GOALS_MSG = _(u"Tell us your goals.")
-REQUIRED_FIELD_LEVEL_OF_EDUCATION_MSG = _(u"Select the highest level of education you have completed.")
+REQUIRED_FIELD_LEVEL_OF_EDUCATION_MSG = _(u"Select your current status.")
 REQUIRED_FIELD_MAILING_ADDRESS_MSG = _(u"Enter your mailing address.")
