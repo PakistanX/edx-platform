@@ -260,6 +260,13 @@ def username_exists_or_retired(username):
     return User.objects.filter(username=username).exists() or is_username_retired(username)
 
 
+def same_username_email_user_exists(username, email):
+    """
+    Check for existence of same username and email user and is not retirement against the User model.
+    """
+    return User.objects.filter(username=username, email=email).exists() and not is_username_retired(username) and not is_email_retired(email)
+
+
 def is_email_retired(email):
     """
     Checks to see if the given email has been previously retired

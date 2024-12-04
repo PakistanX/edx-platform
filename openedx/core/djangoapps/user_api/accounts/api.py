@@ -22,6 +22,7 @@ from student.models import (
     User,
     UserProfile,
     email_exists_or_retired,
+    same_username_email_user_exists,
     username_exists_or_retired
 )
 from util.model_utils import emit_setting_changed_event
@@ -458,6 +459,19 @@ def get_email_existence_validation_error(email):
     return _validate(_validate_email_doesnt_exist, errors.AccountEmailAlreadyExists, email)
 
 
+def get_same_username_email_existence_validation_error(username, email):
+    """Get the built-in validation error message for when
+    the username and email has an existence conflict and belong to same user.
+
+    :param username: The proposed username (unicode).
+    :param email: The proposed email (unicode).
+    :param default: The message to default to in case of no error.
+    :return: Validation error message.
+
+    """
+    return _validate(_validate_same_username_email_user_exist, errors.AccountUsernameEmailAlreadyExists, username, email)
+
+
 def get_is_real_email_error(email):
     """Use the external IsItARealEmail API service to check for email validity."""
     api_key = settings.EMAILABLE_API_KEY
@@ -656,6 +670,18 @@ def _validate_secondary_email_doesnt_exist(email):
     if email is not None and AccountRecovery.objects.filter(secondary_email=email).exists():
         # pylint: disable=no-member
         raise errors.AccountEmailAlreadyExists(accounts.EMAIL_CONFLICT_MSG.format(email_address=email))
+    
+
+def _validate_same_username_email_user_exist(username, email):
+    """Validate that the username and email is associated with same existing user.
+
+    :param username: The proposed username (unicode).
+    :param email: The proposed email (unicode).
+    :return: None
+    :raises: errors.AccountUsernameEmailAlreadyExists
+    """
+    if username is not None and email is not None and same_username_email_user_exists(username, email):
+        raise errors.AccountUsernameEmailAlreadyExists(_(accounts.USERNAME_EMAIL_CONFLICT_MSG).format(username=username, email_address=email))
 
 
 def _validate_password_works_with_username(password, username=None):

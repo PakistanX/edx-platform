@@ -68,6 +68,10 @@ USERNAME_CONFLICT_MSG = _(
     u"Try again with a different username."
 )
 
+USERNAME_EMAIL_CONFLICT_MSG = _(
+    u"It looks like {username} and {email_address} belongs to same existing account. "
+)
+
 # Translators: This message is shown to users who enter a name/username/email/password
 # with an inappropriate length (too short or too long).
 NAME_BAD_LENGTH_MSG = format_lazy(

@@ -49,6 +49,7 @@ from openedx.core.djangoapps.user_api.accounts.api import (
     get_is_real_email_error,
     get_name_validation_error,
     get_password_validation_error,
+    get_same_username_email_existence_validation_error,
     get_username_existence_validation_error,
     get_username_validation_error
 )
@@ -810,7 +811,7 @@ class RegistrationValidationView(APIView):
         for form_field_key in self.validation_handlers().keys():
             # For every field requiring validation from the client,
             # request a decision for it from the appropriate handler.
-            if form_field_key in request.data:
+            if form_field_key in [*request.data, 'same_user_username_email']:
                 handler = self.validation_handlers()[form_field_key]
                 validation_decisions.update({
                     form_field_key: handler(request)
@@ -831,7 +832,7 @@ class LUMSxRegistrationValidationView(RegistrationValidationView):
         **Example Requests and Responses**
 
             - Checks the validity of the username and email inputs separately.
-            POST /api/user/v1/validation/lumsx/
+            POST /api/user/v1/validation/lumsx
             >>> {
             >>>     "username": "hi_im_new",
             >>>     "email": "newguy101@edx.org"
@@ -858,9 +859,15 @@ class LUMSxRegistrationValidationView(RegistrationValidationView):
                 A handler to check the validity of emails.
     """
 
+    def same_user_username_email_handler(self, request):
+        """ Validates whether the username and email address belongs to same user. """
+        return get_same_username_email_existence_validation_error(request.data.get('username'), request.data.get('email'))
+
+
     def validation_handlers(self):
         return {
             "name": super().name_handler,
             "username": super().username_handler,
-            "email": super().email_handler
+            "email": super().email_handler,
+            "same_user_username_email": self.same_user_username_email_handler
         }
