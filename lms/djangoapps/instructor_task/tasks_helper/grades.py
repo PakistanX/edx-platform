@@ -598,6 +598,7 @@ class CourseGradeReport(object):
         subsection_grades = []
         grade_results = []
         for subsection_location in subsection_headers:
+            grade_result = u'Not Attempted'
             try:
                 subsection_grade = course_grade.subsection_grade(subsection_location)
                 if subsection_grade.attempted_graded or subsection_grade.override:
@@ -605,7 +606,7 @@ class CourseGradeReport(object):
                 subsection_grades.append(subsection_grade)
             except:
                 pass
-            grade_results.append([grade_result if grade_result else u'Not Attempted'])
+            grade_results.append([grade_result])
         return subsection_grades, grade_results
 
     def _user_assignment_average(self, course_grade, subsection_grades, assignment_info):
