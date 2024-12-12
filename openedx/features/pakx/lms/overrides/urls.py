@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.conf.urls import url
+from django.views.generic.base import RedirectView
 
 from openedx.features.pakx.lms.overrides.views import (
     AboutUsView,
@@ -46,4 +47,5 @@ urlpatterns = [
     url(r'^checkout_lumsx$', checkout_lumsx, name='checkout-lumsx'),
     url(r'^$', BaseTemplateView.as_view(), name="landing-page"),
     url(r'^update-lms-tour-status/$', update_lms_tour_status, name='update_lms_tour_status'),
+    url(r'^ey$', RedirectView.as_view(url='https://discover.ilmx.org/ilmx-for-business/'), name='ilmx-for-business'),
 ]
