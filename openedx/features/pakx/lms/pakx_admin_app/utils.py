@@ -15,6 +15,7 @@ from django.urls import reverse
 from edx_ace import ace
 from edx_ace.recipient import Recipient
 
+from lms.djangoapps.verify_student.models import ManualVerification
 from openedx.core.djangoapps.ace_common.template_context import get_base_template_context
 from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
 from openedx.core.djangoapps.site_configuration import helpers as configuration_helpers
@@ -117,7 +118,8 @@ def get_user_data_from_bulk_registration_file(file_reader, default_org_id):
                 'employee_id': clean(user_map.get('employee_id')),
                 'language_code': {'code': clean(user_map.get('language', ''))},
                 'organization': clean(user_map.get('organization_id')) or default_org_id,
-            }
+            },
+            'verified': clean(user_map.get('verified')).lower() in ('true', '1', 't', 'yes', 'y')
         }
         users.append(user)
     return users
@@ -141,6 +143,13 @@ def create_user(user_data, request_url_scheme, next_url='', auto_login=False, re
     user = user_serializer.save()
     send_registration_email(user, user_data['password'], request_url_scheme, next_url=next_url)
 
+    if user_data.get('verified', None):
+        ManualVerification.objects.create(
+            status=u'approved',
+            user=user,
+            name='{}:Bulk Registration'.format(user.id),
+            reason='Bulk Registration from Admin Panel; Verified by CA team'
+        )
     if auto_login and request:
         new_user = authenticate_new_user(request, user_data['username'], user_data['password'])
         django_login(request, new_user)

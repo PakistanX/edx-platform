@@ -338,6 +338,7 @@ def _accumulate_total_block_counts(total_block_type_counts):
         'openassessment': 'problem',
         'journal_xblock': 'other',
         'github_xblock': 'problem',
+        'scormxblock': 'other',
     }
     if total_block_type_counts:
         for block_type, count in total_block_type_counts.items():

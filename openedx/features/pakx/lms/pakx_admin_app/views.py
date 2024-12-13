@@ -184,7 +184,7 @@ class UserProfileViewSet(viewsets.ModelViewSet):
         file_data = StringIO(request.FILES['file'].read().decode('utf-8'))
         file_reader = DictReader(file_data)
 
-        required_col_names = {'name', 'username', 'email', 'organization_id', 'role', 'employee_id', 'language'}
+        required_col_names = {'name', 'username', 'email', 'organization_id', 'role', 'employee_id', 'language', 'verified'}
         if not set(file_reader.fieldnames) == required_col_names:
             return Response(
                 'Invalid column names! Correct names are: "{}"'.format('" | "'.join(required_col_names)),
