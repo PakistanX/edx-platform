@@ -224,6 +224,12 @@ class UserProfileViewSet(viewsets.ModelViewSet):
         roles_qs = get_roles_q_filters(roles)
         if roles_qs:
             self.queryset = self.queryset.filter(roles_qs)
+        
+        learner_status = self.request.query_params['learner_status'].split(',') if self.request.query_params.get('learner_status') else []
+        if learner_status == ['active']:
+            self.queryset = self.queryset.filter(is_active=True)
+        elif learner_status == ['inactive']:
+            self.queryset = self.queryset.filter(is_active=False)
 
         username = self.request.query_params['username'] if self.request.query_params.get('username') else None
         if username:
@@ -772,10 +778,11 @@ class UserInfo(views.APIView):
             'csrf_token': csrf.get_token(self.request),
             'languages': [lang[0] for lang in groupby(languages)],
             'all_languages': all_languages,
-            'role': None
+            'role': None,
+            'learner_state': 'active',
         }
         user_groups = Group.objects.filter(
-            user=self.request.user, name__in=[GROUP_TRAINING_MANAGERS, GROUP_ORGANIZATION_ADMIN]
+            user=self.request.user, name__in=[GROUP_TRAINING_MANAGERS, GROUP_ORGANIZATION_ADMIN], 
         ).order_by('name').first()
         if user_groups:
             user_info['role'] = TRAINING_MANAGER if user_groups.name == GROUP_TRAINING_MANAGERS else ORG_ADMIN
