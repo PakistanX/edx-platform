@@ -915,9 +915,9 @@ def checkout_lumsx(request):
     LUMSx_ORGANIZATION_ID_PROD = 16
     lumsx_org_id = request.POST.get('lumsx_org_id', LUMSx_ORGANIZATION_ID_PROD)
 
-    if get_is_real_email_error(email):
-        return JsonResponse({'error': 'Provided email is not valid.'}, status=400)
-    elif not (phone_number.isdigit() and len(phone_number) == 11 and phone_number.startswith("03")):
+    # if get_is_real_email_error(email):
+    #     return JsonResponse({'error': 'Provided email is not valid.'}, status=400)
+    if not (phone_number.isdigit() and len(phone_number) == 11 and phone_number.startswith("03")):
         return JsonResponse({'error': 'Provided phone number is not valid.'}, status=400)
     elif not (postal_code.isdigit() and len(postal_code) == 5):
         return JsonResponse({'error': 'Provided postal code is not valid.'}, status=400)
