@@ -1143,6 +1143,15 @@ PIPELINE['JAVASCRIPT'] = {
     },
 }
 
+# fix: "Invalid type for parameter ContentType" error on js upload
+PIPELINE['MIMETYPES'] = (
+    ('text/coffeescript', '.coffee'),
+    ('text/less', '.less'),
+    ('text/javascript', '.js'),
+    ('text/x-sass', '.sass'),
+    ('text/x-scss', '.scss'),
+)
+
 STATICFILES_IGNORE_PATTERNS = (
     "*.py",
     "*.pyc",
