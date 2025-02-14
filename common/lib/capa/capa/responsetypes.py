@@ -1605,7 +1605,8 @@ class NumericalResponse(LoncapaResponse):
             student_float = evaluator({}, {}, student_answer)
         except UndefinedVariable as err:
             raise StudentInputError(
-                err.args[0]
+                'Incorrect Input'
+                # err.args[0]
             )
         except UnmatchedParenthesis as err:
             raise StudentInputError(
