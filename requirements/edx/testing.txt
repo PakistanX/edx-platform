@@ -26,6 +26,7 @@ py2neo-history==3.1.2
 -e git+https://github.com/PakistanX/xblock-adventure.git@1.0.2#egg=xblock-adventure
 -e git+https://github.com/PakistanX/xblock-image-explorer.git@v2.1#egg=xblock-image-explorer
 -e git+https://github.com/PakistanX/edx_xblock_scorm.git@master#egg=edx_xblock_scorm
+-e git+https://github.com/PakistanX/mobile-api-extensions.git@main#egg=mobile-api-extensions
 -e common/lib/xmodule  # via -r requirements/edx/base.txt
 amqp==1.4.9               # via -r requirements/edx/base.txt, kombu
 analytics-python==1.2.9   # via -r requirements/edx/base.txt
