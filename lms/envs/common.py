@@ -1588,6 +1588,10 @@ MIDDLEWARE = [
     # This must be last
     'openedx.core.djangoapps.site_configuration.middleware.SessionCookieDomainOverrideMiddleware',
 
+    # Handles impersonation
+    'impersonate.middleware.ImpersonateMiddleware',
+
+    # Handles scorm pkg serving over same origin iframe, no longer used as we are proxying content from AWS S3 via nginx
     # 'openedx.features.pakx.lms.overrides.middleware.XFrameOptionsSameOriginMiddleware',
 ]
 
@@ -2567,6 +2571,9 @@ INSTALLED_APPS = [
     # Management of per-user schedules
     'openedx.core.djangoapps.schedules',
     'rest_framework_jwt',
+
+    # Impersonate a user
+    'impersonate',
 ]
 
 ######################### PAKX APPS #####################################
