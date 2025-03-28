@@ -221,6 +221,7 @@ def get_course_outline_block_tree(request, course_id, user=None, allow_start_dat
         'google_document',
         'google-document',
         'scormxblock',
+        'feedback',
     ]
     all_blocks = get_blocks(
         request,
