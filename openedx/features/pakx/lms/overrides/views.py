@@ -444,7 +444,6 @@ def _get_course_about_context(request, course_id, category=None):  # pylint: dis
             'discount_percent': course_map['discount_percent'],
             'seo_words': course_map['seo_words'],
             'course_type': course_map['course_type'],
-            'prerequisites': course_map['prerequisites'],
             'custom_language': course_map['custom_language'],
             'registration_price': registration_price,
             'remaining_days': remaining_days,
@@ -458,6 +457,18 @@ def _get_course_about_context(request, course_id, category=None):  # pylint: dis
                     recommended_courses = [get_course_card_data(course) for course in fetch_recommended_courses]
                     context.update({
                         'recommended_courses': recommended_courses
+                    })
+            except Exception:
+                pass
+        
+        if course_map['prerequisites']:
+            try:
+                prerequisites_id = course_map['prerequisites'].split(',')
+                if prerequisites_id:
+                    fetch_prerequisites_courses = CourseOverview.objects.filter(id__in=prerequisites_id)
+                    prerequisites_courses = [get_course_card_data(course) for course in fetch_prerequisites_courses]
+                    context.update({
+                        'prerequisites_courses': prerequisites_courses
                     })
             except Exception:
                 pass
