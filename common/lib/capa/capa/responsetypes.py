@@ -1602,6 +1602,11 @@ class NumericalResponse(LoncapaResponse):
         # Begin `evaluator` block
         # Catch a bunch of exceptions and give nicer messages to the student.
         try:
+            if type(student_answer) not in (int, float):
+                # This is thrown when the student answer is not a number or a math expression.
+                raise StudentInputError(
+                    _(u"Could not interpret '{student_answer}' as a number.").format(student_answer=html.escape(student_answer))
+                )
             student_float = evaluator({}, {}, student_answer)
         except UndefinedVariable as err:
             raise StudentInputError(
