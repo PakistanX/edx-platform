@@ -12,6 +12,7 @@ Used by capa_problem.py
 
 
 import abc
+import html
 # TODO: Refactor this code and fix this issue.
 import inspect
 import json
@@ -33,7 +34,6 @@ import requests
 import six
 # specific library imports
 from calc import UndefinedVariable, UnmatchedParenthesis, evaluator
-from django.utils import html
 from django.utils.encoding import python_2_unicode_compatible
 from lxml import etree
 from lxml.html.soupparser import fromstring as fromstring_bs  # uses Beautiful Soup!!! FIXME?
@@ -1602,6 +1602,12 @@ class NumericalResponse(LoncapaResponse):
         # Begin `evaluator` block
         # Catch a bunch of exceptions and give nicer messages to the student.
         try:
+            if self.correct_answer == 'error' and student_answer == 'error':
+                    is_correct = 'correct'
+                    self.additional_answer_index = -1
+                    return CorrectMap(self.answer_id, is_correct)
+            student_answer = html.unescape(student_answer)
+            complex(student_answer)
             student_float = evaluator({}, {}, student_answer)
         except UndefinedVariable as err:
             raise StudentInputError(
@@ -1623,7 +1629,10 @@ class NumericalResponse(LoncapaResponse):
                       "'{student_answer}'").format(student_answer=html.escape(student_answer))
                 )
             else:
-                raise general_exception
+                is_correct = 'incorrect'
+                self.additional_answer_index = -1
+                return CorrectMap(self.answer_id, is_correct)
+                # raise general_exception
         except ParseException:
             raise StudentInputError(
                 _(u"Invalid math syntax: '{student_answer}'").format(student_answer=html.escape(student_answer))
