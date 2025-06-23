@@ -11,6 +11,7 @@ from django.forms.models import model_to_dict
 from django.http import Http404, JsonResponse
 from django.shortcuts import redirect
 from django.urls import reverse
+from django.utils import timezone
 from django.utils.translation import ugettext as _
 from django.views.decorators.cache import cache_control
 from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
@@ -981,6 +982,57 @@ def checkout_lumsx(request):
             response = redirect('{}/basket_checkout?course={}&sku={}&token={}'.format(settings.LMS_ROOT_URL, course_id, sku, token))
 
     return response
+
+
+@csrf_exempt
+@require_http_methods(["GET"])
+def track_enrollments_lumsx(request):
+    PRE_SHARED_TOKEN = "9fmMusn4t!o5sxkFTt=UwtVGuoGTo7qKeBBTCpkTSWMbQE8J6DEzk-KAI537VSsawI4bWCxbs4QUL5uFzeyOUo"
+    token = request.GET.get('token')
+    if token != PRE_SHARED_TOKEN:
+        return JsonResponse({'error': 'Unauthorized'}, status=401)
+
+    today = timezone.now().date()
+    start_datetime = timezone.make_aware(timezone.datetime.combine(today, timezone.datetime.min.time()))
+    end_datetime = timezone.make_aware(timezone.datetime.combine(today, timezone.datetime.max.time()))
+
+    users_today_qs = User.objects.filter(date_joined__range=(start_datetime, end_datetime))
+    signups_today = users_today_qs.count()
+    signups_details = [
+        {
+            "user_name": user.username,
+            "user_email": user.email,
+            "date_joined": user.date_joined
+        }
+        for user in users_today_qs
+    ]
+
+    enrollments_qs = CourseEnrollment.objects.filter(created__range=(start_datetime, end_datetime))
+
+    course_type = request.GET.get('course_type')
+    if course_type == 'self_paced':
+        enrollments_qs = enrollments_qs.filter(course__self_paced=1)
+
+    enrollments_today = enrollments_qs.count()
+
+    enrollment_details = []
+    for enrollment in enrollments_qs.select_related('user', 'course'):
+        pacing_type = getattr(enrollment.course, 'self_paced', None)
+        course_type_str = 'self_paced' if pacing_type == 1 else 'instructor_paced'
+        enrollment_details.append({
+            "user_name": enrollment.user.username,
+            "user_email": enrollment.user.email,
+            "course_id": str(enrollment.course_id),
+            "enrollment_timestamp": enrollment.created,
+            "course_type": course_type_str
+        })
+
+    return JsonResponse({
+        'signups_today': signups_today,
+        'signups_details': signups_details,
+        'enrollments_today': enrollments_today,
+        'enrollments_details': enrollment_details,
+    }, status=200)
 
 
 def update_lms_tour_status(request):
