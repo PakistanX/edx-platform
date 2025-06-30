@@ -76,6 +76,7 @@ class CourseOverviewContent(TimeStampedModel):
     seo_words = models.TextField(blank=True, default='')
     course_type = models.CharField(max_length=256, blank=True)
     prerequisites = models.CharField(max_length=256, blank=True)
+    prerequisites_courses = models.CharField(max_length=256, blank=True)
     custom_language = models.CharField(max_length=256, blank=True)
 
     def __str__(self):

@@ -113,6 +113,7 @@ class CourseCustomSettingsView(LoginRequiredMixin, View):
         seo_words = request.POST['seo_words']
         course_type = truncate_string_up_to(request.POST['course_type'], 256)
         prerequisites = truncate_string_up_to(request.POST['prerequisites'], 256)
+        prerequisites_courses = truncate_string_up_to(request.POST['prerequisites_courses'], 256)
         custom_language = truncate_string_up_to(request.POST['custom_language'], 256)
 
         self._add_days_milestone(subsection_to_lock, course_key)
@@ -154,6 +155,7 @@ class CourseCustomSettingsView(LoginRequiredMixin, View):
                     'seo_words': seo_words,
                     'course_type': course_type,
                     'prerequisites': prerequisites,
+                    'prerequisites_courses': prerequisites_courses,
                     'custom_language': custom_language,
                 }
             )

@@ -149,6 +149,7 @@ def get_course_card_data(course, org_prefetched=False):
         'seo_words': course_custom_setting.seo_words,
         'course_type': course_custom_setting.course_type,
         'prerequisites': course_custom_setting.prerequisites,
+        'prerequisites_courses': course_custom_setting.prerequisites_courses,
         'custom_language': course_custom_setting.custom_language,
     }
 

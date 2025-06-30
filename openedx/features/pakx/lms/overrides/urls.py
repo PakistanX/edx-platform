@@ -46,7 +46,7 @@ urlpatterns = [
     url(r'^trainings/{}/$'.format(r'(?P<course_id>[\w-]+)'), custom_cap_url_trainings, name='custom-cap-url-trainings'),
     url(r'^basket_checkout$', basket_checkout, name='basket-checkout'),
     url(r'^checkout_lumsx$', checkout_lumsx, name='checkout-lumsx'),
-    url(r'^track_enrollments_lumsx$', track_enrollments_lumsx, name='track-enrollments-lumsx'),
+    # url(r'^track_enrollments_lumsx$', track_enrollments_lumsx, name='track-enrollments-lumsx'),
     url(r'^$', BaseTemplateView.as_view(), name="landing-page"),
     url(r'^update-lms-tour-status/$', update_lms_tour_status, name='update_lms_tour_status'),
     url(r'^ey$', RedirectView.as_view(url='https://discover.ilmx.org/ilmx-for-business/'), name='ilmx-for-business'),

@@ -461,10 +461,15 @@ def _get_course_about_context(request, course_id, category=None):  # pylint: dis
                     })
             except Exception:
                 pass
-        
+
         if course_map['prerequisites']:
+            context.update({
+                'prerequisites': [prereq.strip() for prereq in course_map['prerequisites'].split('\\b') if prereq.strip()]
+            })
+        
+        if course_map['prerequisites_courses']:
             try:
-                prerequisites_id = course_map['prerequisites'].split(',')
+                prerequisites_id = course_map['prerequisites_courses'].split(',')
                 if prerequisites_id:
                     fetch_prerequisites_courses = CourseOverview.objects.filter(id__in=prerequisites_id)
                     prerequisites_courses = [get_course_card_data(course) for course in fetch_prerequisites_courses]
