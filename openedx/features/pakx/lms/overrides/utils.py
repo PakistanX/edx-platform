@@ -27,6 +27,8 @@ from course_modes.models import CourseMode, format_course_price
 from lms.djangoapps.commerce.utils import EcommerceService
 from lms.djangoapps.course_api.blocks.serializers import BlockDictSerializer
 from lms.djangoapps.course_api.blocks.transformers.blocks_api import BlocksAPITransformer
+import lms.djangoapps.course_blocks.api as course_blocks_api
+from lms.djangoapps.course_blocks.usage_info import CourseUsageInfo
 from lms.djangoapps.courseware.courses import get_courses, sort_by_announcement, sort_by_start_date
 from lms.djangoapps.courseware.model_data import FieldDataCache
 from lms.djangoapps.courseware.module_render import toc_for_course
@@ -139,7 +141,7 @@ def get_course_card_data(course, org_prefetched=False):
         'is_professional_certificate': course_custom_setting.is_professional_certificate,
         'about_page_banner_color': course_custom_setting.about_page_banner_color,
         'is_text_color_dark': course_custom_setting.is_text_color_dark,
-        'url': custom_cap_url,
+        'url': get_request_or_stub().build_absolute_uri(custom_cap_url),
         'enrollment_count': course_custom_setting.enrollment_count,
         'program_name': program_name,
         'program_url': program_url,
@@ -375,7 +377,7 @@ def _get_block_types_and_keys(course_block_structure):
     return block_types, block_keys
 
 
-def _serialize_course_block_structure(request, course_block_structure):
+def _serialize_course_block_structure(request, course_key, course_block_structure):
     """
     Serializes course block structure into dict.
 
@@ -389,7 +391,8 @@ def _serialize_course_block_structure(request, course_block_structure):
     """
 
     block_types, block_keys = _get_block_types_and_keys(course_block_structure)
-    transformers = BlockStructureTransformers()
+    transformers = BlockStructureTransformers(course_blocks_api.get_course_block_access_transformers(request.user))
+    transformers.usage_info = CourseUsageInfo(course_key, request.user, allow_start_dates_in_future=False)
     transformers += [
         BlocksAPITransformer(block_types_to_count=block_types, requested_student_view_data=set([]), depth=0)
     ]
@@ -428,7 +431,7 @@ def get_progress_information(request, course_key):
     course_key = CourseKey.from_string(course_key)
     course_block_structure = get_course_in_cache(course_key)
     serialized_course_block_structure, course_blocks_keys = _serialize_course_block_structure(
-        request, course_block_structure)
+        request, course_key, course_block_structure)
     blocks = serialized_course_block_structure.get('blocks')
     total_block_types = _accumulate_total_block_counts(
         blocks.get(list(blocks.keys())[0]).get('block_counts')
