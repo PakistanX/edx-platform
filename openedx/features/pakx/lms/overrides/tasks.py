@@ -160,25 +160,30 @@ def update_course_progress_stats():
     for item in progress_models:
         user = item.enrollment.user
         course_id = item.enrollment.course_id
-        course_progress = float(
-            get_course_progress_percentage(create_dummy_request(Site.objects.get_current(), user),
-                                           text_type(course_id)))
-        course_overview = CourseOverview.get_from_id(course_id)
-        grades = CourseGradeFactory().read(user=user, course_key=course_id)
-        completed = course_progress >= 100
-        fields_list = ['progress', 'grade']
-        if course_progress >= 100:
-            item.completion_date = timezone.now()
-            fields_list.append('completion_date')
-        item.progress = course_progress
-        item.grade = grades.letter_grade
+        try:
+            course_progress = float(
+                get_course_progress_percentage(create_dummy_request(Site.objects.get_current(), user),
+                                            text_type(course_id)))
+            course_overview = CourseOverview.get_from_id(course_id)
+            grades = CourseGradeFactory().read(user=user, course_key=course_id)
+            completed = course_progress >= 100
+            fields_list = ['progress', 'grade']
+            if course_progress >= 100:
+                item.completion_date = timezone.now()
+                fields_list.append('completion_date')
+            item.progress = course_progress
+            item.grade = grades.letter_grade
 
-        data = {'course_name': course_overview.display_name, 'username': user.username,
-                'email': user.email,
-                'language': get_user_preference(user, LANGUAGE_KEY),
-                'completed': completed,
-                'status_message': "Completed" if completed else "Pending",
-                'course_progress': course_progress}
+            data = {'course_name': course_overview.display_name, 'username': user.username,
+                    'email': user.email,
+                    'language': get_user_preference(user, LANGUAGE_KEY),
+                    'completed': completed,
+                    'status_message': "Completed" if completed else "Pending",
+                    'course_progress': course_progress}
+
+        except Exception as ex:
+            log.error("Exception in update course progress stats cronjob {}".format(ex))
+            continue
 
         if data["completed"] and item.email_reminder_status != CourseProgressStats.COURSE_COMPLETED:
             # TODO: Un-comment send_reminder_email call when Email templates are finalized

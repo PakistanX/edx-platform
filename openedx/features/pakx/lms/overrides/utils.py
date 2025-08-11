@@ -118,7 +118,7 @@ def get_course_card_data(course, org_prefetched=False):
     elif text_type(course.id) in get_training_slug_mapping().values():
         custom_cap_url = reverse('custom-cap-url-trainings', args=[get_key_from_value(get_training_slug_mapping(), course_id)])
     else:
-        custom_cap_url = reverse('about_course', kwargs={'course_id': course_id}),
+        custom_cap_url = reverse('about_course', kwargs={'course_id': course_id})
 
     return {
         'key': course.id,
@@ -141,7 +141,7 @@ def get_course_card_data(course, org_prefetched=False):
         'is_professional_certificate': course_custom_setting.is_professional_certificate,
         'about_page_banner_color': course_custom_setting.about_page_banner_color,
         'is_text_color_dark': course_custom_setting.is_text_color_dark,
-        'url': get_request_or_stub().build_absolute_uri(custom_cap_url),
+        'url': custom_cap_url,
         'enrollment_count': course_custom_setting.enrollment_count,
         'program_name': program_name,
         'program_url': program_url,
