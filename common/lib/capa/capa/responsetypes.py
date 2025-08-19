@@ -1603,9 +1603,9 @@ class NumericalResponse(LoncapaResponse):
         # Catch a bunch of exceptions and give nicer messages to the student.
         try:
             if self.correct_answer == 'error' and student_answer == 'error':
-                    is_correct = 'correct'
-                    self.additional_answer_index = -1
-                    return CorrectMap(self.answer_id, is_correct)
+                is_correct = 'correct'
+                self.additional_answer_index = -1
+                return CorrectMap(self.answer_id, is_correct)
             student_answer = html.unescape(student_answer)
             complex(student_answer)
             student_float = evaluator({}, {}, student_answer)

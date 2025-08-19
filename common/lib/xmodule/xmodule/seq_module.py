@@ -445,7 +445,9 @@ class SequenceModule(SequenceFields, ProctoringFields, XModule):
         display_items = self.get_display_items()
         locked_page_params = {}
 
-        if len(self.children) != len(display_items):
+        from openedx.core.djangoapps.course_groups.partition_scheme import get_cohorted_user_partition
+
+        if not get_cohorted_user_partition(self._get_course()) and len(self.children) != len(display_items):
             display_items, locked_page_params = self._make_locked_units_for_audit_track(display_items)
 
         self._update_position(context, len(display_items))
