@@ -1150,6 +1150,7 @@ PIPELINE['MIMETYPES'] = (
     ('text/javascript', '.js'),
     ('text/x-sass', '.sass'),
     ('text/x-scss', '.scss'),
+    ('text/plain', '.srt'),
 )
 
 STATICFILES_IGNORE_PATTERNS = (
