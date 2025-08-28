@@ -392,7 +392,7 @@ def _serialize_course_block_structure(request, course_key, course_block_structur
 
     block_types, block_keys = _get_block_types_and_keys(course_block_structure)
     transformers = BlockStructureTransformers(course_blocks_api.get_course_block_access_transformers(request.user))
-    transformers.usage_info = CourseUsageInfo(course_key, request.user, allow_start_dates_in_future=False)
+    transformers.usage_info = CourseUsageInfo(course_key, request.user, allow_start_dates_in_future=True)
     transformers += [
         BlocksAPITransformer(block_types_to_count=block_types, requested_student_view_data=set([]), depth=0)
     ]
