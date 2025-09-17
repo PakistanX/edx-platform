@@ -205,7 +205,7 @@ def generate_user_certificates(student, course_key, course=None, insecure=False,
     if beta_testers_queryset.filter(username=student.username):
         message = u'Cancelling course certificate generation for user [{}] against course [{}], user is a Beta Tester.'
         log.info(message.format(course_key, student.username))
-        return
+        return 'course beta tester is not allowed to generate a certificate.'
 
     xqueue = XQueueCertInterface()
     if insecure:
@@ -227,7 +227,7 @@ def generate_user_certificates(student, course_key, course=None, insecure=False,
     # If cert_status is not present in certificate valid_statuses (for example unverified) then
     # add_cert returns None and raises AttributeError while accesing cert attributes.
     if cert is None:
-        return
+        return 'cert_status is not present in certificate valid_statuses'
 
     if CertificateStatuses.is_passing_status(cert.status):
         emit_certificate_event('created', student, course_key, course, {

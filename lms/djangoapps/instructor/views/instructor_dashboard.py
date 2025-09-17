@@ -140,7 +140,7 @@ def instructor_dashboard_2(request, course_id):
             _section_discussions_management(course, access),
             _section_student_admin(course, access),
         ])
-    if access['data_researcher']:
+    if any(access[role] for role in ('data_researcher', 'staff')):
         sections.append(_section_data_download(course, access))
 
     analytics_dashboard_message = None
@@ -714,7 +714,7 @@ def _section_data_download(course, access):
         ),
         'export_ora2_data_url': reverse('export_ora2_data', kwargs={'course_id': six.text_type(course_key)}),
     }
-    if not access.get('data_researcher'):
+    if not any(access[role] for role in ('data_researcher', 'staff')):
         section_data['is_hidden'] = True
     return section_data
 
