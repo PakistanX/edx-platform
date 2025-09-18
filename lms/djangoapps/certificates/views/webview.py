@@ -62,6 +62,7 @@ INVALID_CERTIFICATE_TEMPLATE_PATH = 'certificates/invalid.html'
 LUMS_CERTIFICATE_ORGANIZATIONS = 'lums_certificate_organizations'
 TEACHING_PRACTICE_COURSE_IDS = 'teaching_practice_course_ids'
 SPECIALIZATION_PROGRAM_COURSE_IDS = 'specialization_program_course_ids'
+AIE_CERTIFICATES = 'aie_certificates'
 
 
 def get_certificate_description(mode, certificate_type, platform_name):
@@ -158,15 +159,17 @@ def _update_certificate_context(context, course, user_certificate, platform_name
         teaching_practice_course_ids = Switch.objects.get(name=TEACHING_PRACTICE_COURSE_IDS).note
         lums_certificate_organizations = Switch.objects.get(name=LUMS_CERTIFICATE_ORGANIZATIONS).note
         specialization_program_course_ids = Switch.objects.get(name=SPECIALIZATION_PROGRAM_COURSE_IDS).note
+        aie_certificates = Switch.objects.get(name=AIE_CERTIFICATES).note
 
         context['teaching_practice_course_ids'] = teaching_practice_course_ids.split(',')
         context['lums_certificate_organizations'] = lums_certificate_organizations.split(',')
+        context['aie_certificates'] = aie_certificates.split(',')
 
         if context['course_id'] in specialization_program_course_ids:
             context['is_program_cert'] = True
             context['program_courses'] = json.loads(specialization_program_course_ids).get(context['course_id'])
     except Exception:  # pylint: disable=broad-except
-        log.warning('Exception getting teaching_practice_course_ids or lums_certificate_organizations or specialization_program_course_ids data from Switch note')
+        log.warning('Exception getting certificate context data from Switch note')
 
 
 def _update_context_with_basic_info(context, course_id, platform_name, configuration):
