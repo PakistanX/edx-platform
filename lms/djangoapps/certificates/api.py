@@ -5,8 +5,12 @@ Other Django apps should use the API functions defined in this module
 rather than importing Django models directly.
 """
 
-
+import base64
+import json
 import logging
+import requests
+from io import BytesIO
+from PIL import Image, ImageDraw, ImageFont
 
 import six
 from django.conf import settings
@@ -15,6 +19,7 @@ from django.urls import reverse
 from eventtracking import tracker
 from opaque_keys.edx.django.models import CourseKeyField
 from opaque_keys.edx.keys import CourseKey
+from waffle.models import Switch
 
 from branding import api as branding_api
 from lms.djangoapps.certificates.models import (
@@ -31,10 +36,12 @@ from lms.djangoapps.certificates.models import (
 from lms.djangoapps.certificates.queue import XQueueCertInterface
 from lms.djangoapps.instructor.access import list_with_level
 from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
+from openedx.features.pakx.lms.overrides.constants import CERTIFICATE_LAYOUT_CONFIGS_DEFAULT, FONT_MAP
 from util.organizations_helpers import get_course_organization_id
 from xmodule.modulestore.django import modulestore
 
 log = logging.getLogger("edx.certificate")
+CERTIFICATE_LAYOUT_CONFIGS_ = 'certificate_layout_configs_'
 MODES = GeneratedCertificate.MODES
 
 
@@ -695,3 +702,73 @@ def get_certificate_footer_context():
         data.update({'company_about_url': about})
 
     return data
+
+
+def get_switch_note_data(switch_key, return_note=False):
+    switch = Switch.objects.filter(name=switch_key).first()
+    note = switch.note if switch and switch.note else ""
+    return note if return_note else note.split(",") if note else []
+
+def get_certificate_from_template_asset(cert_template_url, context):
+    r = requests.get(cert_template_url, stream=True, timeout=10)
+    content_type = r.headers.get("Content-Type", "").lower()
+    try:
+        r.raise_for_status()
+    except requests.exceptions.Timeout:
+        log.error(
+            u"Request timed out while trying to fetch course certificate template. - course: %s",
+            context['course_id']
+        )
+    except requests.exceptions.ConnectionError:
+        log.error(
+            u"Network-related error occurred while trying to fetch course certificate template - course: %s",
+            context['course_id']
+        )
+    except requests.exceptions.HTTPError as e:
+        log.error(
+            u"HTTP error occurred while trying to fetch course certificate template %s - course: %s",
+            e,
+            context['course_id']
+        )
+    except requests.exceptions.RequestException as e:
+        log.error(
+            u"Unexpected error occurred during the course certificate template fetch request %s - course: %s",
+            e,
+            context['course_id']
+        )
+
+    if not any(ext in content_type for ext in ["png", "jpeg", "jpg"]):
+        return
+    img = Image.open(BytesIO(r.content))
+    draw = ImageDraw.Draw(img)
+    layout_dict = CERTIFICATE_LAYOUT_CONFIGS_DEFAULT
+    course_specific_certificate_layout_configs = get_switch_note_data(CERTIFICATE_LAYOUT_CONFIGS_+context['course_id'], return_note=True)
+    if course_specific_certificate_layout_configs:
+        try:
+            layout_dict = json.loads(course_specific_certificate_layout_configs)
+        except json.JSONDecodeError:
+            log.error(
+                u"exception parsing course specific certificate layout configs, fallback to default - course: %s",
+                context['course_id']
+            )
+                
+    values = []
+    for key, cfg in layout_dict.items():
+        values.append((
+            cfg['prefix']+context[key] if "prefix" in cfg else context[key],
+            tuple(cfg["position"]),
+            cfg["font_size"],
+            tuple(cfg["box_size"]),
+            cfg["font"]
+        ))
+
+    for text, pos, font_size, box_size, font_path in values:
+        font = ImageFont.truetype(FONT_MAP.get(font_path, "Helvetica"), int(font_size * img.info.get("dpi", (300, 300))[0] / 72))
+        draw.rectangle([pos[0]-5, pos[1]-5, pos[0] + box_size[0], pos[1] + box_size[1]], fill="white", outline="white")
+        draw.text(pos, text, font=font, fill="black")
+
+    buffer = BytesIO()
+    img.save(buffer, format=img.format)
+    buffer.seek(0)
+
+    return base64.b64encode(buffer.getvalue()).decode("utf-8")

@@ -41,3 +41,32 @@ TRAINING_SLUG_MAPPING = {
     'digital-transformation-trade-pakistan': 'course-v1:PSW+TL04+2023',
     'fundamentals-of-international-trade': 'course-v1:PSW+TL05+2023',
 }
+
+from django.conf import settings
+FONT_MAP = {
+    "Helvetica": "{}/pakx/fonts/Helvetica.ttf".format(settings.STATIC_ROOT_BASE),
+    "Helvetica-Bold": "{}/pakx/fonts/Helvetica-Bold.ttf".format(settings.STATIC_ROOT_BASE),
+    "Century-Gothic": "{}/pakx/fonts/CenturyGothicPaneuropeanRegular.ttf".format(settings.STATIC_ROOT_BASE)
+}
+
+CERTIFICATE_LAYOUT_CONFIGS_DEFAULT = {
+    'certificate_date_issued': {
+        "position": [319, 720],
+        "font_size": 10,
+        "box_size": [700, 57],
+        "font": "Helvetica"
+    },
+    'accomplishment_copy_name': {
+        "position": [316, 871],
+        "font_size": 15,
+        "box_size": [1000, 77],
+        "font": "Helvetica-Bold"
+    },
+    'certificate_id_number': {
+        "position": [1276, 2338],
+        "font_size": 8,
+        "box_size": [1000, 47],
+        "font": "Century-Gothic",
+        "prefix": "Valid Certificate ID: "
+    }
+}

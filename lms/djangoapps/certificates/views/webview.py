@@ -21,7 +21,6 @@ from django.utils.encoding import smart_str
 from eventtracking import tracker
 from opaque_keys import InvalidKeyError
 from opaque_keys.edx.keys import CourseKey
-from waffle.models import Switch
 
 from badges.events.course_complete import get_completion_badge
 from badges.utils import badges_enabled
@@ -33,7 +32,9 @@ from lms.djangoapps.certificates.api import (
     get_certificate_footer_context,
     get_certificate_header_context,
     get_certificate_template,
-    get_certificate_url
+    get_certificate_from_template_asset,
+    get_certificate_url,
+    get_switch_note_data
 )
 from lms.djangoapps.certificates.models import (
     CertificateGenerationCourseSetting,
@@ -62,7 +63,7 @@ INVALID_CERTIFICATE_TEMPLATE_PATH = 'certificates/invalid.html'
 LUMS_CERTIFICATE_ORGANIZATIONS = 'lums_certificate_organizations'
 TEACHING_PRACTICE_COURSE_IDS = 'teaching_practice_course_ids'
 SPECIALIZATION_PROGRAM_COURSE_IDS = 'specialization_program_course_ids'
-AIE_CERTIFICATES = 'aie_certificates'
+AIE_COURSE_IDS = 'aie_course_ids'
 
 
 def get_certificate_description(mode, certificate_type, platform_name):
@@ -156,21 +157,18 @@ def _update_certificate_context(context, course, user_certificate, platform_name
     )
 
     try:
-        teaching_practice_course_ids = Switch.objects.get(name=TEACHING_PRACTICE_COURSE_IDS).note
-        lums_certificate_organizations = Switch.objects.get(name=LUMS_CERTIFICATE_ORGANIZATIONS).note
-        specialization_program_course_ids = Switch.objects.get(name=SPECIALIZATION_PROGRAM_COURSE_IDS).note
-        aie_certificates = Switch.objects.get(name=AIE_CERTIFICATES).note
+        context["teaching_practice_course_ids"] = get_switch_note_data(TEACHING_PRACTICE_COURSE_IDS)
+        context["lums_certificate_organizations"] = get_switch_note_data(LUMS_CERTIFICATE_ORGANIZATIONS)
+        context["aie_course_ids"] = get_switch_note_data(AIE_COURSE_IDS)
+        specialization_program_course_ids = json.loads(get_switch_note_data(SPECIALIZATION_PROGRAM_COURSE_IDS, return_note=True))
 
-        context['teaching_practice_course_ids'] = teaching_practice_course_ids.split(',')
-        context['lums_certificate_organizations'] = lums_certificate_organizations.split(',')
-        context['aie_certificates'] = aie_certificates.split(',')
-
-        if context['course_id'] in specialization_program_course_ids:
-            context['is_program_cert'] = True
-            context['program_courses'] = json.loads(specialization_program_course_ids).get(context['course_id'])
+        if context['course_id'] in specialization_program_course_ids.keys():
+            context['program_courses'] = specialization_program_course_ids.get(context['course_id'])
     except Exception:  # pylint: disable=broad-except
         log.warning('Exception getting certificate context data from Switch note')
 
+    if course.cert_template_url:
+       context['certificate_img'] = get_certificate_from_template_asset(course.cert_template_url, context)
 
 def _update_context_with_basic_info(context, course_id, platform_name, configuration):
     """

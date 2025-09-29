@@ -439,7 +439,7 @@ class CourseGradeReport(object):
         Returns a list of all applicable column headers for this grade report.
         """
         return (
-            ["Student ID", "Email", "Username"] +
+            ["Student ID", "Email", "Username", "Date Joined"] +
             self._grades_header(context) +
             (['Cohort Name'] if context.cohorts_enabled else []) +
             [u'Experiment Group ({})'.format(partition.name) for partition in context.course_experiments] +
@@ -571,6 +571,9 @@ class CourseGradeReport(object):
         report_for_verified_only = generate_grade_report_for_verified_only()
         return get_enrolled_learners_for_course(course_id=course_id, verified_only=report_for_verified_only)
 
+    def _user_enrollment_timestamp(self, user, course_id):
+        return [CourseEnrollment.get_enrollment(user, course_id).created.strftime("%Y-%m-%d %H:%M:%S")]
+                       
     def _user_grades(self, course_grade, context):
         """
         Returns a list of grade results for the given course_grade corresponding
@@ -724,6 +727,7 @@ class CourseGradeReport(object):
                     completed_units, incomplete_units = _flatten_course_block_tree(course_block_tree)
                     success_rows.append(
                         [user.id, user.email, user.username] +
+                        self._user_enrollment_timestamp(user, context.course_id) +
                         self._user_grades(course_grade, context) +
                         self._user_cohort_group_names(user, context) +
                         self._user_experiment_group_names(user, context) +
