@@ -60,7 +60,8 @@ CERTIFICATE_LAYOUT_CONFIGS_DEFAULT = {
         "position": [316, 871],
         "font_size": 15,
         "box_size": [1000, 77],
-        "font": "Helvetica-Bold"
+        "font": "Helvetica-Bold",
+        "transform": "upper"
     },
     'certificate_id_number': {
         "position": [1276, 2338],

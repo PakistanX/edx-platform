@@ -5,6 +5,7 @@ Other Django apps should use the API functions defined in this module
 rather than importing Django models directly.
 """
 
+
 import base64
 import json
 import logging
@@ -754,8 +755,10 @@ def get_certificate_from_template_asset(cert_template_url, context):
                 
     values = []
     for key, cfg in layout_dict.items():
+        text = cfg['prefix']+context[key] if "prefix" in cfg else context[key]
+        text = text.upper() if cfg.get("transform") == "upper" else text
         values.append((
-            cfg['prefix']+context[key] if "prefix" in cfg else context[key],
+            text,
             tuple(cfg["position"]),
             cfg["font_size"],
             tuple(cfg["box_size"]),
