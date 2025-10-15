@@ -3,23 +3,33 @@ This file contains celery tasks for programs-related functionality.
 """
 
 
+from datetime import datetime
+
 from celery import task
 from celery.exceptions import MaxRetriesExceededError
 from celery.utils.log import get_task_logger
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.contrib.sites.models import Site
+from edx_ace import Recipient, ace
 from edx_rest_api_client import exceptions
 from opaque_keys.edx.keys import CourseKey
+from pytz import UTC
 
 from course_modes.models import CourseMode
+from lms.djangoapps.certificates.api import get_certificate_from_template_asset
 from lms.djangoapps.certificates.models import GeneratedCertificate
+from openedx.core.djangoapps.ace_common.template_context import get_base_template_context
+from openedx.core.djangoapps.catalog.utils import get_programs
 from openedx.core.djangoapps.certificates.api import available_date_for_certificate
 from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
 from openedx.core.djangoapps.credentials.models import CredentialsApiConfig
 from openedx.core.djangoapps.credentials.utils import get_credentials, get_credentials_api_client
 from openedx.core.djangoapps.programs.utils import ProgramProgressMeter
 from openedx.core.djangoapps.site_configuration import helpers as configuration_helpers
+from openedx.core.lib.celery.task_utils import emulate_http_request
+from openedx.features.pakx.lms.pakx_admin_app.message_types import ProgramCertificateNotification
+from util.date_utils import strftime_localized
 
 LOGGER = get_task_logger(__name__)
 # Under cms the following setting is not defined, leading to errors during tests.
@@ -90,6 +100,44 @@ def get_certified_programs(student):
     return certified_programs
 
 
+def send_program_certificate_email(user, program_uuid, cert_uuid):
+    program = get_programs(uuid=program_uuid) 
+    program_certificate_url = program.get('program_certificate_url')
+    if not program_certificate_url:
+        LOGGER.info(u'Program certificate template is not configured. Unable to send send_program_certificate_email for username %s - %s', user.username, program_uuid)
+        return
+    date = datetime.now(UTC)
+    program_context = {}
+    program_context['course_id'] = program_uuid
+    program_context['certificate_date_issued'] = u'{month} {day}, {year}'.format(
+        month=strftime_localized(date, "%B"),
+        day=date.day,
+        year=date.year
+    )
+    program_context['accomplishment_copy_name'] = (user.profile.name or user.username).title()
+    program_context['certificate_id_number'] = cert_uuid
+    
+
+    program_certificate = get_certificate_from_template_asset(program_certificate_url, program_context)
+    
+    _site = Site.objects.get_current()
+    email_context = get_base_template_context(_site, user)
+    email_context.update({
+        'program_title': program.get('title'),
+        'program_uuid': program_uuid,
+        'program_certificate': program_certificate
+    })
+
+    with emulate_http_request(_site, user):
+        message = ProgramCertificateNotification().personalize(
+            recipient=Recipient(user.username, user.email),
+            language='en',
+            user_context=email_context,
+        )
+        ace.send(message)
+        LOGGER.info(u'Successfully executed send_program_certificate_email for username %s - %s', user.username, program_uuid)
+
+
 def award_program_certificate(client, username, program_uuid, visible_date):
     """
     Issue a new certificate of completion to the given student for the given program.
@@ -108,7 +156,7 @@ def award_program_certificate(client, username, program_uuid, visible_date):
         None
 
     """
-    client.credentials.post({
+    return client.credentials.post({
         'username': username,
         'credential': {
             'type': PROGRAM_CERTIFICATE,
@@ -214,7 +262,8 @@ def award_program_certificates(self, username):
             try:
                 LOGGER.info(u'Visible date for user %s : program %s is %s', username, program_uuid,
                             visible_date)
-                award_program_certificate(credentials_client, username, program_uuid, visible_date)
+                program_creds_api = award_program_certificate(credentials_client, username, program_uuid, visible_date)
+                send_program_certificate_email(student, program_uuid, program_creds_api.get('uuid'))
                 LOGGER.info(u'Awarded certificate for program %s to user %s', program_uuid, username)
             except exceptions.HttpNotFoundError:
                 LOGGER.exception(

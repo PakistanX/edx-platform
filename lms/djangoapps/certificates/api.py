@@ -711,29 +711,39 @@ def get_switch_note_data(switch_key, return_note=False):
     return note if return_note else note.split(",") if note else []
 
 def get_certificate_from_template_asset(cert_template_url, context):
-    r = requests.get(cert_template_url, stream=True, timeout=10)
+    adapter = requests.adapters.HTTPAdapter(
+        max_retries=requests.adapters.Retry(
+            total=3,
+            backoff_factor=1,
+            status_forcelist=[500, 502, 503, 504]
+        )
+    )
+    session = requests.Session()
+    session.mount("http://", adapter)
+    session.mount("https://", adapter)
+    r = session.get(cert_template_url, stream=True, timeout=10)
     content_type = r.headers.get("Content-Type", "").lower()
     try:
         r.raise_for_status()
     except requests.exceptions.Timeout:
         log.error(
-            u"Request timed out while trying to fetch course certificate template. - course: %s",
+            u"Request timed out while trying to fetch course or program certificate template. - %s",
             context['course_id']
         )
     except requests.exceptions.ConnectionError:
         log.error(
-            u"Network-related error occurred while trying to fetch course certificate template - course: %s",
+            u"Network-related error occurred while trying to fetch course or program certificate template - %s",
             context['course_id']
         )
     except requests.exceptions.HTTPError as e:
         log.error(
-            u"HTTP error occurred while trying to fetch course certificate template %s - course: %s",
+            u"HTTP error occurred while trying to fetch course or program certificate template %s - %s",
             e,
             context['course_id']
         )
     except requests.exceptions.RequestException as e:
         log.error(
-            u"Unexpected error occurred during the course certificate template fetch request %s - course: %s",
+            u"Unexpected error occurred during the course or program certificate template fetch request %s - %s",
             e,
             context['course_id']
         )
@@ -749,7 +759,7 @@ def get_certificate_from_template_asset(cert_template_url, context):
             layout_dict = json.loads(course_specific_certificate_layout_configs)
         except json.JSONDecodeError:
             log.error(
-                u"exception parsing course specific certificate layout configs, fallback to default - course: %s",
+                u"exception parsing course or program specific certificate layout configs, fallback to default - %s",
                 context['course_id']
             )
                 

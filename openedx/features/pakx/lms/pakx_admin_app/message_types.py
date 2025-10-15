@@ -30,3 +30,7 @@ class OraStaffNotification(BaseMessageType):
 
 class OraGradeNotification(BaseMessageType):
     pass
+
+
+class ProgramCertificateNotification(BaseMessageType):
+    pass

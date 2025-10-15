@@ -196,7 +196,8 @@ def update_course_progress_stats():
                 # send_reminder_email.delay(data, text_type(course_id))
                 item.email_reminder_status = CourseProgressStats.REMINDER_SENT
                 fields_list.append('email_reminder_status')
-        item.save(update_fields=fields_list)
+        if fields_list:
+            item.save(update_fields=fields_list)
 
 
 @task(name='unlock_subsections')
