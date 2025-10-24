@@ -3,21 +3,20 @@ This file contains celery tasks for programs-related functionality.
 """
 
 
-from datetime import datetime
-
 from celery import task
 from celery.exceptions import MaxRetriesExceededError
 from celery.utils.log import get_task_logger
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.contrib.sites.models import Site
+from django.urls import reverse
 from edx_ace import Recipient, ace
 from edx_rest_api_client import exceptions
 from opaque_keys.edx.keys import CourseKey
 from pytz import UTC
 
 from course_modes.models import CourseMode
-from lms.djangoapps.certificates.api import get_certificate_from_template_asset
+from lms.djangoapps.badges.utils import site_prefix
 from lms.djangoapps.certificates.models import GeneratedCertificate
 from openedx.core.djangoapps.ace_common.template_context import get_base_template_context
 from openedx.core.djangoapps.catalog.utils import get_programs
@@ -29,7 +28,6 @@ from openedx.core.djangoapps.programs.utils import ProgramProgressMeter
 from openedx.core.djangoapps.site_configuration import helpers as configuration_helpers
 from openedx.core.lib.celery.task_utils import emulate_http_request
 from openedx.features.pakx.lms.pakx_admin_app.message_types import ProgramCertificateNotification
-from util.date_utils import strftime_localized
 
 LOGGER = get_task_logger(__name__)
 # Under cms the following setting is not defined, leading to errors during tests.
@@ -106,26 +104,14 @@ def send_program_certificate_email(user, program_uuid, cert_uuid):
     if not program_certificate_url:
         LOGGER.info(u'Program certificate template is not configured. Unable to send send_program_certificate_email for username %s - %s', user.username, program_uuid)
         return
-    date = datetime.now(UTC)
-    program_context = {}
-    program_context['course_id'] = program_uuid
-    program_context['certificate_date_issued'] = u'{month} {day}, {year}'.format(
-        month=strftime_localized(date, "%B"),
-        day=date.day,
-        year=date.year
-    )
-    program_context['accomplishment_copy_name'] = (user.profile.name or user.username).title()
-    program_context['certificate_id_number'] = cert_uuid
-    
-
-    program_certificate = get_certificate_from_template_asset(program_certificate_url, program_context)
     
     _site = Site.objects.get_current()
     email_context = get_base_template_context(_site, user)
     email_context.update({
         'program_title': program.get('title'),
         'program_uuid': program_uuid,
-        'program_certificate': program_certificate
+        'program_certificate_uuid': cert_uuid,
+        'program_certificate_url': site_prefix() + reverse('certificates:render_program_cert_by_uuid', kwargs={'certificate_uuid': cert_uuid})
     })
 
     with emulate_http_request(_site, user):

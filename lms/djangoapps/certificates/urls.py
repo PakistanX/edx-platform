@@ -30,6 +30,13 @@ urlpatterns = [
         name='render_cert_by_uuid'
     ),
 
+    # Render program certificate by program_UUID
+    url(
+        r'^program/(?P<certificate_uuid>[0-9a-f]{32})$',
+        views.render_program_cert_by_uuid,
+        name='render_program_cert_by_uuid'
+    ),
+
     # End-points used by student support
     # The views in the lms/djangoapps/support use these end-points
     # to retrieve certificate information and regenerate certificates.
