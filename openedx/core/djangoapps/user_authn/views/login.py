@@ -111,10 +111,16 @@ def _check_excessive_login_attempts(user):
     See if account has been locked out due to excessive login failures
     """
     if user and LoginFailures.is_feature_enabled():
-        if LoginFailures.is_user_locked_out(user):
-            raise AuthFailedError(_('This account has been temporarily locked due '
-                                    'to excessive login failures. Try again later.'))
-
+        lockout_end_time, until = LoginFailures.is_user_locked_out(user)
+        
+        if lockout_end_time:
+            formatted_time = until.strftime('%B %d, %Y %H:%M %Z')
+            
+            error_msg = _(
+                'This account has been temporarily locked due to excessive login failures. '
+                'Please try again after {lockout_time}.'
+            ).format(lockout_time=formatted_time)
+            raise AuthFailedError(error_msg)
 
 def _enforce_password_policy_compliance(request, user):
     try:

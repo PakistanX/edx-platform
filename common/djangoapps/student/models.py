@@ -951,15 +951,15 @@ class LoginFailures(models.Model):
         try:
             record = cls._get_record_for_user(user)
             if not record.lockout_until:
-                return False
+                return False, None
 
             now = datetime.now(UTC)
             until = record.lockout_until
             is_locked_out = until and now < until
 
-            return is_locked_out
+            return is_locked_out, until
         except ObjectDoesNotExist:
-            return False
+            return False, None
 
     @classmethod
     def increment_lockout_counter(cls, user):
