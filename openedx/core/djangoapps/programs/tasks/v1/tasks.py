@@ -111,7 +111,7 @@ def send_program_certificate_email(user, program_uuid, cert_uuid):
         'program_title': program.get('title'),
         'program_uuid': program_uuid,
         'program_certificate_uuid': cert_uuid,
-        'program_certificate_url': site_prefix() + reverse('certificates:render_program_cert_by_uuid', kwargs={'certificate_uuid': cert_uuid})
+        'program_certificate_url': site_prefix() + reverse('certificates:render_program_cert_by_uuid', kwargs={'certificate_uuid': cert_uuid.replace('-','')})
     })
 
     with emulate_http_request(_site, user):
