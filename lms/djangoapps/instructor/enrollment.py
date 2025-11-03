@@ -72,7 +72,7 @@ class EmailEnrollmentState(object):
         else:
             mode = None
             exists_ce = False
-            full_name = None
+            full_name = 'Learner'
             ceas = CourseEnrollmentAllowed.objects.filter(email=email, course_id=course_id).all()
         exists_allowed = ceas.exists()
         state_auto_enroll = exists_allowed and ceas[0].auto_enroll
