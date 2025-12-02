@@ -185,7 +185,7 @@ def get_registration_email_message_context(user, password, protocol, is_public_r
     return message_context
 
 
-def get_completed_course_count_filters(exclude_staff_superuser=True, req_user=None):
+def get_completed_course_count_filters(exclude_staff_superuser=True, req_user=None, active_users_only=False):
     completed = Q(
         Q(courseenrollment__enrollment_stats__email_reminder_status=CourseProgressStats.COURSE_COMPLETED) &
         Q(courseenrollment__is_active=True)
@@ -197,6 +197,9 @@ def get_completed_course_count_filters(exclude_staff_superuser=True, req_user=No
 
     is_exclude = not exclude_staff_superuser
     learners = Q(courseenrollment__user__is_staff=is_exclude) & Q(courseenrollment__user__is_superuser=is_exclude)
+    
+    if active_users_only:
+        learners = Q(learners) & Q(courseenrollment__user__is_active=True)
 
     if req_user and not req_user.is_superuser:
         learners = Q(learners & get_user_enrollment_same_org_filter(req_user))
@@ -208,7 +211,7 @@ def get_completed_course_count_filters(exclude_staff_superuser=True, req_user=No
 
 def extract_filters_and_search(request):
     return request.GET.get('search', ''), json.loads(
-        request.GET.get('progress_filters', '{"in_progress": false, "completed": false}')
+        request.GET.get('progress_filters', '{"in_progress": false, "completed": false, "active_only": false}')
     )
 
 

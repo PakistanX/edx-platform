@@ -554,7 +554,9 @@ class CourseStatsListAPI(generics.ListAPIView):
         search_text, progress_filters = extract_filters_and_search(self.request)
 
         completed_count, in_progress_count = get_completed_course_count_filters(
-            exclude_staff_superuser=True, req_user=self.request.user
+            exclude_staff_superuser=True,
+            req_user=self.request.user,
+            active_users_only=progress_filters['active_only']
         )
         overview_qs = CourseOverview.objects.filter(
             display_name__icontains=search_text
@@ -627,6 +629,9 @@ class LearnerListAPI(generics.ListAPIView):
 
     def apply_learner_progress_filters(self, progress_filters, users, enrollments):
         """Apply filters for learner's progress."""
+
+        if progress_filters['active_only']:
+            users = users.filter(is_active=True)
 
         if progress_filters['in_progress'] or progress_filters['completed']:
             users = users.filter(id__in=enrollments.values_list('user', flat=True).distinct())
