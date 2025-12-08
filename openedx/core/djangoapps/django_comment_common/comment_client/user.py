@@ -30,7 +30,8 @@ class User(models.Model):
     def from_django_user(cls, user):
         return cls(id=str(user.id),
                    external_id=str(user.id),
-                   username=user.username)
+                   username=user.username,
+                   user_fullname="{} {}".format(user.first_name, user.last_name))
 
     def read(self, source):
         """

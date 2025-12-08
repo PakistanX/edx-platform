@@ -783,6 +783,10 @@ def prepare_content(content, course_key, is_staff=False, discussion_division_ena
 
     content = strip_none(extract(content, fields))
 
+    if content.get('user_id'):
+        user = User.objects.get(pk=content["user_id"])
+        content['user_fullname'] = "{} {}".format(user.first_name, user.last_name)
+
     if content.get("endorsement"):
         endorsement = content["endorsement"]
         endorser = None
@@ -802,6 +806,7 @@ def prepare_content(content, course_key, is_staff=False, discussion_division_ena
                 ("username" in fields or has_permission(endorser, "endorse_comment", course_key))
         ):
             endorsement["username"] = endorser.username
+            endorsement["user_fullname"] = "{} {}".format(endorser.first_name, endorser.last_name)
         else:
             del endorsement["user_id"]
 

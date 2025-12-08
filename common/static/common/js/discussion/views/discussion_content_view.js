@@ -407,6 +407,7 @@
                     endorsed: isEndorsing,
                     endorsement: isEndorsing ? {
                         username: DiscussionUtil.getUser().get('username'),
+                        user_fullname: DiscussionUtil.getUser().get('user_fullname'),
                         user_id: DiscussionUtil.getUser().id,
                         time: new Date().toISOString()
                     } : null
@@ -571,6 +572,7 @@
             DiscussionContentShowView.prototype.getAuthorDisplay = function() {
                 return _.template($('#post-user-display-template').html())({
                     username: this.model.get('username') || null,
+                    user_fullname: this.model.get('user_fullname') || null,
                     user_url: this.model.get('user_url'),
                     is_community_ta: this.model.get('community_ta_authored'),
                     is_staff: this.model.get('staff_authored')
@@ -583,6 +585,7 @@
                 if (endorsement && endorsement.username) {
                     return _.template($('#post-user-display-template').html())({
                         username: endorsement.username,
+                        user_fullname: endorsement.user_fullname,
                         user_url: DiscussionUtil.urlFor('user_profile', endorsement.user_id),
                         is_community_ta: DiscussionUtil.isTA(endorsement.user_id) ||
                                          DiscussionUtil.isGroupTA(endorsement.user_id),

@@ -619,7 +619,7 @@
 </script>
 <script aria-hidden="true" type="text/template" id="post-user-display-template">
 <% if (username) { %>
-    <a><%- gettext(username) %><a>
+    <a><%- gettext(user_fullname) %><a>
 <% } else { %>
     <%- gettext('anonymous') %>
 <% } %>
@@ -688,7 +688,7 @@
             <h3><%- title %></h3>
             <p class="posted-details">
                 <% if (user) { %>
-                    gettext(<%- user.username %>)
+                    gettext(<%- user.user_fullname %>)
                 <% } else { %>
                     <%- gettext("anonymous") %>
                 <% } %>
