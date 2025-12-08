@@ -46,7 +46,8 @@ from django.conf import settings
 FONT_MAP = {
     "Helvetica": "{}/pakx/fonts/Helvetica.ttf".format(settings.STATIC_ROOT_BASE),
     "Helvetica-Bold": "{}/pakx/fonts/Helvetica-Bold.ttf".format(settings.STATIC_ROOT_BASE),
-    "Century-Gothic": "{}/pakx/fonts/CenturyGothicPaneuropeanRegular.ttf".format(settings.STATIC_ROOT_BASE)
+    "Century-Gothic": "{}/pakx/fonts/CenturyGothicPaneuropeanRegular.ttf".format(settings.STATIC_ROOT_BASE),
+    "Poppins-Bold": "{}/pakx/fonts/Poppins-Bold.ttf".format(settings.STATIC_ROOT_BASE)
 }
 
 CERTIFICATE_LAYOUT_CONFIGS_DEFAULT = {

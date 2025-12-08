@@ -710,6 +710,7 @@ def get_switch_note_data(switch_key, return_note=False):
     note = switch.note if switch and switch.note else ""
     return note if return_note else note.split(",") if note else []
 
+
 def get_certificate_from_template_asset(cert_template_url, context):
     adapter = requests.adapters.HTTPAdapter(
         max_retries=requests.adapters.Retry(
@@ -762,22 +763,42 @@ def get_certificate_from_template_asset(cert_template_url, context):
                 u"exception parsing course or program specific certificate layout configs, fallback to default - %s",
                 context['course_id']
             )
+    elif context['organization_short_name']:
+        organization_certificate_layout_configs = get_switch_note_data(CERTIFICATE_LAYOUT_CONFIGS_+context['organization_short_name'], return_note=True)
+        if organization_certificate_layout_configs:
+            try:
+                layout_dict = json.loads(organization_certificate_layout_configs)
+            except json.JSONDecodeError:
+                log.error(
+                    u"exception parsing organization certificate layout configs, fallback to default - %s",
+                    context['organization_short_name']
+                )
                 
     values = []
     for key, cfg in layout_dict.items():
         text = cfg['prefix']+context[key] if "prefix" in cfg else context[key]
+        text = cfg.get("text", text)
         text = text.upper() if cfg.get("transform") == "upper" else text
         values.append((
             text,
             tuple(cfg["position"]),
             cfg["font_size"],
             tuple(cfg["box_size"]),
-            cfg["font"]
+            cfg.get("font", "Helvetica"),
+            cfg.get("background", "white"),
+            cfg.get("align", "left")
         ))
 
-    for text, pos, font_size, box_size, font_path in values:
-        font = ImageFont.truetype(FONT_MAP.get(font_path, "Helvetica"), int(font_size * img.info.get("dpi", (300, 300))[0] / 72))
-        draw.rectangle([pos[0]-5, pos[1]-5, pos[0] + box_size[0], pos[1] + box_size[1]], fill="white", outline="white")
+    for text, pos, font_size, box_size, font_path, background, align in values:
+        font = ImageFont.truetype(FONT_MAP.get(font_path), int(font_size * img.info.get("dpi", (300, 300))[0] / 72))
+        text_width, _ = font.getsize(text)
+        if background:
+            draw.rectangle([pos[0]-5, pos[1]-5, pos[0] + box_size[0], pos[1] + box_size[1]], fill=background, outline=background)
+        if align == 'center':
+            pos = tuple([pos[0] + (box_size[0] - text_width) / 2, pos[1]])
+        if align == 'right':
+            pos = tuple([pos[0] + box_size[0] - text_width, pos[1]])
+        
         draw.text(pos, text, font=font, fill="black")
 
     buffer = BytesIO()
