@@ -763,7 +763,7 @@ def get_certificate_from_template_asset(cert_template_url, context):
                 u"exception parsing course or program specific certificate layout configs, fallback to default - %s",
                 context['course_id']
             )
-    elif context['organization_short_name']:
+    elif context.get('organization_short_name'):
         organization_certificate_layout_configs = get_switch_note_data(CERTIFICATE_LAYOUT_CONFIGS_+context['organization_short_name'], return_note=True)
         if organization_certificate_layout_configs:
             try:

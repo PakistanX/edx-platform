@@ -973,7 +973,7 @@ def checkout_lumsx(request):
     JWT_SECRET_KEY = getattr(settings, JWT_AUTH)['JWT_SECRET_KEY'] if hasattr(settings, JWT_AUTH) else ''
     token = jwt.encode(payload, JWT_SECRET_KEY).decode('utf-8')
 
-    is_created, res_data = create_user(user_data, request.scheme, next_url=reverse('account_settings'), auto_login=True, request=request)
+    is_created, res_data, _ = create_user(user_data, next_url=reverse('account_settings'), auto_login=True, request=request)
     if is_created:
         if bundle_code:
             response = redirect('{}/basket/add/?sku={}&bundle={}&&token={}'.format(settings.ECOMMERCE_PUBLIC_URL_ROOT, sku, bundle_code, token))

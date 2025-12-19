@@ -119,13 +119,14 @@ def get_user_data_from_bulk_registration_file(file_reader, default_org_id):
                 'language_code': {'code': clean(user_map.get('language', ''))},
                 'organization': clean(user_map.get('organization_id')) or default_org_id,
             },
-            'verified': clean(user_map.get('verified')).lower() in ('true', '1', 't', 'yes', 'y')
+            'verified': clean(user_map.get('verified')).lower() in ('true', '1', 't', 'yes', 'y'),
+            'enroll_in_course_id': clean(user_map.get('enroll_in_course_id', ''))
         }
         users.append(user)
     return users
 
 
-def create_user(user_data, request_url_scheme, next_url='', auto_login=False, request=None):
+def create_user(user_data, next_url='', auto_login=False, request=None, send_creation_email=True):
     """
     util function
     :param user_data: user data for registration
@@ -138,10 +139,11 @@ def create_user(user_data, request_url_scheme, next_url='', auto_login=False, re
     user_serializer = UserSerializer(data=user_data)
 
     if not user_serializer.is_valid():
-        return False, {**user_serializer.errors}
+        return False, {**user_serializer.errors}, None
 
     user = user_serializer.save()
-    send_registration_email(user, user_data['password'], request_url_scheme, next_url=next_url)
+    if send_creation_email:
+        send_registration_email(user, user_data['password'], next_url=next_url)
 
     if user_data.get('verified', None):
         ManualVerification.objects.create(
@@ -154,10 +156,10 @@ def create_user(user_data, request_url_scheme, next_url='', auto_login=False, re
         new_user = authenticate_new_user(request, user_data['username'], user_data['password'])
         django_login(request, new_user)
         request.session.set_expiry(0)
-    return True, user
+    return True, user, user_data['password'] if not send_creation_email else None
 
 
-def get_registration_email_message_context(user, password, protocol, is_public_registration, next_url=''):
+def get_registration_email_message_context(user, password, is_public_registration, next_url=''):
     """
     return context for registration notification email body
     """
@@ -169,6 +171,7 @@ def get_registration_email_message_context(user, password, protocol, is_public_r
     link = reverse('signin_user')
     if next_url:
         link = '{}?next={}'.format(link, next_url)
+    protocol = 'https' if not settings.DEBUG else 'http'
     message_context.update({
         'is_public_registration': is_public_registration,
         'platform_name': configuration_helpers.get_value('PLATFORM_NAME', settings.PLATFORM_NAME),
@@ -284,7 +287,7 @@ def get_request_user_org_id(request):
     return request.user.profile.organization_id
 
 
-def send_registration_email(user, password, protocol, is_public_registration=False, next_url=''):
+def send_registration_email(user, password, is_public_registration=False, next_url=''):
     """
     send a registration notification via email
     """
@@ -292,7 +295,7 @@ def send_registration_email(user, password, protocol, is_public_registration=Fal
         recipient=Recipient(user.username, user.email),
         language=user.profile.language,
         user_context=get_registration_email_message_context(
-            user, password, protocol, is_public_registration, next_url=next_url
+            user, password, is_public_registration, next_url=next_url
         ),
     )
     ace.send(message)

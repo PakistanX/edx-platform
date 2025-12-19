@@ -171,7 +171,7 @@ class UserProfileViewSet(viewsets.ModelViewSet):
         if request.data.get('profile'):
             request.data['profile']['organization'] = get_request_user_org_id(self.request)
 
-        is_created, res_data = create_user(request.data, request.scheme, next_url=reverse('account_settings'))
+        is_created, res_data, _ = create_user(request.data, next_url=reverse('account_settings'))
         if is_created:
             return Response(UserSerializer(res_data).data, status=status.HTTP_201_CREATED)
 
@@ -192,7 +192,7 @@ class UserProfileViewSet(viewsets.ModelViewSet):
             )
 
         users = get_user_data_from_bulk_registration_file(file_reader, get_request_user_org_id(self.request))
-        bulk_user_registration.delay(users, request.user.email, request.scheme)
+        bulk_user_registration.delay(users, request.user.email)
 
         return Response(BULK_REGISTRATION_TASK_SUCCESS_MSG, status=status.HTTP_200_OK)
 

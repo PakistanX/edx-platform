@@ -34,3 +34,7 @@ class OraGradeNotification(BaseMessageType):
 
 class ProgramCertificateNotification(BaseMessageType):
     pass
+
+
+class DialogAcademyUserEnrollmentNotification(BaseMessageType):
+    pass
