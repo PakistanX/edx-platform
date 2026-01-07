@@ -288,7 +288,11 @@ class LearnersSerializer(serializers.ModelSerializer):
 
     @staticmethod
     def get_completed_courses(obj):
-        return len([stat for stat in obj.enrollment if stat.enrollment_stats.progress == 100])
+        complete_course_count = 0
+        for stat in obj.enrollment:
+            if hasattr(stat, 'enrollment_stats') and stat.enrollment_stats.progress == 100:
+                complete_course_count += 1
+        return complete_course_count
 
 
 class CoursesSerializer(serializers.ModelSerializer):
