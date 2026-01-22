@@ -115,7 +115,7 @@ class Command(BaseCommand):
                     with transaction.atomic():
                         CourseEnrollment.enroll(enroll_user, course_key, check_access=True)
                 except Exception as e:
-                    log.exception('User {} does not exist or is already enrolled in course {}. Sending email only! --- {}'.format(user_email, course_key_string, str(e)))
+                    log.exception('User {} is already enrolled in course {}. Sending email only! --- {}'.format(user_email, course_key_string, str(e)))
 
                 course_overview = CourseOverview.objects.get(id=CourseKey.from_string(course_key_string))
                 protocol = 'https://' if not settings.DEBUG else 'http://'

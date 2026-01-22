@@ -5,11 +5,14 @@ from csv import DictReader, DictWriter
 from datetime import timedelta
 from io import StringIO
 from itertools import groupby
+from logging import getLogger
 
 import six
 from dateutil.parser import parse
 from django.conf import settings
-from django.contrib.auth.models import Group
+from django.contrib.auth.models import Group, User
+from django.contrib.sites.models import Site
+from django.db import transaction
 from django.db.models import Count, ExpressionWrapper, F, IntegerField, Prefetch, Q, Sum
 from django.db.models.functions import TruncDay, TruncMonth, TruncQuarter
 from django.http import Http404, HttpResponse
@@ -17,17 +20,26 @@ from django.middleware import csrf
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.decorators import method_decorator
+from edx_ace import Recipient, ace
 from rest_framework import generics, status, views, viewsets
 from rest_framework.authentication import SessionAuthentication
 from rest_framework.filters import OrderingFilter
+from rest_framework.renderers import BrowsableAPIRenderer, JSONRenderer
 from rest_framework.response import Response
+from opaque_keys.edx.keys import CourseKey
 
+from openedx.core.djangoapps.ace_common.template_context import get_base_template_context
 from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
 from openedx.core.djangoapps.cors_csrf.decorators import ensure_csrf_cookie_cross_domain
+from openedx.core.djangoapps.site_configuration import helpers as configuration_helpers
 from openedx.core.djangoapps.user_api.accounts.image_helpers import get_profile_image_urls_for_user
+from openedx.core.lib.celery.task_utils import emulate_http_request
 from openedx.features.pakx.lms.overrides.models import CourseProgressStats
 from student.models import CourseAccessRole, CourseEnrollment, LanguageProficiency
 
+from .message_types import DialogAcademyUserEnrollmentNotification
+from .management.commands.enroll_users_for_dialog_academy \
+    import PROGRAM_GUIDELINES_LINK, CYBERBULLYING_AVOIDANCE_LINK, DIALOG_ACADEMY_ORG_ID
 from .constants import (
     BULK_REGISTRATION_TASK_SUCCESS_MSG,
     ENROLLMENT_COURSE_DIFF_ORG_ERROR_MSG,
@@ -42,7 +54,7 @@ from .constants import (
     USER_ACCOUNT_DEACTIVATED_MSG
 )
 from .pagination import CourseEnrollmentPagination, PakxAdminAppPagination
-from .permissions import CanAccessPakXAdminPanel, IsSameOrganization
+from .permissions import CanAccessPakXAdminPanel, DialogAcademyIsStaffOrAllowedEmail, IsSameOrganization
 from .serializers import (
     CoursesSerializer,
     CourseStatsListSerializer,
@@ -50,7 +62,8 @@ from .serializers import (
     UserCourseEnrollmentSerializer,
     UserDetailViewSerializer,
     UserListingSerializer,
-    UserSerializer
+    UserSerializer,
+    DialogAcademyCourseActionSerializer
 )
 from .tasks import bulk_user_registration, enroll_users
 from .utils import (
@@ -67,6 +80,8 @@ from .utils import (
     get_user_org,
     is_courses_enroll_able
 )
+
+log = getLogger(__name__)
 
 
 class UserCourseEnrollmentsListAPI(generics.ListAPIView):
@@ -863,3 +878,115 @@ class UserUpdateEnrollmentMode(views.APIView):
 
         CourseEnrollment.objects.bulk_update(updated_enrollments, ['mode'], batch_size=3)
         return Response(status=status.HTTP_200_OK)
+
+
+class DialogAcademyEnrollmentFormView(views.APIView):
+    authentication_classes = (SessionAuthentication,)
+    permission_classes = (DialogAcademyIsStaffOrAllowedEmail,)
+    renderer_classes = (BrowsableAPIRenderer, JSONRenderer)
+    serializer_class = DialogAcademyCourseActionSerializer
+
+    def get(self, request):
+        """
+        Return the empty form structure
+        """
+        serializer = self.serializer_class()
+        return Response({'status': 'Ready to receive data'})
+
+    def post(self, request):
+        def clean(str_to_clean):
+            return str_to_clean.strip() if isinstance(str_to_clean, str) else str_to_clean
+
+        serializer = self.serializer_class(data=request.data)
+        
+        if serializer.is_valid():
+            course_key_string = serializer.validated_data['course_id']
+            name = serializer.validated_data['name']
+            username = serializer.validated_data['username']
+            email = serializer.validated_data['email']
+            course_datetime_str = serializer.validated_data['course_datetime_str']
+            meeting_link = serializer.validated_data['meeting_link']
+
+            user_data = {
+                'role': 4,
+                'email': clean(email),
+                'username': clean(username),
+                'profile': {
+                    'name': clean(name.title()),
+                    'employee_id': '',
+                    'language_code': {'code': 'en'},
+                    'organization': DIALOG_ACADEMY_ORG_ID,
+                },
+                'verified': False
+            }
+
+            try:
+                site = Site.objects.get_current()
+                course_key = CourseKey.from_string(course_key_string)
+                course_overview = CourseOverview.objects.get(id=course_key)
+                now = timezone.now()
+                if course_overview.enrollment_start and now < course_overview.enrollment_start or \
+                    course_overview.enrollment_end and now > course_overview.enrollment_end:
+                    return Response(
+                        'Course is not open for enrollment. Aborting user creation and enrollment, email not sent!',
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+
+                with emulate_http_request(site, request.user):
+                    is_created, user, user_password = create_user(user_data, next_url=reverse('account_settings'), send_creation_email=False)
+                if not is_created and len(user.items()) == 1 and 'username' in user:
+                    log.info('User with details already exists {} --- errors {}'.format(user_data, user))
+                    return Response(
+                        'A user with that username already exists. Please retry with a different username or use the same email address as of the existing user.',
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+
+                user = User.objects.get(email=user_data.get('email'))
+                try:
+                    with transaction.atomic():
+                        CourseEnrollment.enroll(user, course_key, check_access=True)
+                except Exception as e:
+                    log.exception('User {} is already enrolled in course {}. Sending email only! --- {}'.format(email, course_key_string, str(e)))
+
+                course_overview = CourseOverview.objects.get(id=course_key)
+                protocol = 'https://' if not settings.DEBUG else 'http://'
+
+                email_context = {
+                    'course': course_overview.display_name,
+                    'image_url': protocol + site.domain + course_overview.course_image_url,
+                    'url': "{}{}/courses/{}/overview".format(protocol, site.domain, course_key_string),
+                    'site_name': site.domain,
+                    'dashboard_url': '{}{}/dashboard'.format(protocol, site.domain),
+                    'platform_name': configuration_helpers.get_value('PLATFORM_NAME', settings.PLATFORM_NAME),
+                    'user_password': user_password if user_password else '',
+                    'session_timeline': course_datetime_str,
+                    'google_meet_link': meeting_link, 
+                    'program_guidelines_link': PROGRAM_GUIDELINES_LINK,
+                    'cyberbulling_avoidance_link': CYBERBULLYING_AVOIDANCE_LINK,
+                }
+                context = get_base_template_context(site, user=user)
+                context.update(email_context)
+
+                with emulate_http_request(site, request.user):
+                    message = DialogAcademyUserEnrollmentNotification().personalize(
+                        recipient=Recipient(context['username'], context['email']),
+                        language='en',
+                        user_context=context,
+                    )
+                    ace.send(message)
+
+                return Response(
+                    "Enrollment of {type} user with email {email} completed for course: {course}. Email sent!".format(
+                        type="new" if is_created else "pre-existing",
+                        email=email,
+                        course=course_key_string
+                    ),
+                    status=status.HTTP_200_OK
+                )
+            except Exception as e:
+                return Response(
+                    {"error": str(e)},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

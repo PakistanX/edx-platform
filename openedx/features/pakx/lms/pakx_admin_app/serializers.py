@@ -304,3 +304,28 @@ class CoursesSerializer(serializers.ModelSerializer):
 
     def get_instructor(self, obj):
         return self.context['instructors'].get(obj.id) or []
+
+
+# Dialog Academy Enrollments Specific
+class DialogAcademyCourseActionSerializer(serializers.Serializer):
+    name = serializers.CharField(max_length=255, required=True)
+    username = serializers.CharField(max_length=255, required=True)
+    email = serializers.EmailField(required=True)
+    course_id = serializers.ChoiceField(choices=[], required=True)
+    course_datetime_str = serializers.CharField(max_length=255, required=True, help_text="Tip: from 05th January to 09th January, 6:00-7:30 pm IST")
+    meeting_link = serializers.URLField(max_length=255, required=True, help_text="Tip: https://meet.google.com/wdq-qfpt-xaz")
+
+    def __init__(self, *args, **kwargs):
+        """
+        Populate course_id choices on initialization
+        """
+        super(DialogAcademyCourseActionSerializer, self).__init__(*args, **kwargs)
+        
+        # Filter courses specifically for Dialog_Academy
+        queryset = CourseOverview.objects.filter(org='Dialogue_Academy')
+        
+        # Create a list of tuples (course_key_string, display_name)
+        self.fields['course_id'].choices = [
+            (str(course.id), str(course.id))
+            for course in queryset
+        ]

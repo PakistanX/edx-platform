@@ -94,7 +94,7 @@ def bulk_user_registration(users_data, recipient, send_creation_email=True):
             created_emails.append(user_data.email)
         else:
             error_map[idx] = {'response_errors': user_data, 'req_data': user}
-        if user_password and is_created:        # used with sync call with delay
+        if user_password and is_created:        # used with sync call without delay
             user['user_password'] = user_password
 
     err_msg_t = "User's email/username/name or index in file: {user_key}\n{msg}"
