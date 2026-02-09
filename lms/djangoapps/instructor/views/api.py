@@ -2973,7 +2973,7 @@ def _instructor_dash_url(course_key, section=None):
     return url
 
 
-@require_global_staff
+@require_course_permission(permissions.ENABLE_CERTIFICATE_GENERATION)
 @require_POST
 def generate_example_certificates(request, course_id=None):
     """Start generating a set of example certificates.
@@ -2986,6 +2986,8 @@ def generate_example_certificates(request, course_id=None):
 
     """
     course_key = CourseKey.from_string(course_id)
+    if not has_access(request.user, 'staff', course_key) and not request.user.is_staff:
+        return HttpResponseForbidden("Requires staff or instructor access.")
     certs_api.generate_example_certificates(course_key)
     return redirect(_instructor_dash_url(course_key, section='certificates'))
 
@@ -3003,6 +3005,8 @@ def enable_certificate_generation(request, course_id=None):
 
     """
     course_key = CourseKey.from_string(course_id)
+    if not has_access(request.user, 'staff', course_key) and not request.user.is_staff:
+        return HttpResponseForbidden("Requires staff or instructor access.")
     is_enabled = (request.POST.get('certificates-enabled', 'false') == 'true')
     certs_api.set_cert_generation_enabled(course_key, is_enabled)
     return redirect(_instructor_dash_url(course_key, section='certificates'))
@@ -3035,7 +3039,7 @@ def mark_student_can_skip_entrance_exam(request, course_id):
 @transaction.non_atomic_requests
 @ensure_csrf_cookie
 @cache_control(no_cache=True, no_store=True, must_revalidate=True)
-@require_global_staff
+@require_course_permission(permissions.ENABLE_CERTIFICATE_GENERATION)
 @require_POST
 @common_exceptions_400
 def start_certificate_generation(request, course_id):
@@ -3043,6 +3047,8 @@ def start_certificate_generation(request, course_id):
     Start generating certificates for all students enrolled in given course.
     """
     course_key = CourseKey.from_string(course_id)
+    if not has_access(request.user, 'staff', course_key) and not request.user.is_staff:
+        return HttpResponseForbidden("Requires staff or instructor access.")
     task = task_api.generate_certificates_for_students(request, course_key)
     message = _('Certificate generation task for all students of this course has been started. '
                 'You can view the status of the generation task in the "Pending Tasks" section.')
@@ -3057,7 +3063,7 @@ def start_certificate_generation(request, course_id):
 @transaction.non_atomic_requests
 @ensure_csrf_cookie
 @cache_control(no_cache=True, no_store=True, must_revalidate=True)
-@require_global_staff
+@require_course_permission(permissions.ENABLE_CERTIFICATE_GENERATION)
 @require_POST
 @common_exceptions_400
 def start_certificate_regeneration(request, course_id):
@@ -3066,6 +3072,8 @@ def start_certificate_regeneration(request, course_id):
     entry in POST data.
     """
     course_key = CourseKey.from_string(course_id)
+    if not has_access(request.user, 'staff', course_key) and not request.user.is_staff:
+        return HttpResponseForbidden("Requires staff or instructor access.")
     certificates_statuses = request.POST.getlist('certificate_statuses', [])
     if not certificates_statuses:
         return JsonResponse(
@@ -3099,7 +3107,7 @@ def start_certificate_regeneration(request, course_id):
 @transaction.non_atomic_requests
 @ensure_csrf_cookie
 @cache_control(no_cache=True, no_store=True, must_revalidate=True)
-@require_global_staff
+@require_course_permission(permissions.ENABLE_CERTIFICATE_GENERATION)
 @require_http_methods(['POST', 'DELETE'])
 def certificate_exception_view(request, course_id):
     """
@@ -3110,6 +3118,8 @@ def certificate_exception_view(request, course_id):
     :return: JsonResponse object with success/error message or certificate exception data.
     """
     course_key = CourseKey.from_string(course_id)
+    if not has_access(request.user, 'staff', course_key) and not request.user.is_staff:
+        return HttpResponseForbidden("Requires staff or instructor access.")
     # Validate request data and return error response in case of invalid data
     try:
         certificate_exception, student = parse_request_data_and_get_user(request, course_key)
@@ -3288,6 +3298,8 @@ def generate_certificate_exceptions(request, course_id, generate_for=None):
     :return: JsonResponse object containing success/failure message and certificate exception data
     """
     course_key = CourseKey.from_string(course_id)
+    if not has_access(request.user, 'staff', course_key) and not request.user.is_staff:
+        return HttpResponseForbidden("Requires staff or instructor access.")
 
     if generate_for == 'all':
         # Generate Certificates for all white listed students
@@ -3337,6 +3349,9 @@ def generate_bulk_certificate_exceptions(request, course_id):
     notes_index = 1
     row_errors_key = ['data_format_error', 'user_not_exist', 'user_already_white_listed', 'user_not_enrolled']
     course_key = CourseKey.from_string(course_id)
+    if not has_access(request.user, 'staff', course_key) and not request.user.is_staff:
+        return HttpResponseForbidden("Requires staff or instructor access.")
+
     students, general_errors, success = [], [], []
     row_errors = {key: [] for key in row_errors_key}
 
@@ -3411,7 +3426,7 @@ def generate_bulk_certificate_exceptions(request, course_id):
 @transaction.non_atomic_requests
 @ensure_csrf_cookie
 @cache_control(no_cache=True, no_store=True, must_revalidate=True)
-@require_global_staff
+@require_course_permission(permissions.ENABLE_CERTIFICATE_GENERATION)
 @require_http_methods(['POST', 'DELETE'])
 def certificate_invalidation_view(request, course_id):
     """
@@ -3422,6 +3437,8 @@ def certificate_invalidation_view(request, course_id):
     :return: JsonResponse object with success/error message or certificate invalidation data.
     """
     course_key = CourseKey.from_string(course_id)
+    if not has_access(request.user, 'staff', course_key) and not request.user.is_staff:
+        return HttpResponseForbidden("Requires staff or instructor access.")
     # Validate request data and return error response in case of invalid data
     try:
         certificate_invalidation_data = parse_request_data(request)

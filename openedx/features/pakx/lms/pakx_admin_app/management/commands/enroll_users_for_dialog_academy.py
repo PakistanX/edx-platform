@@ -13,6 +13,7 @@ from django.contrib.auth.models import User
 from django.contrib.sites.models import Site
 from django.core.management.base import BaseCommand
 from django.db import transaction
+from django.utils import timezone
 from edx_ace import Recipient, ace
 from opaque_keys.edx.keys import CourseKey
 
@@ -54,10 +55,22 @@ class Command(BaseCommand):
             help='Bulk enrollment csv sheet url',
         )
         parser.add_argument(
-            '--supplementary_data',
+            '--enroll_in_course_id',
             required=True,
             type=str,
-            help='JSON string containing course datetime and links',
+            help='Course ID of course to enroll in'
+        )
+        parser.add_argument(
+            '--course_datetime',
+            required=True,
+            type=str,
+            help='String containing course datetime',
+        )
+        parser.add_argument(
+            '--google_meet_link',
+            required=True,
+            type=str,
+            help='Google Meet link',
         )
         parser.add_argument(
             '--org_id',
@@ -83,14 +96,27 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         log.info('Staring command to download bulk enrollment csv file for creating and enrolling users in dialog academy courses')
 
+        site = Site.objects.get_current()
+        course_key_string = options.get('enroll_in_course_id')
+        course_key = CourseKey.from_string(course_key_string)
+        course_overview = CourseOverview.objects.get(id=course_key)
+        now = timezone.now()
+        if course_overview.enrollment_start and now < course_overview.enrollment_start or \
+            course_overview.enrollment_end and now > course_overview.enrollment_end:
+            log.error('Course is not open for enrollment. Aborting user creation and enrollment, email not sent!')
+            return
+
         csv_url = options.get('csv_url')
         response = requests.get(csv_url)
         response.raise_for_status()
+
+        session_timeline = options.get('course_datetime'),
+        google_meet_link = options.get('google_meet_link'),
             
         file_data = StringIO(response.content.decode('utf-8'))
         file_reader = DictReader(file_data)
 
-        required_col_names = {'name', 'username', 'email', 'enroll_in_course_id', 'organization_id', 'role', 'employee_id', 'language', 'verified'}
+        required_col_names = {'name', 'username', 'email', 'organization_id', 'role', 'employee_id', 'language', 'verified'}
         if not required_col_names.issubset(set(file_reader.fieldnames) or []):
             log.error('Invalid column names in {}! Correct names are: "{}"'.format(csv_url, '" | "'.join(required_col_names))),
             return
@@ -98,17 +124,11 @@ class Command(BaseCommand):
         default_requester = options.get('requester_email') or DEFAULT_REQUESTER_EMAIL
         users = get_user_data_from_bulk_registration_file(file_reader, default_org_id=(options.get('org_id') or DIALOG_ACADEMY_ORG_ID))
         bulk_user_registration(users, default_requester, send_creation_email=False)
-        
-        site = Site.objects.get_current()
+
         request_user = User.objects.filter(email=default_requester).first()
-        supplementary_course_data = options.get('supplementary_data')
-        supplementary_course_data = json.loads(supplementary_course_data)
-        course_defaults = supplementary_course_data['default']
         for _, user in enumerate(users, start=1):
             try:
                 user_email = user.get('email')
-                course_key_string = user.get('enroll_in_course_id')
-                course_key = CourseKey.from_string(course_key_string)
                 enroll_user = User.objects.get(email=user_email)
                 
                 try:
@@ -128,8 +148,8 @@ class Command(BaseCommand):
                     'dashboard_url': '{}{}/dashboard'.format(protocol, site.domain),
                     'platform_name': configuration_helpers.get_value('PLATFORM_NAME', settings.PLATFORM_NAME),
                     'user_password': user.get('user_password', ''),
-                    'session_timeline': supplementary_course_data.get(course_key_string, course_defaults)['course_datetime'],
-                    'google_meet_link': supplementary_course_data.get(course_key_string, course_defaults)['google_meet_link'],         
+                    'session_timeline': session_timeline,
+                    'google_meet_link': google_meet_link,
                     'program_guidelines_link': options.get('program_guidelines_link') or PROGRAM_GUIDELINES_LINK,
                     'cyberbulling_avoidance_link': options.get('cyberbulling_avoidance_link') or CYBERBULLYING_AVOIDANCE_LINK,
                 }
