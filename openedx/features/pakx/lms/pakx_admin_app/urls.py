@@ -19,7 +19,8 @@ from .views import (
     UserProfileViewSet,
     UserSearchInputListAPI,
     UserUpdateEnrollmentMode,
-    DialogAcademyEnrollmentFormView
+    DialogAcademyEnrollmentFormView,
+    DialogAcademyBulkEnrollmentFormView
 )
 
 user_viewset_router = DefaultRouter()
@@ -42,5 +43,6 @@ urlpatterns = [
     url(r'^courses/$', CourseListAPI.as_view()),
     url(r'^courses/stats/$', CourseStatsListAPI.as_view()),
     url(r'^enrollments/dialog_academy/$', DialogAcademyEnrollmentFormView.as_view(), name='dialog_academy_enrollments'),
+    url(r'^enrollments/dialog_academy/bulk/$', DialogAcademyBulkEnrollmentFormView.as_view(), name='dialog_academy_bulk_enrollments'),
     path('', include(user_viewset_router.urls)),
 ]

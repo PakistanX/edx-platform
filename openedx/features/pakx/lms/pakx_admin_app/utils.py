@@ -2,6 +2,7 @@
 helpers functions for Admin Panel API
 """
 import json
+import os
 from datetime import datetime
 from uuid import uuid4
 
@@ -14,6 +15,8 @@ from django.db.models import Count, Q
 from django.urls import reverse
 from edx_ace import ace
 from edx_ace.recipient import Recipient
+from xmodule.contentstore.content import StaticContent
+from xmodule.contentstore.django import contentstore
 
 from lms.djangoapps.verify_student.models import ManualVerification
 from openedx.core.djangoapps.ace_common.template_context import get_base_template_context
@@ -299,3 +302,28 @@ def send_registration_email(user, password, is_public_registration=False, next_u
         ),
     )
     ace.send(message)
+
+
+def save_file_to_contentstore(uploaded_file, course_key):
+    """Uploads a file object to contentstore
+
+    Args:
+        uploaded_file (ContentFile): The file object bytes to upload
+        course_key (CourseKey): Upload file to assets of course_key 
+
+    Returns:
+        String: URL of the uploaded file object
+    """
+    name, ext = os.path.splitext(uploaded_file.name)
+    filename = "{}_{}{}".format(name, uuid4().hex[:4], ext)
+    content_bytes = uploaded_file.read()
+    asset_key = StaticContent.compute_location(course_key, filename)
+    content = StaticContent(
+        asset_key,
+        filename,
+        uploaded_file.content_type,
+        content_bytes,
+        import_path=None,
+    )
+    contentstore().save(content)
+    return asset_key

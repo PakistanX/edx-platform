@@ -106,6 +106,7 @@ class Command(BaseCommand):
             log.error('Course is not open for enrollment. Aborting user creation and enrollment, email not sent!')
             return
 
+        protocol = 'https://' if not settings.DEBUG else 'http://'
         csv_url = options.get('csv_url')
         response = requests.get(csv_url)
         response.raise_for_status()
@@ -136,9 +137,6 @@ class Command(BaseCommand):
                         CourseEnrollment.enroll(enroll_user, course_key, check_access=True)
                 except Exception as e:
                     log.exception('User {} is already enrolled in course {}. Sending email only! --- {}'.format(user_email, course_key_string, str(e)))
-
-                course_overview = CourseOverview.objects.get(id=CourseKey.from_string(course_key_string))
-                protocol = 'https://' if not settings.DEBUG else 'http://'
 
                 email_context = {
                     'course': course_overview.display_name,

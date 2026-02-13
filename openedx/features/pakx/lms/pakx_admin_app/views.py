@@ -63,7 +63,8 @@ from .serializers import (
     UserDetailViewSerializer,
     UserListingSerializer,
     UserSerializer,
-    DialogAcademyCourseActionSerializer
+    DialogAcademyCourseActionSerializer,
+    DialogAcademyBulkCourseActionSerializer
 )
 from .tasks import bulk_user_registration, enroll_users
 from .utils import (
@@ -78,7 +79,8 @@ from .utils import (
     get_roles_q_filters,
     get_user_data_from_bulk_registration_file,
     get_user_org,
-    is_courses_enroll_able
+    is_courses_enroll_able,
+    save_file_to_contentstore
 )
 
 log = getLogger(__name__)
@@ -906,6 +908,7 @@ class DialogAcademyEnrollmentFormView(views.APIView):
             email = serializer.validated_data['email']
             course_datetime_str = serializer.validated_data['course_datetime_str']
             meeting_link = serializer.validated_data['meeting_link']
+            protocol = 'https://' if not settings.DEBUG else 'http://'
 
             user_data = {
                 'role': 4,
@@ -948,9 +951,6 @@ class DialogAcademyEnrollmentFormView(views.APIView):
                 except Exception as e:
                     log.exception('User {} is already enrolled in course {}. Sending email only! --- {}'.format(email, course_key_string, str(e)))
 
-                course_overview = CourseOverview.objects.get(id=course_key)
-                protocol = 'https://' if not settings.DEBUG else 'http://'
-
                 email_context = {
                     'course': course_overview.display_name,
                     'image_url': protocol + site.domain + course_overview.course_image_url,
@@ -983,6 +983,117 @@ class DialogAcademyEnrollmentFormView(views.APIView):
                     ),
                     status=status.HTTP_200_OK
                 )
+            except Exception as e:
+                return Response(
+                    {"error": str(e)},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class DialogAcademyBulkEnrollmentFormView(views.APIView):
+    authentication_classes = (SessionAuthentication,)
+    permission_classes = (DialogAcademyIsStaffOrAllowedEmail,)
+    renderer_classes = (BrowsableAPIRenderer, JSONRenderer)
+    serializer_class = DialogAcademyBulkCourseActionSerializer
+
+    def get(self, request):
+        """
+        Return the empty form structure
+        """
+        return Response({'status': 'Ready to receive data'})
+
+    def post(self, request):
+        serializer = self.serializer_class(data=request.data)
+        
+        if serializer.is_valid():
+            uploaded_file = serializer.validated_data['file']
+            course_key_string = serializer.validated_data['course_id']
+            course_datetime_str = serializer.validated_data['course_datetime_str']
+            meeting_link = serializer.validated_data['meeting_link']
+
+            try:
+                site = Site.objects.get_current()
+                course_key = CourseKey.from_string(course_key_string)
+                course_overview = CourseOverview.objects.get(id=course_key)
+                now = timezone.now()
+                if course_overview.enrollment_start and now < course_overview.enrollment_start or \
+                    course_overview.enrollment_end and now > course_overview.enrollment_end:
+                    return Response(
+                        'Course is not open for enrollment. Aborting user creation and enrollment, email not sent!',
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+
+                protocol = 'https://' if not settings.DEBUG else 'http://'
+                save_file_to_contentstore(uploaded_file, course_key)
+                uploaded_file.seek(0)
+                file_data = StringIO(uploaded_file.read().decode('utf-8'))
+                file_reader = DictReader(file_data)
+
+                required_col_names = {'name', 'username', 'email', 'organization_id', 'role', 'employee_id', 'language', 'verified'}
+                if not required_col_names.issubset(set(file_reader.fieldnames) or []):
+                    return Response(
+                        'Invalid column names! Correct names are: "{}"'.format('" | "'.join(required_col_names)),
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                
+                users = get_user_data_from_bulk_registration_file(file_reader, default_org_id=DIALOG_ACADEMY_ORG_ID)
+                bulk_user_registration(users, request.user.email, send_creation_email=False)
+
+                response_data = ["Enrollments task completed for course: {course}".format(course=course_key_string)]
+
+                for _, user in enumerate(users, start=1):
+                    try:
+                        user_email = user.get('email')
+                        enroll_user = User.objects.filter(email=user_email)
+                        if not enroll_user:
+                            response_data.append('User creation failed for email {} because of existing username {}. Email not sent!'.format(user_email, user.get('username')))
+                            continue
+
+                        enroll_user = enroll_user.first()
+                        
+                        try:
+                            with transaction.atomic():
+                                CourseEnrollment.enroll(enroll_user, course_key, check_access=True)
+                                log.info('User {} enrolled successfully.'.format(user_email))
+                                response_data.append('User {} is enrolled. Sending email'.format(user_email))
+                        except Exception as e:
+                            log.exception('User {} is already enrolled in course {}. Sending email only! --- {}'.format(user_email, course_key_string, str(e)))
+                            response_data.append('User {} already enrolled. Sending email only!'.format(user_email))
+                        
+                        email_context = {
+                            'course': course_overview.display_name,
+                            'image_url': protocol + site.domain + course_overview.course_image_url,
+                            'url': "{}{}/courses/{}/overview".format(protocol, site.domain, course_key_string),
+                            'site_name': site.domain,
+                            'dashboard_url': '{}{}/dashboard'.format(protocol, site.domain),
+                            'platform_name': configuration_helpers.get_value('PLATFORM_NAME', settings.PLATFORM_NAME),
+                            'user_password': user.get('user_password', ''),
+                            'session_timeline': course_datetime_str,
+                            'google_meet_link': meeting_link,
+                            'program_guidelines_link': PROGRAM_GUIDELINES_LINK,
+                            'cyberbulling_avoidance_link': CYBERBULLYING_AVOIDANCE_LINK,
+                        }
+                        context = get_base_template_context(site, user=enroll_user)
+                        context.update(email_context)
+
+                        with emulate_http_request(site, request.user):
+                            message = DialogAcademyUserEnrollmentNotification().personalize(
+                                recipient=Recipient(context['username'], context['email']),
+                                language='en',
+                                user_context=context,
+                            )
+                            ace.send(message)
+                    except Exception as e:  # pylint: disable=broad-except
+                        log.exception('Failed to enroll user in course --- {}'.format(str(e)))
+
+                response_data.append('Please check your email and logs for user creation stats. Only existing username will fail creation and enrollment email will not be sent.')
+                return Response(
+                    response_data,
+                    status=status.HTTP_200_OK
+                )
+                
             except Exception as e:
                 return Response(
                     {"error": str(e)},

@@ -3,6 +3,7 @@ Serializer for Admin Panel APIs
 """
 from re import match
 
+from django.conf import settings
 from django.contrib.auth.models import User
 from django.db import transaction
 from django.db.models import Q
@@ -323,9 +324,19 @@ class DialogAcademyCourseActionSerializer(serializers.Serializer):
         
         # Filter courses specifically for Dialog_Academy
         queryset = CourseOverview.objects.filter(org='Dialogue_Academy')
+        if settings.DEBUG:
+            queryset = CourseOverview.objects.filter(org='ilmX')
         
         # Create a list of tuples (course_key_string, display_name)
         self.fields['course_id'].choices = [
             (str(course.id), str(course.id))
             for course in queryset
         ]
+
+
+# Dialog Academy Bulk Enrollments Specific
+class DialogAcademyBulkCourseActionSerializer(DialogAcademyCourseActionSerializer):
+    name = None
+    username = None
+    email = None
+    file = serializers.FileField(write_only=True, required=True, use_url=True, label="Upload CSV File")
