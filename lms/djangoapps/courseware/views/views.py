@@ -53,7 +53,7 @@ from edxmako.shortcuts import marketing_link, render_to_response, render_to_stri
 from edxnotes.helpers import is_feature_enabled
 from lms.djangoapps.ccx.custom_exception import CCXLocatorValidationException
 from lms.djangoapps.certificates import api as certs_api
-from lms.djangoapps.certificates.models import CertificateStatuses
+from lms.djangoapps.certificates.models import CertificateStatuses, CertificateWhitelist
 from lms.djangoapps.commerce.utils import EcommerceService
 from lms.djangoapps.courseware.access import has_access, has_ccx_coach_role
 from lms.djangoapps.courseware.access_utils import check_course_open_for_learner, check_public_access
@@ -1238,20 +1238,21 @@ def _get_cert_data(student, course, enrollment_mode, course_grade=None):
         returns dict if course certificate is available else None.
     """
     cert_data = _certificate_message(student, course, enrollment_mode)
+    is_whitelisted = CertificateWhitelist.objects.filter(user=student, course_id=course.id, whitelist=True).exists()
     if not CourseMode.is_eligible_for_certificate(enrollment_mode, status=cert_data.cert_status):
-        return INELIGIBLE_PASSING_CERT_DATA.get(enrollment_mode)
+        return INELIGIBLE_PASSING_CERT_DATA.get(enrollment_mode), is_whitelisted
 
     certificates_enabled_for_course = certs_api.cert_generation_enabled(course.id)
     if course_grade is None:
         course_grade = CourseGradeFactory().read(student, course)
 
-    if not auto_certs_api.can_show_certificate_message(course, student, course_grade, certificates_enabled_for_course):
-        return
+    if not auto_certs_api.can_show_certificate_message(course, student, course_grade, certificates_enabled_for_course, is_whitelisted):
+        return None, is_whitelisted
 
     if not certs_api.get_active_web_certificate(course) and not auto_certs_api.is_valid_pdf_certificate(cert_data):
-        return
+        return None, is_whitelisted
 
-    return cert_data
+    return cert_data, is_whitelisted
 
 
 def _credit_course_requirements(course_key, student):
@@ -1566,7 +1567,8 @@ def generate_user_cert(request, course_id):
     if not course:
         return HttpResponseBadRequest(_("Course is not valid"))
 
-    if not is_course_passed(student, course):
+    is_whitelisted = CertificateWhitelist.objects.filter(user=student, course_id=course.id, whitelist=True).exists()
+    if not is_course_passed(student, course) and not is_whitelisted:
         log.info(u"User %s has not passed the course: %s", student.username, course_id)
         return HttpResponseBadRequest(_("Your certificate will be available when you pass the course."))
 

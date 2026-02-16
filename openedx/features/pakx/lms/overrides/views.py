@@ -797,6 +797,8 @@ def _progress(request, course_key, student_id):
         request, course_key, student
     )
 
+    cert_data, is_whitelisted = _get_cert_data(student, course, enrollment_mode, course_grade)
+
     context = {
         'course': course,
         'courseware_summary': courseware_summary,
@@ -809,7 +811,8 @@ def _progress(request, course_key, student_id):
         'student': student,
         'credit_course_requirements': _credit_course_requirements(course_key, student),
         'course_expiration_fragment': course_expiration_fragment,
-        'certificate_data': _get_cert_data(student, course, enrollment_mode, course_grade),
+        'certificate_data': cert_data,
+        'whitelisted_certificate': is_whitelisted,
         'block_info': block_info,
         'accumulated_percentages_for_each_block': accumulated_percentages_for_each_block,
         'course_block_tree': course_block_tree

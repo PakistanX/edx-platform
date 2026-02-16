@@ -3086,6 +3086,7 @@ def start_certificate_regeneration(request, course_id):
         CertificateStatuses.downloadable,
         CertificateStatuses.error,
         CertificateStatuses.notpassing,
+        CertificateStatuses.unavailable,
         CertificateStatuses.audit_passing,
         CertificateStatuses.audit_notpassing,
     ]

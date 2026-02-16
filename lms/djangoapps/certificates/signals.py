@@ -86,14 +86,14 @@ def _listen_for_failing_grade(sender, user, course_id, grade, **kwargs):  # pyli
     downstream signal from COURSE_GRADE_CHANGED
     """
     cert = GeneratedCertificate.certificate_for_student(user, course_id)
-    if cert is not None:
-        if CertificateStatuses.is_passing_status(cert.status):
-            cert.mark_notpassing(grade.percent)
-            log.info(u'Certificate marked not passing for {user} : {course} via failing grade: {grade}'.format(
-                user=user.id,
-                course=course_id,
-                grade=grade
-            ))
+    is_whitelisted = CertificateWhitelist.objects.filter(user=user, course_id=course_id, whitelist=True).exists()
+    if cert is not None and not is_whitelisted and CertificateStatuses.is_passing_status(cert.status):
+        cert.mark_notpassing(grade.percent)
+        log.info(u'Certificate marked not passing for {user} : {course} via failing grade: {grade}'.format(
+            user=user.id,
+            course=course_id,
+            grade=grade
+        ))
 
 
 @receiver(LEARNER_NOW_VERIFIED, dispatch_uid="learner_track_changed")
