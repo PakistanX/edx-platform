@@ -73,6 +73,7 @@ from .utils import (
     extract_filters_and_search,
     get_completed_course_count_filters,
     get_course_overview_same_org_filter,
+    get_course_users_qs,
     get_enroll_able_course_qs,
     get_org_users_qs,
     get_request_user_org_id,
@@ -399,6 +400,8 @@ class AnalyticsStats(views.APIView):
         get analytics quick stats about learner and their assigned courses
         """
         user_qs = get_org_users_qs(self.request.user)
+        course_enrolled_user_qs = get_course_users_qs(self.request.user)
+        user_qs = (user_qs |  course_enrolled_user_qs).distinct()
         user_ids = user_qs.values_list('id', flat=True)
 
         today = timezone.now().date()

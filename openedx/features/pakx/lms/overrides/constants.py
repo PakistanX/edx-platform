@@ -35,11 +35,16 @@ COURSE_SLUG_MAPPING = {
 }
 
 TRAINING_SLUG_MAPPING = {
-    'legal-framework-for-trade-pakistan': 'course-v1:PSW+TL02+2023',
     'customs-tariff-essentials': 'course-v1:PSW+TL01+2023',
     'export-goods-services-pakistan': 'course-v1:PSW+TL03+2023',
     'digital-transformation-trade-pakistan': 'course-v1:PSW+TL04+2023',
-    'fundamentals-of-international-trade': 'course-v1:PSW+TL05+2023',
+    'fundamentals-of-international-trade': 'course-v1:PSW+TL02+2023',
+    'legal-framework-for-trade-pakistan': 'course-v1:PSW+TL05+2023',
+    'business-planning-for-export-success': 'course-v1:PSW+TL09+2025',
+    'marketing-analysis-and-strategy': 'course-v1:PSW+TL08+2025',
+    'psw-ecommerce': 'course-v1:PSW+TL07+2025',
+    'guide-to-export-landscape-pakistan': 'course-v1:PSW+TL06+2024',
+    'gateway-to-trade': 'course-v1:PSW+1+2023',
 }
 
 from django.conf import settings

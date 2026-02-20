@@ -234,6 +234,23 @@ def get_org_users_qs(user):
     )
 
 
+def get_course_users_qs(user):
+    """
+    return users from the courses of the organization of the request.user
+    """
+    queryset = User.objects.filter(get_learners_filter())
+    if not user.is_superuser:
+        user_org = get_user_org(user)
+        queryset = queryset.filter(
+            Q(courseenrollment__user__is_active=True) & \
+            Q(courseenrollment__course__org__iregex=user_org)
+        )
+
+    return queryset.select_related(
+        'profile'
+    )
+
+
 def get_enroll_able_course_qs():
     """
     :return: Q filter for enroll-able courses based on course enrollment & course_end dates
