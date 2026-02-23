@@ -223,11 +223,16 @@ def extract_filters_and_search(request):
 
 def get_org_users_qs(user):
     """
-    return users from the same organization as of the request.user
+    return users from the same organization and courses of that organization as of the request.user
     """
     queryset = User.objects.filter(get_learners_filter())
     if not user.is_superuser:
-        queryset = queryset.filter(get_user_same_org_filter(user))
+        # users linked to same organization
+        queryset_1 = queryset.filter(get_user_same_org_filter(user))
+        # users enrolled in courses of same organization
+        queryset_2 = queryset.filter(courseenrollment__course__org__iregex=get_user_org(user))
+
+        queryset = (queryset_1 |  queryset_2).distinct()
 
     return queryset.select_related(
         'profile'
