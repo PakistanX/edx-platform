@@ -8,6 +8,16 @@ from .constants import GROUP_ORGANIZATION_ADMIN, GROUP_TRAINING_MANAGERS
 from .utils import get_user_same_org_filter
 
 
+class IsStaffOrSuperUser(BasePermission):
+    """
+    permission to access only to staff or superusers.
+    """
+    message = 'User is not staff or superuser.'
+
+    def has_permission(self, request, view):
+        return bool(request.user and (request.user.is_staff or request.user.is_superuser))
+
+
 class CanAccessPakXAdminPanel(BasePermission):
     """
     permission to access the PakX admin panel

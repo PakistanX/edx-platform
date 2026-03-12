@@ -2,7 +2,7 @@
 Views for Admin Panel API
 """
 from csv import DictReader, DictWriter
-from datetime import timedelta
+from datetime import datetime, time, timedelta
 from io import StringIO
 from itertools import groupby
 from logging import getLogger
@@ -54,7 +54,7 @@ from .constants import (
     USER_ACCOUNT_DEACTIVATED_MSG
 )
 from .pagination import CourseEnrollmentPagination, PakxAdminAppPagination
-from .permissions import CanAccessPakXAdminPanel, DialogAcademyIsStaffOrAllowedEmail, IsSameOrganization
+from .permissions import CanAccessPakXAdminPanel, DialogAcademyIsStaffOrAllowedEmail, IsSameOrganization, IsStaffOrSuperUser
 from .serializers import (
     CoursesSerializer,
     CourseStatsListSerializer,
@@ -430,7 +430,7 @@ class AnalyticsStats(views.APIView):
 
 class AnalyticsLoginStats(views.APIView):
     """
-    API view for organization level lo login analytics stats
+    API view for organization level login analytics stats
     <lms>/adminpanel/analytics/login/
 
     :return:
@@ -450,15 +450,23 @@ class AnalyticsLoginStats(views.APIView):
 
         # If no date is provided, default to the last 30 days
         if not start_date_str or not end_date_str:
-            end_date = timezone.now()
-            start_date = end_date - timezone.timedelta(days=30)
+            e_date = timezone.now().date()
+            s_date = e_date - timezone.timedelta(days=30)
         else:
-            start_date = timezone.datetime.strptime(start_date_str, '%Y-%m-%d').date()
-            end_date = timezone.datetime.strptime(end_date_str, '%Y-%m-%d').date()
-            if end_date > timezone.now().date():
-                end_date = timezone.now().date()
-            if start_date > end_date:
-                start_date = end_date - timezone.timedelta(days=30)
+            try:
+                s_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+                e_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+            except ValueError:
+                e_date = timezone.now().date()
+                s_date = e_date - timedelta(days=30)
+
+        start_date = timezone.make_aware(datetime.combine(s_date, time.min))
+        end_date = timezone.make_aware(datetime.combine(e_date, time.max))
+
+        if end_date > timezone.now():
+            end_date = timezone.now()
+        if start_date > end_date:
+            start_date = end_date - timezone.timedelta(days=30)
 
         user_qs = user_qs.filter(last_login__range=[start_date, end_date])
 
@@ -473,8 +481,8 @@ class AnalyticsLoginStats(views.APIView):
 
             labels = []
             login_data = []
-            current_date = start_date
-            while current_date <= end_date:
+            current_date = start_date.date()
+            while current_date <= end_date.date():
                 labels.append(current_date.strftime('%Y-%m-%d'))
                 login_data.append(data.get(current_date, 0))
                 current_date += timedelta(days=1)
@@ -523,6 +531,121 @@ class AnalyticsLoginStats(views.APIView):
             data={
                 'labels': labels,
                 'data': login_data,
+            }
+        )
+
+
+class AnalyticsEnrollmentStats(views.APIView):
+    """
+    API view for organization level enrollment analytics stats partitioned by track (honor, audit, verified, etc.).
+    <lms>/adminpanel/analytics/enrollment/
+
+    :return:
+        {
+           'labels': ['2024-09-01', '2024-09-02'],
+           'enrollment_data': {
+                'honor': [5, 10],
+                'audit': [15, 20],
+                'verified': [2, 5]
+           }
+        }
+    """
+    authentication_classes = [SessionAuthentication]
+    permission_classes = [IsStaffOrSuperUser]
+
+    def get(self, request, *args, **kwargs):
+        user_qs = get_org_users_qs(self.request.user)
+        start_date_str = request.GET.get('startDate')
+        end_date_str = request.GET.get('endDate')
+        granularity = request.GET.get('granularity', 'days')
+
+        # If no date is provided, default to the last 30 days
+        if not start_date_str or not end_date_str:
+            e_date = timezone.now().date()
+            s_date = e_date - timezone.timedelta(days=30)
+        else:
+            try:
+                s_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+                e_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+            except ValueError:
+                e_date = timezone.now().date()
+                s_date = e_date - timedelta(days=30)
+
+        start_date = timezone.make_aware(datetime.combine(s_date, time.min))
+        end_date = timezone.make_aware(datetime.combine(e_date, time.max))
+
+        if end_date > timezone.now():
+            end_date = timezone.now()
+        if start_date > end_date:
+            start_date = end_date - timezone.timedelta(days=30)
+
+        # Filter enrollments belonging to the organization's users within the date range
+        enrollment_qs = CourseEnrollment.objects.filter(
+            user__in=user_qs,
+            created__range=[start_date, end_date]
+        )
+
+        modes = ['honor', 'audit', 'verified']
+        labels = []
+        enrollment_data = {mode: [] for mode in modes}
+
+        if granularity == 'days':
+            stats = enrollment_qs.annotate(period=TruncDay('created')) \
+                .values('period', 'mode') \
+                .order_by() \
+                .annotate(count=Count('id'))
+
+            # Map results into a lookup dictionary: {(date, mode): count}
+            data_map = {(s['period'].date(), s['mode']): s['count'] for s in stats}
+            
+            curr = start_date.date()
+            while curr <= end_date.date():
+                labels.append(curr.strftime('%Y-%m-%d'))
+                for mode in modes:
+                    enrollment_data[mode].append(data_map.get((curr, mode), 0))
+                curr += timedelta(days=1)
+
+        elif granularity == 'months':
+            stats = enrollment_qs.annotate(period=TruncMonth('created')) \
+                .values('period', 'mode') \
+                .order_by() \
+                .annotate(count=Count('id'))
+
+            data_map = {(s['period'].strftime('%Y-%m'), s['mode']): s['count'] for s in stats}
+            
+            curr = start_date.replace(day=1)
+            while curr <= end_date:
+                month_key = curr.strftime('%Y-%m')
+                labels.append(curr.strftime('%b %Y'))
+                for mode in modes:
+                    enrollment_data[mode].append(data_map.get((month_key, mode), 0))
+                # Move to next month
+                curr = (curr + timedelta(days=32)).replace(day=1)
+
+        elif granularity == 'quarters':
+            stats = enrollment_qs.annotate(period=TruncQuarter('created')) \
+                .values('period', 'mode') \
+                .order_by() \
+                .annotate(count=Count('id'))
+
+            data_map = {(s['period'].year, (s['period'].month - 1) // 3 + 1, s['mode']): s['count'] for s in stats}
+            
+            for year in range(start_date.year, end_date.year + 1):
+                for q in range(1, 5):
+                    if year == start_date.year and q < ((start_date.month - 1) // 3 + 1):
+                        continue
+                    if year == end_date.year and q > ((end_date.month - 1) // 3 + 1):
+                        break
+                    
+                    labels.append('Q{} {}'.format(q, year))
+                    for mode in modes:
+                        enrollment_data[mode].append(data_map.get((year, q, mode), 0))
+
+        return Response(
+            status=status.HTTP_200_OK,
+            data={
+                'labels': labels,
+                'data': enrollment_data,
             }
         )
 
