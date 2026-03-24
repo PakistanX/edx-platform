@@ -340,6 +340,7 @@ def _accumulate_total_block_counts(total_block_type_counts):
         'pakx_video_quiz': 'problem',
         'openassessment': 'problem',
         'journal_xblock': 'other',
+        'github_xblock': 'problem',
         'feedback': 'other',
         'ai_grader': 'problem',
         'scormxblock': 'other',
