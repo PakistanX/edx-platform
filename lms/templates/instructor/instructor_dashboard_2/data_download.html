@@ -80,8 +80,10 @@ from openedx.core.djangolib.markup import HTML, Text
       <p>
         <input type="button" name="issued-certificates-list" value="${_("View Certificates Issued")}" data-csv="false" data-endpoint="${ section_data['get_issued_certificates_url'] }">
         <input type="button" name="issued-certificates-csv" value="${_("Download CSV of Certificates Issued")}" data-csv="true" data-endpoint="${ section_data['get_issued_certificates_url'] }">
+        <input type="button" name="download-certificate-report" value="${_("Download Certificate URLs Report")}" data-endpoint="${ section_data['download_cert_report_url'] }"/>
       </p>
       <div class="data-display-table certificate-data-display-table" id="data-issued-certificates-table"></div>
+      <div class="issued-certificates-success request-response msg msg-confirm copy"></div>
       <div class="issued-certificates-error request-response-error msg msg-error copy"></div>
     </div>
 

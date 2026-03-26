@@ -30,7 +30,10 @@ from django.utils.translation import ugettext_noop
 
 from bulk_email.tasks import perform_delegate_email_batches
 from lms.djangoapps.instructor_task.tasks_base import BaseInstructorTask
-from lms.djangoapps.instructor_task.tasks_helper.certs import generate_students_certificates
+from lms.djangoapps.instructor_task.tasks_helper.certs import (
+    generate_students_certificates,
+    download_generated_certificates_report
+)
 from lms.djangoapps.instructor_task.tasks_helper.enrollments import (
     upload_enrollment_report,
     upload_exec_summary_report,
@@ -291,6 +294,21 @@ def generate_certificates(entry_id, xmodule_instance_args):
     )
 
     task_fn = partial(generate_students_certificates, xmodule_instance_args)
+    return run_main_task(entry_id, task_fn, action_name)
+
+
+@task(base=BaseInstructorTask)
+def download_certificate_report(entry_id, xmodule_instance_args):
+    """
+    Download generated certificates report.
+    """
+    action_name = ugettext_noop('download generated certificate report')
+    TASK_LOG.info(
+        u"Task: %s, InstructorTask ID: %s, Task type: %s, Preparing for task execution",
+        xmodule_instance_args.get('task_id'), entry_id, action_name
+    )
+
+    task_fn = partial(download_generated_certificates_report, xmodule_instance_args)
     return run_main_task(entry_id, task_fn, action_name)
 
 

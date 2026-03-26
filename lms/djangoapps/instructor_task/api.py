@@ -34,6 +34,7 @@ from lms.djangoapps.instructor_task.tasks import (
     cohort_students,
     course_survey_report_csv,
     delete_problem_state,
+    download_certificate_report,
     enrollment_report_features_csv,
     exec_summary_report_csv,
     export_ora2_data,
@@ -545,3 +546,17 @@ def regenerate_certificates(request, course_key, statuses_to_regenerate):
     )
 
     return instructor_task
+
+
+def submit_certificate_report_task(request, course_key, base_url):
+    """
+    Submits a task to generate a CSV report of generated certificates.
+    """
+    task_type = 'generated_certificate_report'
+    task_input = {}
+    
+    task_input.update({'base_url': base_url})
+    task_class = download_certificate_report
+    task_key = ""
+
+    return submit_task(request, task_type, task_class, course_key, task_input, task_key)

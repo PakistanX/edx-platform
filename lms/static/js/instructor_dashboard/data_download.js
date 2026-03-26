@@ -22,7 +22,9 @@
             this.$container = $container;
             this.$list_issued_certificate_table_btn = this.$container.find("input[name='issued-certificates-list']");
             this.$list_issued_certificate_csv_btn = this.$container.find("input[name='issued-certificates-csv']");
+            this.$download_certificate_report_csv_btn = this.$container.find("input[name='download-certificate-report']");
             this.$certificate_display_table = this.$container.find('.certificate-data-display-table');
+            this.$certificates_request_success = this.$container.find('.issued-certificates-success.request-response');
             this.$certificates_request_err = this.$container.find('.issued-certificates-error.request-response-error');
             this.$list_issued_certificate_table_btn.click(function() {
                 var url = dataDownloadCert.$list_issued_certificate_table_btn.data('endpoint');
@@ -75,6 +77,32 @@
             this.$list_issued_certificate_csv_btn.click(function() {
                 dataDownloadCert.clear_ui();
                 location.href = dataDownloadCert.$list_issued_certificate_csv_btn.data('endpoint') + '?csv=true';
+            });
+            this.$download_certificate_report_csv_btn.click(function() {
+                var url =  dataDownloadCert.$download_certificate_report_csv_btn.data('endpoint');
+                dataDownloadCert.clear_ui();
+                return $.ajax({
+                    type: 'POST',
+                    url: url,
+                    error: function() {
+                        dataDownloadCert.clear_ui();
+                        dataDownloadCert.$certificates_request_err.text(
+                            gettext('Error getting generated certificates report.')
+                        );
+                        return $('.issued_certificates .issued-certificates-error.msg-error').css({
+                            display: 'block'
+                        });
+                    },
+                    success: function(data) {
+                        dataDownloadCert.clear_ui();
+                        dataDownloadCert.$certificates_request_success.text(
+                            gettext('Task to create generated certificates report started. Check reports below shortly.')
+                        );
+                        return $('.issued_certificates .issued-certificates-success.msg-confirm').css({
+                            display: 'block'
+                        });
+                    }
+                });
             });
         }
 

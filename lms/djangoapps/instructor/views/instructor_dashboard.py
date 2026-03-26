@@ -713,6 +713,7 @@ def _section_data_download(course, access):
             'get_course_survey_results', kwargs={'course_id': six.text_type(course_key)}
         ),
         'export_ora2_data_url': reverse('export_ora2_data', kwargs={'course_id': six.text_type(course_key)}),
+        'download_cert_report_url': reverse('generate_cert_report', kwargs={'course_id': six.text_type(course_key)}),
     }
     if not any(access[role] for role in ('data_researcher', 'staff')):
         section_data['is_hidden'] = True

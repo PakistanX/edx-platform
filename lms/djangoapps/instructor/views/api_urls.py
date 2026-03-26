@@ -92,4 +92,5 @@ urlpatterns = [
     url(r'^generate_bulk_certificate_exceptions', api.generate_bulk_certificate_exceptions,
         name='generate_bulk_certificate_exceptions'),
     url(r'^certificate_invalidation_view/$', api.certificate_invalidation_view, name='certificate_invalidation_view'),
+    url(r'^generate_cert_report$', api.generate_cert_report, name="generate_cert_report"),
 ]

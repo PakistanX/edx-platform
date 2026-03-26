@@ -3569,6 +3569,27 @@ def validate_request_data_and_get_certificate(certificate_invalidation, course_k
     return certificate
 
 
+@transaction.non_atomic_requests
+@ensure_csrf_cookie
+@cache_control(no_cache=True, no_store=True, must_revalidate=True)
+@require_course_permission(permissions.VIEW_ISSUED_CERTIFICATES)
+@require_POST
+def generate_cert_report(request, course_id):
+    course_key = CourseKey.from_string(course_id)
+    if not has_access(request.user, 'staff', course_key) and not request.user.is_staff:
+        return HttpResponseForbidden("Requires staff or instructor access.")
+    
+    # We pass the base URL for certificates so the task knows how to build the link
+    base_url = "https://{}/certificates/".format(request.get_host())
+    
+    task = task_api.submit_certificate_report_task(request, course_key, base_url)
+    response_payload = {
+        'success': True,
+        'message': _('Started download generated certificates report task ID {}').format(task.task_id),
+    }
+    return JsonResponse(response_payload)
+
+
 def _get_boolean_param(request, param_name):
     """
     Returns the value of the boolean parameter with the given
