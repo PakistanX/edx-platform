@@ -40,8 +40,8 @@ def is_default_space_activated(request):
 
 def get_space_name_for_footer(request):
     """ Get partner space name for footer """
-    if spaces_enabled():
-        return request.session.get("space_name", 'ilmX')
+    # if spaces_enabled():
+    #     return request.session.get("space_name", 'ilmX')
     return 'ilmX'
 
 
