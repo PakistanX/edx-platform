@@ -530,7 +530,7 @@ class AnalyticsLoginStats(views.APIView):
             status=status.HTTP_200_OK,
             data={
                 'labels': labels,
-                'data': login_data,
+                'login_data': login_data,
             }
         )
 
@@ -546,7 +546,16 @@ class AnalyticsEnrollmentStats(views.APIView):
            'enrollment_data': {
                 'honor': [5, 10],
                 'audit': [15, 20],
-                'verified': [2, 5]
+                'verified': [2, 5],
+                'self-paced': [7, 15],
+                'instructor-led': [15, 20]
+           },
+           'summary_totals': {
+                'honor': 5,
+                'audit': 2,
+                'verified': 3,
+                'self_paced': 0,
+                'instructor_led': 10
            }
         }
     """
@@ -583,69 +592,85 @@ class AnalyticsEnrollmentStats(views.APIView):
         enrollment_qs = CourseEnrollment.objects.filter(
             user__in=user_qs,
             created__range=[start_date, end_date]
+        ).select_related('course')
+
+        summary_totals = enrollment_qs.aggregate(
+            honor=Count('id', filter=Q(mode='honor')),
+            audit=Count('id', filter=Q(mode='audit')),
+            verified=Count('id', filter=Q(mode='verified')),
+            self_paced=Count('id', filter=Q(course__self_paced=True)),
+            instructor_led=Count('id', filter=Q(course__self_paced=False)),
         )
 
-        modes = ['honor', 'audit', 'verified']
+        all_tracks = [
+            'self_paced_honor', 'self_paced_audit', 'self_paced_verified',
+            'instructor_led_honor', 'instructor_led_audit', 'instructor_led_verified'
+        ]
+        enrollment_data = {track: [] for track in all_tracks}
         labels = []
-        enrollment_data = {mode: [] for mode in modes}
+
+        # Helper for conditional aggregation to keep code DRY
+        def get_aggregated_stats(qs, trunc_func):
+            return qs.annotate(period=trunc_func('created')) \
+                .values('period') \
+                .order_by() \
+                .annotate(
+                    # Self-Paced Combos
+                    self_paced_honor=Count('id', filter=Q(course__self_paced=True, mode='honor')),
+                    self_paced_audit=Count('id', filter=Q(course__self_paced=True, mode='audit')),
+                    self_paced_verified=Count('id', filter=Q(course__self_paced=True, mode='verified')),
+                    # Instructor-Led Combos
+                    instructor_led_honor=Count('id', filter=Q(course__self_paced=False, mode='honor')),
+                    instructor_led_audit=Count('id', filter=Q(course__self_paced=False, mode='audit')),
+                    instructor_led_verified=Count('id', filter=Q(course__self_paced=False, mode='verified')),
+                )
 
         if granularity == 'days':
-            stats = enrollment_qs.annotate(period=TruncDay('created')) \
-                .values('period', 'mode') \
-                .order_by() \
-                .annotate(count=Count('id'))
-
-            # Map results into a lookup dictionary: {(date, mode): count}
-            data_map = {(s['period'].date(), s['mode']): s['count'] for s in stats}
+            stats = get_aggregated_stats(enrollment_qs, TruncDay)
+            # Map by date into a lookup dictionary: {date_obj: {'honor': X, 'self-paced': Y, ...}}
+            data_map = {s['period'].date(): s for s in stats}
             
             curr = start_date.date()
             while curr <= end_date.date():
                 labels.append(curr.strftime('%Y-%m-%d'))
-                for mode in modes:
-                    enrollment_data[mode].append(data_map.get((curr, mode), 0))
+                day_counts = data_map.get(curr, {})
+                for track in all_tracks:
+                    enrollment_data[track].append(day_counts.get(track, 0))
                 curr += timedelta(days=1)
 
         elif granularity == 'months':
-            stats = enrollment_qs.annotate(period=TruncMonth('created')) \
-                .values('period', 'mode') \
-                .order_by() \
-                .annotate(count=Count('id'))
-
-            data_map = {(s['period'].strftime('%Y-%m'), s['mode']): s['count'] for s in stats}
+            stats = get_aggregated_stats(enrollment_qs, TruncMonth)
+            data_map = {s['period'].strftime('%Y-%m'): s for s in stats}
             
             curr = start_date.replace(day=1)
             while curr <= end_date:
                 month_key = curr.strftime('%Y-%m')
                 labels.append(curr.strftime('%b %Y'))
-                for mode in modes:
-                    enrollment_data[mode].append(data_map.get((month_key, mode), 0))
-                # Move to next month
+                month_counts = data_map.get(month_key, {})
+                for track in all_tracks:
+                    enrollment_data[track].append(month_counts.get(track, 0))
                 curr = (curr + timedelta(days=32)).replace(day=1)
 
         elif granularity == 'quarters':
-            stats = enrollment_qs.annotate(period=TruncQuarter('created')) \
-                .values('period', 'mode') \
-                .order_by() \
-                .annotate(count=Count('id'))
-
-            data_map = {(s['period'].year, (s['period'].month - 1) // 3 + 1, s['mode']): s['count'] for s in stats}
+            stats = get_aggregated_stats(enrollment_qs, TruncQuarter)
+            data_map = {(s['period'].year, (s['period'].month - 1) // 3 + 1): s for s in stats}
             
             for year in range(start_date.year, end_date.year + 1):
                 for q in range(1, 5):
-                    if year == start_date.year and q < ((start_date.month - 1) // 3 + 1):
-                        continue
-                    if year == end_date.year and q > ((end_date.month - 1) // 3 + 1):
-                        break
+                    if year == start_date.year and q < ((start_date.month - 1) // 3 + 1): continue
+                    if year == end_date.year and q > ((end_date.month - 1) // 3 + 1): break
                     
                     labels.append('Q{} {}'.format(q, year))
-                    for mode in modes:
-                        enrollment_data[mode].append(data_map.get((year, q, mode), 0))
+                    q_counts = data_map.get((year, q), {})
+                    for track in all_tracks:
+                        enrollment_data[track].append(q_counts.get(track, 0))
 
         return Response(
             status=status.HTTP_200_OK,
             data={
                 'labels': labels,
-                'data': enrollment_data,
+                'enrollment_data': enrollment_data,
+                'summary_totals': summary_totals
             }
         )
 
