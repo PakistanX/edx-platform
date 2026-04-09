@@ -786,10 +786,11 @@ def get_certificate_from_template_asset(cert_template_url, context):
             tuple(cfg["box_size"]),
             cfg.get("font", "Helvetica"),
             cfg.get("background", "white"),
-            cfg.get("align", "left")
+            cfg.get("align", "left"),
+            cfg.get("text_color", "black")
         ))
 
-    for text, pos, font_size, box_size, font_path, background, align in values:
+    for text, pos, font_size, box_size, font_path, background, align, text_color in values:
         font = ImageFont.truetype(FONT_MAP.get(font_path), int(font_size * img.info.get("dpi", (300, 300))[0] / 72))
         text_width, _ = font.getsize(text)
         if background:
@@ -799,7 +800,7 @@ def get_certificate_from_template_asset(cert_template_url, context):
         if align == 'right':
             pos = tuple([pos[0] + box_size[0] - text_width, pos[1]])
         
-        draw.text(pos, text, font=font, fill="black")
+        draw.text(pos, text, font=font, fill=text_color)
 
     buffer = BytesIO()
     img.save(buffer, format=img.format)
