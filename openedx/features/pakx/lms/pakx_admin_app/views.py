@@ -3,6 +3,7 @@ Views for Admin Panel API
 """
 from csv import DictReader, DictWriter
 from datetime import datetime, time, timedelta
+from decimal import Decimal
 from io import StringIO
 from itertools import groupby
 from logging import getLogger
@@ -13,7 +14,7 @@ from django.conf import settings
 from django.contrib.auth.models import Group, User
 from django.contrib.sites.models import Site
 from django.db import transaction
-from django.db.models import Count, ExpressionWrapper, F, IntegerField, Prefetch, Q, Sum
+from django.db.models import Count, Exists, ExpressionWrapper, F, IntegerField, OuterRef, Prefetch, Q, Subquery, Sum
 from django.db.models.functions import TruncDay, TruncMonth, TruncQuarter
 from django.http import Http404, HttpResponse
 from django.middleware import csrf
@@ -27,6 +28,7 @@ from rest_framework.filters import OrderingFilter
 from rest_framework.renderers import BrowsableAPIRenderer, JSONRenderer
 from rest_framework.response import Response
 from opaque_keys.edx.keys import CourseKey
+from course_modes.models import CourseMode
 
 from openedx.core.djangoapps.ace_common.template_context import get_base_template_context
 from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
@@ -671,6 +673,248 @@ class AnalyticsEnrollmentStats(views.APIView):
                 'labels': labels,
                 'enrollment_data': enrollment_data,
                 'summary_totals': summary_totals
+            }
+        )
+
+
+TOP_COHORTS_DEFAULT_LIMIT = 10
+
+
+def _get_paid_verified_enrollment_counts_by_course(user_qs, start_date, end_date, org_filter=None):
+    """
+    Return paid verified enrollment counts grouped by course run (course_id).
+
+    Includes:
+    - verified enrollments whose CourseEnrollment.created falls within the window
+    - enrollments created before the window that upgraded from a non-verified mode to
+      verified during the window (from enrollment history; excluded from the first query
+      via created__lt=start_date to avoid double-counting)
+
+    Uses order_by() before annotate so CourseEnrollment.Meta.ordering does not add
+    user/course to GROUP BY and collapse counts to one per learner.
+    """
+    enrollment_filters = Q(
+        user__in=user_qs,
+        mode='verified',
+        created__range=[start_date, end_date],
+    )
+    if org_filter is not None:
+        enrollment_filters &= org_filter
+
+    counts_by_course = {
+        row['course_id']: row['paid_enrollments']
+        for row in CourseEnrollment.objects.filter(enrollment_filters)
+        .values('course_id')
+        .order_by()
+        .annotate(paid_enrollments=Count('id'))
+        .filter(paid_enrollments__gt=0)
+    }
+
+    historical_enrollment = CourseEnrollment.history.model
+    previous_history = historical_enrollment.objects.filter(
+        id=OuterRef('id'),
+        history_date__lt=OuterRef('history_date'),
+    ).order_by('-history_date')
+
+    upgrade_filters = Q(
+        user__in=user_qs,
+        mode='verified',
+        history_type='~',
+        history_date__range=[start_date, end_date],
+        created__lt=start_date,
+    )
+    if org_filter is not None:
+        upgrade_filters &= org_filter
+
+    upgraded_enrollment_ids = historical_enrollment.objects.filter(
+        upgrade_filters
+    ).annotate(
+        previous_mode=Subquery(previous_history.values('mode')[:1]),
+        has_previous_history=Exists(previous_history),
+    ).filter(
+        has_previous_history=True,
+    ).exclude(
+        previous_mode__in=CourseMode.VERIFIED_MODES,
+    ).values_list('id', flat=True).distinct()
+
+    upgrade_count_filters = Q(id__in=upgraded_enrollment_ids)
+    if org_filter is not None:
+        upgrade_count_filters &= org_filter
+
+    for row in CourseEnrollment.objects.filter(upgrade_count_filters).values('course_id').order_by().annotate(
+        paid_enrollments=Count('id')
+    ).filter(paid_enrollments__gt=0):
+        counts_by_course[row['course_id']] = counts_by_course.get(row['course_id'], 0) + row['paid_enrollments']
+
+    return [
+        {'course_id': course_id, 'paid_enrollments': paid_count}
+        for course_id, paid_count in counts_by_course.items()
+        if paid_count > 0
+    ]
+
+
+class AnalyticsTopCohorts(views.APIView):
+    """
+    API view for top-performing course cohorts (course runs) by paid enrollments and realized revenue.
+
+    <lms>/adminpanel/analytics/top-cohorts/
+
+    A cohort here is a course run. Paid enrollments include:
+    - current verified-mode CourseEnrollment rows created in the selected date range
+    - enrollments created before the selected date range but upgraded from a non-verified mode to verified
+      during the selected date range
+
+    Revenue is estimated from the current verified course seat price multiplied by paid enrollment count.
+    It is not order-ledger revenue and does not account for historical price changes or refunds.
+
+    Query params:
+        startDate, endDate (YYYY-MM-DD):
+            Inclusive analytics window; defaults to current calendar month.
+        limit:
+            Max cohorts returned. Defaults to 10 and is capped at 25.
+        sortBy:
+            "revenue" (default) or "enrollments".
+
+    :return:
+        {
+            'cohorts': [
+                {
+                    'course_id': 'course-v1:ORG+CODE+RUN',
+                    'display_name': 'Cohort display name',
+                    'paid_enrollments': 12,
+                    'seat_price': 5000.0,
+                    'revenue': 60000.0,
+                    'currency': 'PKR',
+                    'is_highest_revenue': true,
+                    'is_highest_enrollment': false,
+                },
+            ],
+            'currency': 'PKR',
+            'highlights': {
+                'highest_revenue': { ...cohort fields... },
+                'highest_enrollment': { ...cohort fields... },
+            },
+        }
+    """
+    authentication_classes = [SessionAuthentication]
+    permission_classes = [IsStaffOrSuperUser]
+
+    def get(self, request, *args, **kwargs):
+        user_qs = get_org_users_qs(self.request.user)
+        start_date_str = request.GET.get('startDate')
+        end_date_str = request.GET.get('endDate')
+
+        if not start_date_str or not end_date_str:
+            e_date = timezone.now().date()
+            s_date = e_date.replace(day=1)
+        else:
+            try:
+                s_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+                e_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+            except ValueError:
+                e_date = timezone.now().date()
+                s_date = e_date.replace(day=1)
+
+        start_date = timezone.make_aware(datetime.combine(s_date, time.min))
+        end_date = timezone.make_aware(datetime.combine(e_date, time.max))
+
+        if end_date > timezone.now():
+            end_date = timezone.now()
+        if start_date > end_date:
+            start_date = end_date.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+        try:
+            limit = int(request.GET.get('limit', TOP_COHORTS_DEFAULT_LIMIT))
+        except (TypeError, ValueError):
+            limit = TOP_COHORTS_DEFAULT_LIMIT
+        limit = max(1, min(limit, 25))
+
+        sort_by = request.GET.get('sortBy', 'revenue')
+        if sort_by not in ('revenue', 'enrollments'):
+            sort_by = 'revenue'
+
+        org_filter = None
+        if not request.user.is_superuser:
+            org_filter = Q(course__org__iregex=get_user_org(request.user))
+
+        cohort_stats = _get_paid_verified_enrollment_counts_by_course(
+            user_qs,
+            start_date,
+            end_date,
+            org_filter=org_filter,
+        )
+
+        if not cohort_stats:
+            default_currency = settings.PAID_COURSE_REGISTRATION_CURRENCY[0].upper()
+            return Response(
+                status=status.HTTP_200_OK,
+                data={
+                    'cohorts': [],
+                    'currency': default_currency,
+                    'highlights': {
+                        'highest_revenue': None,
+                        'highest_enrollment': None,
+                    },
+                }
+            )
+
+        course_ids = [stat['course_id'] for stat in cohort_stats]
+        overviews = {
+            overview.id: overview
+            for overview in CourseOverview.objects.filter(id__in=course_ids)
+        }
+
+        cohorts = []
+        default_currency = settings.PAID_COURSE_REGISTRATION_CURRENCY[0].upper()
+
+        for stat in cohort_stats:
+            course_key = stat['course_id']
+            overview = overviews.get(course_key)
+            display_name = overview.display_name if overview else six.text_type(course_key)
+
+            verified_mode = CourseMode.verified_mode_for_course(course_id=course_key)
+            if verified_mode:
+                seat_price = Decimal(verified_mode.min_price)
+                currency = verified_mode.currency.upper()
+            else:
+                seat_price = Decimal('0')
+                currency = default_currency
+
+            paid_enrollments = stat['paid_enrollments']
+            revenue = seat_price * paid_enrollments
+
+            cohorts.append({
+                'course_id': six.text_type(course_key),
+                'display_name': display_name,
+                'paid_enrollments': paid_enrollments,
+                'seat_price': float(seat_price),
+                'revenue': float(revenue),
+                'currency': currency,
+            })
+
+        highest_revenue = max(cohorts, key=lambda cohort: cohort['revenue'])
+        highest_enrollment = max(cohorts, key=lambda cohort: cohort['paid_enrollments'])
+
+        for cohort in cohorts:
+            cohort['is_highest_revenue'] = cohort['course_id'] == highest_revenue['course_id']
+            cohort['is_highest_enrollment'] = cohort['course_id'] == highest_enrollment['course_id']
+
+        if sort_by == 'enrollments':
+            cohorts.sort(key=lambda cohort: cohort['paid_enrollments'], reverse=True)
+        else:
+            cohorts.sort(key=lambda cohort: cohort['revenue'], reverse=True)
+
+        chart_currency = cohorts[0]['currency'] if cohorts else default_currency
+
+        return Response(
+            status=status.HTTP_200_OK,
+            data={
+                'cohorts': cohorts[:limit],
+                'currency': chart_currency,
+                'highlights': {
+                    'highest_revenue': highest_revenue,
+                    'highest_enrollment': highest_enrollment,
+                },
             }
         )
 
