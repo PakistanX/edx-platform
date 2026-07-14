@@ -343,6 +343,7 @@ def _accumulate_total_block_counts(total_block_type_counts):
         'github_xblock': 'problem',
         'feedback': 'other',
         'ai_grader': 'problem',
+        'pxc': 'problem',
         'scormxblock': 'other',
     }
     if total_block_type_counts:
