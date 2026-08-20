@@ -27,6 +27,7 @@ from lms.djangoapps.courseware.user_state_client import DjangoXBlockUserStateCli
 from lms.djangoapps.grades.api import CourseGradeFactory
 from lms.djangoapps.grades.api import context as grades_context
 from lms.djangoapps.grades.api import prefetch_course_and_subsection_grades
+from lms.djangoapps.grades.grade_utils import are_grades_frozen
 from lms.djangoapps.instructor_analytics.basic import list_problem_responses
 from lms.djangoapps.instructor_analytics.csvs import format_dictlist
 from lms.djangoapps.instructor_task.config.waffle import (
@@ -51,6 +52,87 @@ from .runner import TaskProgress
 from .utils import upload_csv_to_report_store
 
 TASK_LOG = logging.getLogger('edx.celery.task')
+
+
+def recalculate_grades_for_course(_xmodule_instance_args, _entry_id, course_id, task_input, action_name):
+    """
+    Recompute course and subsection grades for enrolled learners, tracking
+    progress through the instructor_task framework.
+
+    ``task_input`` may contain:
+        student_id (optional): recompute for just this user id; otherwise all
+            active enrollments in the course are recomputed.
+        force (optional): if truthy, recompute even when the course's grades
+            are frozen. Only ever set from the Django admin by a superuser.
+    """
+    start_time = time()
+    student_id = task_input.get('student_id')
+    force = task_input.get('force', False)
+    problem_location = task_input.get('problem_location')
+
+    # If a problem location is given, recompute only the subsection(s) that
+    # contain that problem; otherwise recompute the whole course grade.
+    scored_block_key = None
+    if problem_location:
+        scored_block_key = UsageKey.from_string(problem_location).map_into_course(course_id)
+
+    enrollments = CourseEnrollment.objects.filter(course_id=course_id, is_active=True)
+    if student_id:
+        enrollments = enrollments.filter(user_id=student_id)
+
+    total = enrollments.count()
+    task_progress = TaskProgress(action_name, total, start_time)
+    task_progress.update_task_state()
+
+    # When grades are frozen we skip the actual recompute unless forced.
+    if are_grades_frozen(course_id) and not force:
+        task_progress.attempted = total
+        task_progress.skipped = total
+        return task_progress.update_task_state()
+
+    if scored_block_key is not None:
+        # Subsection-scoped path: reuse the event-path helper that recomputes
+        # every subsection containing the given problem.
+        # Imported here to avoid a heavy import at module load time.
+        from lms.djangoapps.grades.tasks import _update_subsection_grades
+        for enrollment in enrollments:
+            task_progress.attempted += 1
+            try:
+                _update_subsection_grades(
+                    course_id,
+                    scored_block_key,
+                    only_if_higher=None,
+                    user_id=enrollment.user_id,
+                    score_deleted=False,
+                    force_update_subsections=True,
+                )
+                task_progress.succeeded += 1
+            except Exception:  # pylint: disable=broad-except
+                TASK_LOG.exception(
+                    u'Failed to recalculate subsection grades for user %s in course %s',
+                    enrollment.user_id,
+                    course_id,
+                )
+                task_progress.failed += 1
+            task_progress.update_task_state()
+    else:
+        # Whole-course path: reuse CourseGradeFactory().iter, which pre-fetches
+        # the collected course structure once and force-updates each learner's
+        # course grade (the same call used by the grade report and the
+        # compute_grades management command).
+        users = (enrollment.user for enrollment in enrollments)
+        for _student, _course_grade, error in CourseGradeFactory().iter(
+                users=users, course_key=course_id, force_update=True,
+        ):
+            task_progress.attempted += 1
+            if error:
+                task_progress.failed += 1
+            else:
+                task_progress.succeeded += 1
+            task_progress.update_task_state()
+
+    return task_progress.update_task_state()
+
 
 ENROLLED_IN_COURSE = 'enrolled'
 

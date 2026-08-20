@@ -49,6 +49,7 @@
             this.$field_select_score_single = findAndAssert(this.$section, "input[name='score-select-single']");
             this.$btn_task_history_single = this.$section.find("input[name='task-history-single']");
             this.$table_task_history_single = this.$section.find('.task-history-single-table');
+            this.$btn_recalculate_grades_single = this.$section.find("input[name='recalculate-grades-single']");
             this.$field_exam_grade = this.$section.find("input[name='entrance-exam-student-select-grade']");
             this.$btn_reset_entrance_exam_attempts = this.$section.find("input[name='reset-entrance-exam-attempts']");
             this.$btn_delete_entrance_exam_state = this.$section.find("input[name='delete-entrance-exam-state']");
@@ -65,6 +66,7 @@
             this.$btn_rescore_problem_if_higher_all = this.$section.find("input[name='rescore-problem-all-if-higher']");
             this.$btn_task_history_all = this.$section.find("input[name='task-history-all']");
             this.$table_task_history_all = this.$section.find('.task-history-all-table');
+            this.$btn_recalculate_grades_all = this.$section.find("input[name='recalculate-grades-all']");
             this.instructor_tasks = new (PendingInstructorTasks())(this.$section);
             this.$request_err_enrollment_status = findAndAssert(this.$section, '.student-enrollment-status-container .request-response-error');
             this.$request_err_progress = findAndAssert(this.$section, '.student-progress-container .request-response-error');
@@ -475,6 +477,65 @@
                         );
                     })
                 });
+            });
+            this.$btn_recalculate_grades_single.click(function() {
+                var errorMessage, fullErrorMessage, fullSuccessMessage,
+                    sendData, successMessage, uniqStudentIdentifier;
+                uniqStudentIdentifier = studentadmin.$field_student_select_grade.val();
+                if (!uniqStudentIdentifier) {
+                    return studentadmin.$request_err_grade.text(
+                        gettext('Please enter a student email address or username.')
+                    );
+                }
+                sendData = {
+                    unique_student_identifier: uniqStudentIdentifier,
+                    problem_location: studentadmin.$field_problem_select_single.val()
+                };
+                successMessage = gettext("Started a task to recalculate grades for student '<%- student_id %>'.");  // eslint-disable-line max-len
+                errorMessage = gettext("Error starting a task to recalculate grades for student '<%- student_id %>'. Make sure that the student identifier is spelled correctly.");  // eslint-disable-line max-len
+                fullSuccessMessage = _.template(successMessage)({
+                    student_id: uniqStudentIdentifier
+                });
+                fullErrorMessage = _.template(errorMessage)({
+                    student_id: uniqStudentIdentifier
+                });
+                return $.ajax({
+                    type: 'POST',
+                    dataType: 'json',
+                    url: studentadmin.$btn_recalculate_grades_single.data('endpoint'),
+                    data: sendData,
+                    success: studentadmin.clear_errors_then(function() {
+                        return alert(fullSuccessMessage);  // eslint-disable-line no-alert
+                    }),
+                    error: statusAjaxError(function() {
+                        return studentadmin.$request_err_grade.text(fullErrorMessage);
+                    })
+                });
+            });
+            this.$btn_recalculate_grades_all.click(function() {
+                var confirmMessage, sendData;
+                confirmMessage = gettext('Recalculate grades for all enrolled learners in this course?');
+                if (window.confirm(confirmMessage)) {  // eslint-disable-line no-alert
+                    sendData = {
+                        all_students: true,
+                        problem_location: studentadmin.$field_problem_select_all.val()
+                    };
+                    return $.ajax({
+                        type: 'POST',
+                        dataType: 'json',
+                        url: studentadmin.$btn_recalculate_grades_all.data('endpoint'),
+                        data: sendData,
+                        success: studentadmin.clear_errors_then(function() {
+                            return alert(gettext('Successfully started a task to recalculate grades for all enrolled learners. This may take a while to complete.'));  // eslint-disable-line no-alert, max-len
+                        }),
+                        error: statusAjaxError(function() {
+                            return studentadmin.$request_response_error_all.text(
+                                gettext('Error starting a task to recalculate grades for all enrolled learners.')
+                            );
+                        })
+                    });
+                }
+                return studentadmin.clear_errors();
             });
         }
 

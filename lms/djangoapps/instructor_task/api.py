@@ -41,6 +41,7 @@ from lms.djangoapps.instructor_task.tasks import (
     generate_certificates,
     override_problem_score,
     proctored_exam_results_csv,
+    recalculate_course_grades,
     rescore_problem,
     reset_problem_attempts,
     send_bulk_course_email
@@ -348,6 +349,33 @@ def submit_calculate_grades_csv(request, course_key):
     task_class = calculate_grades_csv
     task_input = {}
     task_key = ""
+
+    return submit_task(request, task_type, task_class, course_key, task_input, task_key)
+
+
+def submit_recalculate_course_grades(request, course_key, student=None, force=False, problem_location=None):
+    """
+    Submit a task to recompute course and subsection grades for enrolled learners.
+
+    If ``student`` (a User) is given, only that learner's grades are recomputed;
+    otherwise every active enrollment in the course is recomputed. ``force``
+    recomputes even when the course's grades are frozen and is only ever passed
+    from the Django admin by a superuser. If ``problem_location`` is given, only
+    the subsection(s) containing that problem are recomputed (recalculation
+    aggregates at the subsection level); otherwise the whole course is recomputed.
+
+    AlreadyRunningError is raised if an equivalent recalculation is already running.
+    """
+    task_type = 'recalculate_course_grades'
+    task_class = recalculate_course_grades
+    task_input = {'force': bool(force)}
+    student_stub = str(student.id) if student is not None else 'all'
+    if student is not None:
+        task_input['student_id'] = student.id
+    if problem_location:
+        task_input['problem_location'] = problem_location
+    task_key_stub = 'recalculate_grades_{}_{}'.format(student_stub, problem_location or 'course')
+    task_key = hashlib.md5(six.b(task_key_stub)).hexdigest()
 
     return submit_task(request, task_type, task_class, course_key, task_input, task_key)
 

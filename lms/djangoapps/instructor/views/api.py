@@ -2268,6 +2268,63 @@ def rescore_problem(request, course_id):
 @require_POST
 @ensure_csrf_cookie
 @cache_control(no_cache=True, no_store=True, must_revalidate=True)
+@require_course_permission(permissions.EDIT_COURSE_ACCESS)
+@common_exceptions_400
+def recalculate_grades(request, course_id):
+    """
+    Submit a background grade recalculation as an instructor task.
+
+    Progress and status are tracked through the instructor_task framework, so
+    the resulting task appears in the "Pending Tasks" table and the Django
+    admin InstructorTask model, and can be revoked there.
+
+    Takes either of the following (mutually exclusive) POST parameters:
+        - unique_student_identifier: an email or username -> recalculate the
+          course and subsection grades for that single learner.
+        - all_students=true -> recalculate grades for every enrolled learner.
+          Whole-course recalculation requires instructor access.
+    """
+    course_key = CourseKey.from_string(course_id)
+    course = get_course_with_access(request.user, 'staff', course_key)
+    all_students = _get_boolean_param(request, 'all_students')
+
+    if all_students and not has_access(request.user, 'instructor', course):
+        return HttpResponseForbidden("Requires instructor access.")
+
+    student_identifier = request.POST.get('unique_student_identifier', None)
+    student = None
+    if student_identifier is not None:
+        student = get_student_from_identifier(student_identifier)
+
+    if all_students and student:
+        return HttpResponseBadRequest(
+            "Cannot recalculate with all_students and unique_student_identifier."
+        )
+
+    # Optional: recompute only the subsection(s) that contain this problem.
+    problem_location = strip_if_string(request.POST.get('problem_location')) or None
+
+    response_payload = {'course_id': text_type(course_key)}
+    if student:
+        response_payload['student'] = student_identifier
+        task_api.submit_recalculate_course_grades(
+            request, course_key, student=student, problem_location=problem_location
+        )
+    elif all_students:
+        task_api.submit_recalculate_course_grades(
+            request, course_key, problem_location=problem_location
+        )
+    else:
+        return HttpResponseBadRequest("Missing query parameters.")
+
+    response_payload['task'] = TASK_SUBMISSION_OK
+    return JsonResponse(response_payload)
+
+
+@transaction.non_atomic_requests
+@require_POST
+@ensure_csrf_cookie
+@cache_control(no_cache=True, no_store=True, must_revalidate=True)
 @require_course_permission(permissions.OVERRIDE_GRADES)
 @require_post_params(problem_to_reset="problem urlname to reset", score='overriding score')
 @common_exceptions_400

@@ -40,7 +40,12 @@ from lms.djangoapps.instructor_task.tasks_helper.enrollments import (
     upload_may_enroll_csv,
     upload_students_csv
 )
-from lms.djangoapps.instructor_task.tasks_helper.grades import CourseGradeReport, ProblemGradeReport, ProblemResponses
+from lms.djangoapps.instructor_task.tasks_helper.grades import (
+    CourseGradeReport,
+    ProblemGradeReport,
+    ProblemResponses,
+    recalculate_grades_for_course
+)
 from lms.djangoapps.instructor_task.tasks_helper.misc import (
     cohort_students_and_upload,
     upload_course_survey_report,
@@ -84,6 +89,20 @@ def rescore_problem(entry_id, xmodule_instance_args):
 
     visit_fcn = partial(perform_module_state_update, update_fcn, None)
     return run_main_task(entry_id, visit_fcn, action_name)
+
+
+@task(base=BaseInstructorTask, routing_key=settings.POLICY_CHANGE_GRADES_ROUTING_KEY)
+def recalculate_course_grades(entry_id, xmodule_instance_args):
+    """Recomputes course and subsection grades for enrolled learners.
+
+    `entry_id` is the id value of the InstructorTask entry that corresponds to this task.
+    The entry's `task_input` may contain a `student_id` (to limit the recompute to a
+    single learner) and a `force` flag (to recompute even when grades are frozen).
+    """
+    # Translators: This is a past-tense verb that is inserted into task progress messages as {action}.
+    action_name = ugettext_noop('recalculated')
+    task_fn = partial(recalculate_grades_for_course, xmodule_instance_args)
+    return run_main_task(entry_id, task_fn, action_name)
 
 
 @task(base=BaseInstructorTask)

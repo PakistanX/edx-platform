@@ -7,7 +7,8 @@ from functools import wraps
 from config_models.admin import ConfigurationModelAdmin
 from django import forms
 from django.conf import settings
-from django.contrib import admin
+from django.contrib import admin, messages
+from django.contrib.admin import helpers as admin_helpers
 from django.contrib.admin.sites import NotRegistered
 from django.contrib.admin.utils import unquote
 from django.contrib.auth import get_user_model
@@ -17,6 +18,7 @@ from django.contrib.auth.forms import UserChangeForm as BaseUserChangeForm
 from django.db import models, router, transaction
 from django.http import HttpResponse, HttpResponseRedirect
 from django.http.request import QueryDict
+from django.shortcuts import render
 from django.urls import reverse
 from django.utils.translation import ngettext
 from django.utils.translation import ugettext_lazy as _
@@ -246,6 +248,72 @@ class CourseEnrollmentAdmin(admin.ModelAdmin):
     raw_id_fields = ('user', 'course')
     search_fields = ('course__id', 'mode', 'user__username',)
     form = CourseEnrollmentForm
+    actions = ['recalculate_grades']
+
+    def recalculate_grades(self, request, queryset):
+        """
+        Admin action: enqueue a grade recalculation for each selected enrollment.
+
+        Presents an intermediate confirmation page listing the selected
+        enrollments and offering a "Force recalculation even if grades are
+        frozen" checkbox (honored only for superusers). On confirmation, each
+        selected enrollment is submitted through the instructor_task framework,
+        so the resulting tasks are visible (and revocable) in the InstructorTask
+        admin and the instructor dashboard.
+
+        Select a single enrollment to recalculate one learner, or filter by
+        course id and select all to recalculate the whole course.
+        """
+        # Imported here to avoid importing the LMS instructor_task app at module
+        # load time (this admin module is also loaded outside the LMS process).
+        from lms.djangoapps.instructor_task.api import submit_recalculate_course_grades
+        from lms.djangoapps.instructor_task.api_helper import AlreadyRunningError
+
+        if request.POST.get('confirm'):
+            force = bool(request.POST.get('force_if_frozen'))
+            if force and not request.user.is_superuser:
+                self.message_user(
+                    request,
+                    u"Only superusers may force recalculation of frozen grades; running without force.",
+                    level=messages.WARNING,
+                )
+                force = False
+            submitted = 0
+            skipped = 0
+            for enrollment in queryset:
+                try:
+                    submit_recalculate_course_grades(
+                        request,
+                        enrollment.course_id,
+                        student=enrollment.user,
+                        force=force,
+                    )
+                    submitted += 1
+                except AlreadyRunningError:
+                    skipped += 1
+            self.message_user(
+                request,
+                u"Submitted grade recalculation for {} enrollment(s){}; {} already running.".format(
+                    submitted,
+                    u" (forced)" if force else u"",
+                    skipped,
+                ),
+            )
+            return None
+
+        # First step: show the confirmation page.
+        context = dict(
+            self.admin_site.each_context(request),
+            title=_('Recalculate grades'),
+            queryset=queryset,
+            enrollments=queryset,
+            action_checkbox_name=admin_helpers.ACTION_CHECKBOX_NAME,
+            selected_ids=queryset.values_list('pk', flat=True),
+            is_superuser=request.user.is_superuser,
+            opts=self.model._meta,
+        )
+        return render(request, 'admin/student/courseenrollment/recalculate_grades_confirmation.html', context)
+    recalculate_grades.short_description = u"Recalculate grades for selected enrollments"
 
     def get_search_results(self, request, queryset, search_term):
         qs, use_distinct = super(CourseEnrollmentAdmin, self).get_search_results(request, queryset, search_term)

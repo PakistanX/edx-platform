@@ -638,6 +638,7 @@ def _section_student_admin(course, access):
             kwargs={'course_id': six.text_type(course_key)},
         ),
         'rescore_problem_url': reverse('rescore_problem', kwargs={'course_id': six.text_type(course_key)}),
+        'recalculate_grades_url': reverse('recalculate_grades', kwargs={'course_id': six.text_type(course_key)}),
         'override_problem_score_url': reverse(
             'override_problem_score',
             kwargs={'course_id': six.text_type(course_key)}
