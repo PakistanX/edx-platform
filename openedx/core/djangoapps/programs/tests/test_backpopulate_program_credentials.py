@@ -344,6 +344,71 @@ class BackpopulateProgramCredentialsTests(CatalogIntegrationMixin, CredentialsAp
 
         mock_task.assert_called_once_with(self.alice.username)
 
+    def test_handle_usernames_cli(self, mock_task, mock_get_programs):
+        """
+        Verify that a --usernames argument passed on the command line restricts the
+        candidates that get enqueued. Regression: CLI arguments were previously only
+        read on the --args-from-database path and were silently ignored otherwise.
+        """
+        data = [
+            ProgramFactory(
+                courses=[
+                    CourseFactory(course_runs=[
+                        CourseRunFactory(key=self.course_run_key),
+                    ]),
+                ]
+            ),
+        ]
+        mock_get_programs.return_value = data
+
+        GeneratedCertificateFactory(
+            user=self.alice,
+            course_id=self.course_run_key,
+            mode=MODES.verified,
+            status=CertificateStatuses.downloadable,
+        )
+        GeneratedCertificateFactory(
+            user=self.bob,
+            course_id=self.course_run_key,
+            mode=MODES.verified,
+            status=CertificateStatuses.downloadable,
+        )
+
+        call_command('backpopulate_program_credentials', commit=True, usernames=[self.alice.username])
+
+        # Only alice was named, so bob must not be enqueued even though he qualifies.
+        mock_task.assert_called_once_with(self.alice.username)
+
+    def test_handle_program_uuids_cli(self, mock_task, mock_get_programs):
+        """
+        Verify that a --program-uuids argument passed on the command line scopes the
+        catalog load to just those programs. Regression: the CLI argument was ignored,
+        so every program across all sites was loaded.
+        """
+        data = [
+            ProgramFactory(
+                courses=[
+                    CourseFactory(course_runs=[
+                        CourseRunFactory(key=self.course_run_key),
+                    ]),
+                ]
+            ),
+        ]
+        mock_get_programs.return_value = data
+
+        GeneratedCertificateFactory(
+            user=self.alice,
+            course_id=self.course_run_key,
+            mode=MODES.verified,
+            status=CertificateStatuses.downloadable,
+        )
+
+        call_command('backpopulate_program_credentials', commit=True, program_uuids=['test-uuid'])
+
+        # Scoped load: get_programs is queried by uuid, not per-site.
+        mock_get_programs.assert_called_once_with(uuids=['test-uuid'])
+        mock_task.assert_called_once_with(self.alice.username)
+
     @mock.patch(COMMAND_MODULE + '.logger.exception')
     def test_handle_enqueue_failure(self, mock_log, mock_task, mock_get_programs):
         """Verify that failure to enqueue a task doesn't halt execution."""
