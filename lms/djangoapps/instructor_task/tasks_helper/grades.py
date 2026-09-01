@@ -2,11 +2,14 @@
 Functionality for generating grade reports.
 """
 
+import csv
+import io
 import logging
 import re
 from collections import OrderedDict, defaultdict
 from datetime import datetime
 from itertools import chain
+from tempfile import TemporaryFile
 from time import time
 
 import six
@@ -49,7 +52,7 @@ from xmodule.partitions.partitions_service import PartitionService
 from xmodule.split_test_module import get_split_user_partitions
 
 from .runner import TaskProgress
-from .utils import upload_csv_to_report_store
+from .utils import upload_csv_to_report_store, upload_file_to_report_store
 
 TASK_LOG = logging.getLogger('edx.celery.task')
 
@@ -502,19 +505,69 @@ class CourseGradeReport(object):
     def _generate(self, context):
         """
         Internal method for generating a grade report for the given context.
+
+        Rows are streamed batch-by-batch straight to a spooled temporary file and
+        uploaded from there, so the full result set is never held in memory (which
+        previously caused OOM on large courses).
         """
         context.update_status(u'Starting grades')
         success_headers = self._success_headers(context)
         error_headers = self._error_headers()
         batched_rows = self._batched_rows(context)
 
-        context.update_status(u'Compiling grades')
-        success_rows, error_rows = self._compile(context, batched_rows)
-
-        context.update_status(u'Uploading grades')
-        self._upload(context, success_headers, success_rows, error_headers, error_rows)
+        context.update_status(u'Compiling and uploading grades')
+        self._stream_and_upload(context, success_headers, error_headers, batched_rows)
 
         return context.update_status(u'Completed grades')
+
+    def _stream_and_upload(self, context, success_headers, error_headers, batched_rows):
+        """
+        Write each batch of rows to an on-disk temporary file and upload the
+        finished files to the report store without buffering the whole CSV in
+        memory. This bounds peak memory to roughly a single batch regardless of
+        course size.
+        """
+        date = datetime.now(UTC)
+        succeeded = 0
+        failed = 0
+
+        success_file = TemporaryFile()
+        error_file = TemporaryFile()
+        success_text = io.TextIOWrapper(success_file, encoding='utf-8', newline='')
+        error_text = io.TextIOWrapper(error_file, encoding='utf-8', newline='')
+        try:
+            success_writer = csv.writer(success_text)
+            error_writer = csv.writer(error_text)
+            success_writer.writerow(success_headers)
+            wrote_error_header = False
+
+            for batch_success_rows, batch_error_rows in batched_rows:
+                for row in batch_success_rows:
+                    success_writer.writerow(row)
+                    succeeded += 1
+                for row in batch_error_rows:
+                    if not wrote_error_header:
+                        error_writer.writerow(error_headers)
+                        wrote_error_header = True
+                    error_writer.writerow(row)
+                    failed += 1
+
+                context.task_progress.succeeded = succeeded
+                context.task_progress.failed = failed
+                context.task_progress.attempted = succeeded + failed
+                context.task_progress.update_task_state()
+
+            success_text.flush()
+            success_file.seek(0)
+            upload_file_to_report_store(success_file, 'grade_report', context.course_id, date)
+            if wrote_error_header:
+                error_text.flush()
+                error_file.seek(0)
+                upload_file_to_report_store(error_file, 'grade_report_err', context.course_id, date)
+        finally:
+            # Closing the text wrapper also closes the underlying temp file.
+            success_text.close()
+            error_text.close()
 
     def _success_headers(self, context):
         """

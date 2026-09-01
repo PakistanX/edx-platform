@@ -48,6 +48,33 @@ def upload_csv_to_report_store(rows, csv_name, course_id, timestamp, config_name
     return report_name
 
 
+def upload_file_to_report_store(file_handle, csv_name, course_id, timestamp, config_name='GRADES_DOWNLOAD'):
+    """
+    Upload an already-serialized, UTF-8 encoded CSV file-like object using
+    ReportStore, streaming it to storage without buffering the whole file in
+    memory. Use this instead of `upload_csv_to_report_store` for large reports.
+
+    Arguments:
+        file_handle: a binary file-like object positioned anywhere; it is read
+            from the beginning.
+        csv_name: Name of the resulting CSV.
+        course_id: ID of the course.
+
+    Returns:
+        report_name: string - Name of the generated report.
+    """
+    report_store = ReportStore.from_config(config_name)
+    report_name = u"{course_prefix}_{csv_name}_{timestamp_str}.csv".format(
+        course_prefix=course_filename_prefix_generator(course_id),
+        csv_name=csv_name,
+        timestamp_str=timestamp.strftime("%Y-%m-%d-%H%M")
+    )
+
+    report_store.store_file(course_id, report_name, file_handle)
+    tracker_emit(csv_name)
+    return report_name
+
+
 def tracker_emit(report_name):
     """
     Emits a 'report.requested' event for the given report.
