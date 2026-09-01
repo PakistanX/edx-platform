@@ -29,4 +29,3 @@ class CommonInitializationConfig(AppConfig):
         mimetypes.add_type('application/x-font-opentype', '.otf')
         mimetypes.add_type('application/x-font-ttf', '.ttf')
         mimetypes.add_type('application/font-woff', '.woff')
-        mimetypes.add_type('application/x-pbix', '.pbix')

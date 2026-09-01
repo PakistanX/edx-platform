@@ -37,6 +37,7 @@ from openedx.core.djangoapps.site_configuration import helpers as configuration_
 from openedx.core.djangoapps.user_api.accounts.image_helpers import get_profile_image_urls_for_user
 from openedx.core.lib.celery.task_utils import emulate_http_request
 from openedx.features.pakx.lms.overrides.models import CourseProgressStats
+from organizations.models import Organization
 from student.models import CourseAccessRole, CourseEnrollment, LanguageProficiency
 
 from .message_types import DialogAcademyUserEnrollmentNotification
@@ -74,14 +75,14 @@ from .utils import (
     do_user_and_courses_have_same_org,
     extract_filters_and_search,
     get_completed_course_count_filters,
-    get_course_overview_same_org_filter,
+    get_effective_org_regex,
     get_enroll_able_course_qs,
     get_org_users_qs,
     get_request_user_org_id,
     get_roles_q_filters,
     get_user_data_from_bulk_registration_file,
-    get_user_org,
     is_courses_enroll_able,
+    is_unrestricted_admin,
     save_file_to_contentstore
 )
 
@@ -129,8 +130,9 @@ class UserCourseEnrollmentsListAPI(generics.ListAPIView):
     def get_queryset(self):
         qs = CourseEnrollment.objects.filter(user_id=self.kwargs['user_id'], is_active=True)
 
-        if not self.request.user.is_superuser:
-            qs = qs.filter(course__org__iregex=get_user_org(self.request.user))
+        org_regex = get_effective_org_regex(self.request)
+        if org_regex is not None:
+            qs = qs.filter(course__org__iregex=org_regex)
 
         return qs.select_related(
             'enrollment_stats',
@@ -161,10 +163,10 @@ class UserProfileViewSet(viewsets.ModelViewSet):
 
     def get_object(self):
         group_qs = Group.objects.filter(name__in=[GROUP_TRAINING_MANAGERS, GROUP_ORGANIZATION_ADMIN]).order_by('name')
-        completed_count, in_progress_count = get_completed_course_count_filters(req_user=self.request.user)
+        completed_count, in_progress_count = get_completed_course_count_filters(request=self.request)
 
         user_obj = get_org_users_qs(
-            self.request.user
+            self.request
         ).filter(
             id=self.kwargs['pk']
         ).prefetch_related(
@@ -278,7 +280,7 @@ class UserProfileViewSet(viewsets.ModelViewSet):
         if self.request.query_params.get("ordering"):
             self.ordering = self.request.query_params['ordering'].split(',') + self.ordering
 
-        queryset = get_org_users_qs(self.request.user).exclude(id=self.request.user.id)
+        queryset = get_org_users_qs(self.request).exclude(id=self.request.user.id)
         group_qs = Group.objects.filter(name__in=[GROUP_TRAINING_MANAGERS, GROUP_ORGANIZATION_ADMIN]).order_by('name')
         return queryset.select_related(
             'profile'
@@ -367,7 +369,7 @@ class CourseEnrolmentViewSet(viewsets.ModelViewSet):
         if not do_user_and_courses_have_same_org(request.data["course_keys"], request.user):
             return Response(ENROLLMENT_COURSE_DIFF_ORG_ERROR_MSG, status=status.HTTP_400_BAD_REQUEST)
 
-        user_qs = get_org_users_qs(request.user).filter(id__in=request.data["user_ids"]).values_list('id', flat=True)
+        user_qs = get_org_users_qs(request).filter(id__in=request.data["user_ids"]).values_list('id', flat=True)
 
         if len(request.data["user_ids"]) != len(user_qs):
             other_org_users = list(set(request.data["user_ids"]) - set(list(user_qs)))
@@ -400,7 +402,7 @@ class AnalyticsStats(views.APIView):
         """
         get analytics quick stats about learner and their assigned courses
         """
-        user_qs = get_org_users_qs(self.request.user)
+        user_qs = get_org_users_qs(self.request)
         user_ids = user_qs.values_list('id', flat=True)
 
         today = timezone.now().date()
@@ -409,7 +411,7 @@ class AnalyticsStats(views.APIView):
         monthly_active_user = user_qs.filter(last_login__gte=start_of_month).exclude(last_login__isnull=True).count()
 
         completed_count, in_progress_count = get_completed_course_count_filters(
-            exclude_staff_superuser=True, req_user=self.request.user
+            exclude_staff_superuser=True, request=self.request
         )
         course_stats = user_qs.annotate(
             passed=ExpressionWrapper(completed_count, output_field=IntegerField()),
@@ -445,7 +447,7 @@ class AnalyticsLoginStats(views.APIView):
     permission_classes = [CanAccessPakXAdminPanel]
 
     def get(self, request, *args, **kwargs):  # pylint: disable=unused-argument
-        user_qs = get_org_users_qs(self.request.user)
+        user_qs = get_org_users_qs(self.request)
         start_date_str = request.GET.get('startDate')
         end_date_str = request.GET.get('endDate')
         granularity = request.GET.get('granularity', 'days')  # default granularity is days
@@ -565,7 +567,7 @@ class AnalyticsEnrollmentStats(views.APIView):
     permission_classes = [IsStaffOrSuperUser]
 
     def get(self, request, *args, **kwargs):
-        user_qs = get_org_users_qs(self.request.user)
+        user_qs = get_org_users_qs(self.request)
         start_date_str = request.GET.get('startDate')
         end_date_str = request.GET.get('endDate')
         granularity = request.GET.get('granularity', 'days')
@@ -800,7 +802,7 @@ class AnalyticsTopCohorts(views.APIView):
     permission_classes = [IsStaffOrSuperUser]
 
     def get(self, request, *args, **kwargs):
-        user_qs = get_org_users_qs(self.request.user)
+        user_qs = get_org_users_qs(self.request)
         start_date_str = request.GET.get('startDate')
         end_date_str = request.GET.get('endDate')
 
@@ -833,9 +835,8 @@ class AnalyticsTopCohorts(views.APIView):
         if sort_by not in ('revenue', 'enrollments'):
             sort_by = 'revenue'
 
-        org_filter = None
-        if not request.user.is_superuser:
-            org_filter = Q(course__org__iregex=get_user_org(request.user))
+        org_regex = get_effective_org_regex(request)
+        org_filter = Q(course__org__iregex=org_regex) if org_regex is not None else None
 
         cohort_stats = _get_paid_verified_enrollment_counts_by_course(
             user_qs,
@@ -964,15 +965,16 @@ class CourseStatsListAPI(generics.ListAPIView):
 
         completed_count, in_progress_count = get_completed_course_count_filters(
             exclude_staff_superuser=True,
-            req_user=self.request.user,
+            request=self.request,
             active_users_only=progress_filters['active_only']
         )
         overview_qs = CourseOverview.objects.filter(
             display_name__icontains=search_text
         ) if search_text else CourseOverview.objects.all()
 
-        if not self.request.user.is_superuser:
-            overview_qs = overview_qs.filter(get_course_overview_same_org_filter(self.request.user))
+        org_regex = get_effective_org_regex(self.request)
+        if org_regex is not None:
+            overview_qs = overview_qs.filter(org__iregex=org_regex)
         overview_qs = overview_qs.annotate(in_progress=in_progress_count, completed=completed_count)
 
         if progress_filters['completed'] and progress_filters['in_progress']:
@@ -1058,14 +1060,15 @@ class LearnerListAPI(generics.ListAPIView):
     def get_queryset(self):
         search_text, progress_filters = extract_filters_and_search(self.request)
 
-        user_qs = get_org_users_qs(self.request.user)
+        user_qs = get_org_users_qs(self.request)
         enrollment_qs = CourseEnrollment.objects.filter(is_active=True)
 
         if search_text:
             user_qs = user_qs.filter(profile__name__icontains=search_text)
 
-        if not self.request.user.is_superuser:
-            enrollment_qs = enrollment_qs.filter(course__org__iregex=get_user_org(self.request.user))
+        org_regex = get_effective_org_regex(self.request)
+        if org_regex is not None:
+            enrollment_qs = enrollment_qs.filter(course__org__iregex=org_regex)
 
         user_qs, enrollment_qs = self.apply_learner_progress_filters(progress_filters, user_qs, enrollment_qs)
 
@@ -1173,7 +1176,7 @@ class UserInfo(views.APIView):
         """
         get user's basic info
         """
-        if self.request.user.is_superuser:
+        if is_unrestricted_admin(self.request.user):
             languages_qs = LanguageProficiency.objects.all()
         else:
             languages_qs = LanguageProficiency.objects.filter(
@@ -1188,6 +1191,7 @@ class UserInfo(views.APIView):
             'name': self.request.user.profile.name,
             'username': self.request.user.username,
             'is_superuser': self.request.user.is_superuser,
+            'is_staff': self.request.user.is_staff,
             'id': self.request.user.id,
             'csrf_token': csrf.get_token(self.request),
             'languages': [lang[0] for lang in groupby(languages)],
@@ -1202,6 +1206,30 @@ class UserInfo(views.APIView):
             user_info['role'] = TRAINING_MANAGER if user_groups.name == GROUP_TRAINING_MANAGERS else ORG_ADMIN
 
         return Response(status=status.HTTP_200_OK, data=user_info)
+
+
+class OrganizationListAPI(views.APIView):
+    """
+    List organizations selectable as a data filter in the admin panel.
+    <lms>/adminpanel/organizations/
+
+    Restricted to unrestricted admins (Django staff / superusers); course staff
+    are scoped to their own org and never receive this list.
+
+    :return:
+        [
+            {"short_name": "acme", "name": "Acme Inc."},
+            {"short_name": "globex", "name": "Globex"}
+        ]
+    """
+    authentication_classes = [SessionAuthentication]
+    permission_classes = [IsStaffOrSuperUser]
+
+    def get(self, request, *args, **kwargs):  # pylint: disable=unused-argument
+        organizations = Organization.objects.filter(
+            active=True
+        ).order_by('name').values('short_name', 'name')
+        return Response(status=status.HTTP_200_OK, data=list(organizations))
 
 
 class CourseListAPI(generics.ListAPIView):
@@ -1221,8 +1249,9 @@ class CourseListAPI(generics.ListAPIView):
 
     def get_queryset(self):
         queryset = CourseOverview.objects.filter(get_enroll_able_course_qs())
-        if not self.request.user.is_superuser:
-            queryset = queryset.filter(get_course_overview_same_org_filter(self.request.user))
+        org_regex = get_effective_org_regex(self.request)
+        if org_regex is not None:
+            queryset = queryset.filter(org__iregex=org_regex)
 
         user_id = self.request.query_params.get('user_id', '').strip().lower()
         if user_id:
@@ -1254,7 +1283,7 @@ class UserSearchInputListAPI(views.APIView):
     permission_classes = [CanAccessPakXAdminPanel]
 
     def get(self, *args, **kwargs):  # pylint: disable=unused-argument
-        qs = get_org_users_qs(self.request.user).exclude(id=self.request.user.id)
+        qs = get_org_users_qs(self.request).exclude(id=self.request.user.id)
         users = {user.id: {'email': user.email} for user in qs}
         return Response(status=status.HTTP_200_OK, data={'users': users})
 

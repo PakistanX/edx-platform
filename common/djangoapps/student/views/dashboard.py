@@ -800,7 +800,7 @@ def student_dashboard(request):
     # get list of courses having pre-requisites yet to be completed
     courses_having_prerequisites = frozenset(
         enrollment.course_id for enrollment in course_enrollments
-        if enrollment.course_overview.pre_requisite_courses
+        if any(enrollment.course_overview.pre_requisite_courses)
     )
     courses_requirements_not_met = get_pre_requisite_courses_not_completed(user, courses_having_prerequisites)
 
