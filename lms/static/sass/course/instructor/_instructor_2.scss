@@ -1,3 +1,96 @@
+// Grade-report generation options card (progress columns + block-structure
+// mode). Shared by the two instructor-dashboard rule blocks below so the
+// styling lives in one place.
+@mixin grade-report-options-card {
+  margin: $baseline 0 ($baseline*1.5);
+  padding: $baseline ($baseline*1.25);
+  border: 1px solid #d0d0d0;
+  border-radius: 3px;
+  background: #f7f7f7;
+
+  // Keep the Generate buttons from crowding the options card above them.
+  & + p {
+    margin-top: $baseline;
+  }
+
+  .grade-report-option {
+    & + .grade-report-option {
+      margin-top: $baseline;
+      padding-top: $baseline;
+      border-top: 1px solid #e2e2e2;
+    }
+  }
+
+  // Normalize typography so labels, selects and tips match the page.
+  label,
+  select,
+  .option-title,
+  .option-tip {
+    font-family: inherit;
+    font-size: 0.9rem;
+    line-height: 1.4;
+  }
+
+  .option-check {
+    display: flex;
+    align-items: baseline;
+    margin: 0;
+    cursor: pointer;
+
+    input[type="checkbox"] {
+      margin: 0 ($baseline/3) 0 0;
+      flex: 0 0 auto;
+    }
+  }
+
+  .option-title {
+    display: inline-block;
+    margin: 0 0 ($baseline/2);
+    font-weight: 600;
+    color: #3c3c3c;
+  }
+
+  label.option-title {
+    cursor: pointer;
+  }
+
+  select {
+    display: block;
+    min-width: 320px;
+    max-width: 100%;
+    margin: 0 0 ($baseline/2);
+    padding: ($baseline/4) ($baseline/3);
+  }
+
+  .option-tip {
+    display: block;
+    margin: 0;
+    color: #6a6a6a;
+    font-size: 0.82rem;
+  }
+
+  .batch-range-fields {
+    display: flex;
+    flex-wrap: wrap;
+    margin: ($baseline/4) 0 ($baseline/2);
+
+    label {
+      display: flex;
+      flex-direction: column;
+      margin: 0 $baseline ($baseline/3) 0;
+      font-weight: 600;
+      color: #3c3c3c;
+    }
+
+    input[type="number"] {
+      width: 140px;
+      max-width: 100%;
+      margin-top: ($baseline/4);
+      padding: ($baseline/4) ($baseline/3);
+    }
+  }
+}
+
 @mixin idashbutton ($color) {
   @include button(simple, $color);
 
@@ -1515,6 +1608,11 @@
         text-align: left;
       }
     }
+
+    // Grade-report generation options (progress columns + block-structure mode).
+    .grade-report-options {
+      @include grade-report-options-card;
+    }
   }
 
   .block-browser {
@@ -1827,6 +1925,11 @@ input[name="subject"] {
       .file-download-duration {
         text-align: left;
       }
+    }
+
+    // Grade-report generation options (progress columns + block-structure mode).
+    .grade-report-options {
+      @include grade-report-options-card;
     }
   }
 

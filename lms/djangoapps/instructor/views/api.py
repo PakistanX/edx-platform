@@ -82,6 +82,7 @@ from lms.djangoapps.instructor.views import INVOICE_KEY
 from lms.djangoapps.instructor.views.instructor_task_helpers import extract_email_features, extract_task_features
 from lms.djangoapps.instructor_task import api as task_api
 from lms.djangoapps.instructor_task.api_helper import AlreadyRunningError, QueueConnectionError
+from lms.djangoapps.instructor_task.config.waffle import grade_report_batch_range_enabled
 from lms.djangoapps.instructor_task.models import InstructorTask, ReportStore
 from openedx.core.djangoapps.ace_common.template_context import get_base_template_context
 from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
@@ -2658,6 +2659,66 @@ def export_ora2_data(request, course_id):
     return JsonResponse({"status": success_status})
 
 
+def _parse_grade_report_batch_input(post, course_key):
+    """
+    Validate the advanced grade-report batch controls (custom batch size and a
+    start/end learner-row range) from ``post`` for the given course.
+
+    Returns a dict of validated task_input keys (any of ``user_batch_size``,
+    ``batch_start``, ``batch_end``). Raises ``ValueError`` with a human-readable
+    message on any invalid input, so the caller rejects the request instead of
+    submitting a task that would silently produce the wrong rows.
+
+    Rows are 0-based positions into the id-ordered enrolled-learner list; the
+    range is half-open ``[start, end)``.
+    """
+    # Imported lazily: tasks_helper.grades pulls in heavy modulestore/courseware
+    # dependencies, and this view module is import-order sensitive.
+    from lms.djangoapps.instructor_task.tasks_helper.grades import grade_report_enrolled_count
+
+    max_batch_size = getattr(settings, 'GRADE_REPORT_MAX_BATCH_SIZE', 10000)
+    result = {}
+
+    def _as_int(name, raw):
+        try:
+            return int(raw)
+        except (TypeError, ValueError):
+            raise ValueError(_('{name} must be a whole number.').format(name=name))
+
+    raw_batch_size = post.get('batch_size')
+    if raw_batch_size not in (None, ''):
+        batch_size = _as_int(_('Batch size'), raw_batch_size)
+        if batch_size < 1 or batch_size > max_batch_size:
+            raise ValueError(
+                _('Batch size must be between 1 and {max}.').format(max=max_batch_size)
+            )
+        result['user_batch_size'] = batch_size
+
+    raw_start = post.get('batch_start')
+    raw_end = post.get('batch_end')
+    if raw_start not in (None, '') or raw_end not in (None, ''):
+        total = grade_report_enrolled_count(course_key)
+
+        start = _as_int(_('Start row'), raw_start) if raw_start not in (None, '') else 0
+        end = _as_int(_('End row'), raw_end) if raw_end not in (None, '') else total
+
+        if start < 0:
+            raise ValueError(_('Start row cannot be negative.'))
+        if end <= start:
+            raise ValueError(_('End row must be greater than Start row.'))
+        if start >= total:
+            raise ValueError(
+                _('Start row {start} is beyond the total enrolled learners ({total}).').format(
+                    start=start, total=total,
+                )
+            )
+        # An end past the last learner just means "to the end"; clamp it.
+        result['batch_start'] = start
+        result['batch_end'] = min(end, total)
+
+    return result
+
+
 @transaction.non_atomic_requests
 @require_POST
 @ensure_csrf_cookie
@@ -2673,6 +2734,11 @@ def calculate_grades_csv(request, course_id):
         - include_progress_columns: 'false'/'0'/'no' to omit the resource-intensive
           Course Progress / block-type / completed & incomplete unit columns.
         - progress_structure_mode: 'legacy' | 'per_learner' | 'uniform'.
+
+    Superuser-only (and waffle-gated) advanced batch controls:
+        - batch_size: per-batch chunk size.
+        - batch_start / batch_end: half-open learner-row range [start, end).
+      Invalid values are rejected with an error rather than submitting a task.
     """
     report_type = _('grade')
     course_key = CourseKey.from_string(course_id)
@@ -2683,6 +2749,20 @@ def calculate_grades_csv(request, course_id):
     progress_mode = request.POST.get('progress_structure_mode')
     if progress_mode in ('legacy', 'per_learner', 'uniform'):
         task_input['progress_structure_mode'] = progress_mode
+
+    if any(key in request.POST for key in ('batch_size', 'batch_start', 'batch_end')):
+        # Never trust the client: re-check authorization server-side so a crafted
+        # request from a non-superuser (or with the waffle off) is refused.
+        if not (request.user.is_superuser and grade_report_batch_range_enabled()):
+            return JsonResponse(
+                _('You are not permitted to set grade-report batch controls.'),
+                status=403, safe=False,
+            )
+        try:
+            task_input.update(_parse_grade_report_batch_input(request.POST, course_key))
+        except ValueError as exc:
+            return JsonResponse(text_type(exc), status=400, safe=False)
+
     task_api.submit_calculate_grades_csv(request, course_key, task_input=task_input)
     success_status = SUCCESS_MESSAGE_TEMPLATE.format(report_type=report_type)
 

@@ -19,7 +19,8 @@ UPDATE_STATUS_FAILED = 'failed'
 UPDATE_STATUS_SKIPPED = 'skipped'
 
 
-def upload_csv_to_report_store(rows, csv_name, course_id, timestamp, config_name='GRADES_DOWNLOAD'):
+def upload_csv_to_report_store(rows, csv_name, course_id, timestamp, config_name='GRADES_DOWNLOAD',
+                               tracker_name=None):
     """
     Upload data as a CSV using ReportStore.
 
@@ -32,6 +33,9 @@ def upload_csv_to_report_store(rows, csv_name, course_id, timestamp, config_name
             ]
         csv_name: Name of the resulting CSV
         course_id: ID of the course
+        tracker_name: Report name to emit in the tracking event; defaults to
+            ``csv_name``. Pass a stable value when ``csv_name`` varies per report
+            (e.g. option-encoded filenames) but the analytics event should not.
 
     Returns:
         report_name: string - Name of the generated report
@@ -44,11 +48,12 @@ def upload_csv_to_report_store(rows, csv_name, course_id, timestamp, config_name
     )
 
     report_store.store_rows(course_id, report_name, rows)
-    tracker_emit(csv_name)
+    tracker_emit(tracker_name or csv_name)
     return report_name
 
 
-def upload_file_to_report_store(file_handle, csv_name, course_id, timestamp, config_name='GRADES_DOWNLOAD'):
+def upload_file_to_report_store(file_handle, csv_name, course_id, timestamp, config_name='GRADES_DOWNLOAD',
+                                tracker_name=None):
     """
     Upload an already-serialized, UTF-8 encoded CSV file-like object using
     ReportStore, streaming it to storage without buffering the whole file in
@@ -59,6 +64,9 @@ def upload_file_to_report_store(file_handle, csv_name, course_id, timestamp, con
             from the beginning.
         csv_name: Name of the resulting CSV.
         course_id: ID of the course.
+        tracker_name: Report name to emit in the tracking event; defaults to
+            ``csv_name``. Pass a stable value when ``csv_name`` varies per report
+            (e.g. option-encoded filenames) but the analytics event should not.
 
     Returns:
         report_name: string - Name of the generated report.
@@ -71,7 +79,7 @@ def upload_file_to_report_store(file_handle, csv_name, course_id, timestamp, con
     )
 
     report_store.store_file(course_id, report_name, file_handle)
-    tracker_emit(csv_name)
+    tracker_emit(tracker_name or csv_name)
     return report_name
 
 

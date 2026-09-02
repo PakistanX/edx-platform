@@ -46,6 +46,10 @@ from lms.djangoapps.courseware.courses import get_course_by_id, get_studio_url
 from lms.djangoapps.courseware.module_render import get_module_by_usage_id
 from lms.djangoapps.discussion.django_comment_client.utils import available_division_schemes, has_forum_access
 from lms.djangoapps.grades.api import is_writable_gradebook_enabled
+from lms.djangoapps.instructor_task.config.waffle import (
+    default_progress_structure_mode,
+    grade_report_batch_range_enabled,
+)
 from openedx.core.djangoapps.course_groups.cohorts import DEFAULT_COHORT_NAME, get_course_cohorts, is_course_cohorted
 from openedx.core.djangoapps.django_comment_common.models import FORUM_ROLE_ADMINISTRATOR, CourseDiscussionSettings
 from openedx.core.djangoapps.site_configuration import helpers as configuration_helpers
@@ -122,6 +126,7 @@ def instructor_dashboard_2(request, course_id):
         'staff': bool(has_access(request.user, 'staff', course)),
         'forum_admin': has_forum_access(request.user, course_key, FORUM_ROLE_ADMINISTRATOR),
         'data_researcher': request.user.has_perm(permissions.CAN_RESEARCH, course_key),
+        'superuser': request.user.is_superuser,
     }
 
     if not request.user.has_perm(permissions.VIEW_DASHBOARD, course_key):
@@ -715,7 +720,21 @@ def _section_data_download(course, access):
         ),
         'export_ora2_data_url': reverse('export_ora2_data', kwargs={'course_id': six.text_type(course_key)}),
         'download_cert_report_url': reverse('generate_cert_report', kwargs={'course_id': six.text_type(course_key)}),
+        # Pre-select the dropdown option that matches the mode the backend would
+        # actually use, resolved from the same waffle precedence.
+        'grade_report_default_structure_mode': default_progress_structure_mode(),
     }
+
+    # Advanced batch controls (custom batch size + start/end learner-row range):
+    # only for Django superusers, and only when the waffle switch is on. Never
+    # shown to Django staff or course staff.
+    show_batch_range = access.get('superuser', False) and grade_report_batch_range_enabled()
+    section_data['show_grade_report_batch_range'] = show_batch_range
+    if show_batch_range:
+        # Lazy import: tasks_helper.grades pulls in heavy dependencies.
+        from lms.djangoapps.instructor_task.tasks_helper.grades import grade_report_enrolled_count
+        section_data['grade_report_total_enrolled'] = grade_report_enrolled_count(course_key)
+
     if not any(access[role] for role in ('data_researcher', 'staff')):
         section_data['is_hidden'] = True
     return section_data

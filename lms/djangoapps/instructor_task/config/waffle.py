@@ -26,6 +26,10 @@ GRADE_REPORT_UNIFORM_BLOCK_STRUCTURE = u'grade_report_uniform_block_structure'
 # chunk), each writing a partial CSV that a finalize step concatenates, so the
 # report uses all available worker cores instead of a single sequential task.
 PARALLELIZE_GRADE_REPORT = u'parallelize_grade_report'
+# Expose advanced batch controls (custom batch size + a start/end learner-row
+# range) on the grade-report options. Gated additionally to Django superusers in
+# the view; this switch only makes the controls available at all.
+GRADE_REPORT_BATCH_RANGE = u'grade_report_batch_range'
 
 
 def waffle_flags():
@@ -52,9 +56,39 @@ def optimize_grade_report_progress_columns_enabled():
 def grade_report_uniform_block_structure_enabled():
     """
     Returns True if the uniform (shared, non-per-learner) block structure path is
-    enabled. Only honored when ``optimize_grade_report_progress_columns`` is on.
+    enabled. As a *default*, it is overridden by
+    ``optimize_grade_report_progress_columns`` (per_learner) -- see
+    ``default_progress_structure_mode`` -- but 'uniform' can always be chosen
+    explicitly per report from the instructor dashboard.
     """
     return WAFFLE_SWITCHES.is_enabled(GRADE_REPORT_UNIFORM_BLOCK_STRUCTURE)
+
+
+def default_progress_structure_mode():
+    """
+    Single source of truth for the default block-structure computation mode used
+    by the grade report's custom progress columns, resolved from the waffle
+    switches with a deterministic precedence:
+
+        optimize waffle ON           -> 'per_learner'   (wins over the rest)
+        else uniform waffle ON       -> 'uniform'
+        else                         -> 'legacy'
+
+    per_learner wins over uniform on purpose: it is always correct, whereas
+    uniform is the faster path that is only correct for courses not gated per
+    learner, so it should never become the default just because both switches
+    happen to be on.
+
+    Both the backend (``_CourseGradeReportContext``) and the instructor
+    dashboard dropdown read this, so the pre-selected UI option always matches
+    the mode the backend would actually use, and conflicting switches resolve
+    the same way in both places.
+    """
+    if optimize_grade_report_progress_columns_enabled():
+        return 'per_learner'
+    if grade_report_uniform_block_structure_enabled():
+        return 'uniform'
+    return 'legacy'
 
 
 def parallelize_grade_report_enabled():
@@ -63,6 +97,15 @@ def parallelize_grade_report_enabled():
     subtasks (one per learner chunk) instead of run as a single sequential task.
     """
     return WAFFLE_SWITCHES.is_enabled(PARALLELIZE_GRADE_REPORT)
+
+
+def grade_report_batch_range_enabled():
+    """
+    Returns True if the advanced grade-report batch controls (custom batch size
+    and start/end learner-row range) are available. The view further restricts
+    these to Django superusers.
+    """
+    return WAFFLE_SWITCHES.is_enabled(GRADE_REPORT_BATCH_RANGE)
 
 
 def generate_grade_report_for_verified_only():

@@ -49,6 +49,7 @@ from openedx.core.djangoapps.user_api.course_tag.api import BulkCourseTags
 from openedx.core.lib.cache_utils import get_cache
 from completion.models import BlockCompletion
 from openedx.features.course_experience.utils import get_course_outline_block_tree
+from openedx.features.pakx.lms.overrides.models import CourseProgressStats
 from openedx.features.pakx.lms.overrides.utils import (
     CORE_BLOCK_TYPES,
     PROBLEM_BLOCK_TYPES,
@@ -57,11 +58,10 @@ from openedx.features.pakx.lms.overrides.utils import (
     get_progress_statistics_by_block_types,
 )
 from lms.djangoapps.instructor_task.config.waffle import (
-    grade_report_uniform_block_structure_enabled,
-    optimize_grade_report_progress_columns_enabled,
+    default_progress_structure_mode,
     parallelize_grade_report_enabled,
 )
-from lms.djangoapps.instructor_task.models import InstructorTask, ReportStore
+from lms.djangoapps.instructor_task.models import PROGRESS, InstructorTask, ReportStore
 from student.models import CourseEnrollment
 from student.roles import BulkRoleCache
 from xmodule.modulestore.django import modulestore
@@ -72,6 +72,26 @@ from .runner import TaskProgress
 from .utils import upload_csv_to_report_store, upload_file_to_report_store
 
 TASK_LOG = logging.getLogger('edx.celery.task')
+
+# Emit a heartbeat progress log line roughly every this many learners while a
+# (sequential) grade report streams, so operators can confirm from the worker
+# logs that the task is advancing even when the dashboard progress column is
+# unavailable.
+GRADE_REPORT_LOG_PROGRESS_EVERY = 50
+
+
+def grade_report_enrolled_count(course_id):
+    """
+    Number of learners a grade report processes for ``course_id`` before any
+    row-range slice. Single source of truth shared by the progress-bar
+    denominator, the instructor-dashboard hint, and the batch-range validation,
+    so those three never drift.
+    """
+    return CourseEnrollment.objects.users_enrolled_in(
+        course_id,
+        include_inactive=True,
+        verified_only=generate_grade_report_for_verified_only(),
+    ).count()
 
 # Block types that do not count toward completion (mirrors the "completable"
 # filter used by get_course_outline_block_tree's recurse_mark_complete). Used by
@@ -338,8 +358,10 @@ class _CourseGradeReportContext(object):
 
         # Per-report options (task_input), falling back to the waffle defaults.
         #  - include_progress_columns: include the resource-intensive custom
-        #    columns (Course Progress / block types / completed & incomplete
-        #    units). Turn off for a fast standard grade report.
+        #    columns (live Course Progress / block types / completed & incomplete
+        #    units). When off, the report is fast and still carries a single
+        #    Course Progress column read from the stored CourseProgressStats
+        #    value (as of the last progress sync) instead of computing it.
         #  - progress_structure_mode: how those columns are computed --
         #    'legacy'      : original per-learner path (two page-render helpers),
         #    'per_learner' : (B) per-learner visibility, lightweight tree,
@@ -347,13 +369,16 @@ class _CourseGradeReportContext(object):
         #                    only correct when the course is not gated per learner).
         task_input = _task_input or {}
         self.include_progress_columns = bool(task_input.get('include_progress_columns', True))
-        if grade_report_uniform_block_structure_enabled():
-            default_mode = 'uniform'
-        elif optimize_grade_report_progress_columns_enabled():
-            default_mode = 'per_learner'
-        else:
-            default_mode = 'legacy'
-        self.progress_structure_mode = task_input.get('progress_structure_mode') or default_mode
+        self.progress_structure_mode = (
+            task_input.get('progress_structure_mode') or default_progress_structure_mode()
+        )
+        # Advanced batch controls (superuser-only; validated in the view). A
+        # custom per-batch size, and a half-open [batch_start, batch_end) range
+        # of 0-based rows into the id-ordered enrolled-learner list. None means
+        # "use the default batch size / process every learner".
+        self.user_batch_size = task_input.get('user_batch_size')
+        self.batch_start = task_input.get('batch_start')
+        self.batch_end = task_input.get('batch_end')
 
     @lazy
     def course(self):
@@ -576,8 +601,25 @@ class CourseGradeReport(object):
         context.task_progress.total = self._total_enrolled(context)
         batched_rows = self._batched_rows(context)
 
+        entry = InstructorTask.objects.get(pk=context.entry_id)
+        TASK_LOG.info(
+            u'GradeReport[seq] start: InstructorTask=%s task_id=%s course=%s enrolled=%s '
+            u'mode=%s include_progress=%s',
+            context.entry_id, entry.task_id, text_type(context.course_id),
+            context.task_progress.total, context.progress_structure_mode,
+            context.include_progress_columns,
+        )
+
         context.update_status(u'Compiling and uploading grades')
-        report_name = self._stream_and_upload(context, success_headers, error_headers, batched_rows)
+        report_name = self._stream_and_upload(context, success_headers, error_headers, batched_rows, entry)
+
+        TASK_LOG.info(
+            u'GradeReport[seq] done: InstructorTask=%s task_id=%s course=%s succeeded=%s failed=%s '
+            u'duration_ms=%s report=%s',
+            context.entry_id, entry.task_id, text_type(context.course_id),
+            context.task_progress.succeeded, context.task_progress.failed,
+            int((time() - context.task_progress.start_time) * 1000), report_name,
+        )
 
         # Record the report filename alongside the progress (duration_ms is
         # already part of the state) so the UI can show duration against the link.
@@ -589,23 +631,27 @@ class CourseGradeReport(object):
     def _total_enrolled(self, context):
         """
         Number of enrollees the report will process -- the denominator used for
-        the progress bar. Mirrors the enrollment set iterated by ``_batch_users``.
+        the progress bar. Mirrors the enrollment set iterated by ``_batch_users``,
+        including the optional [batch_start, batch_end) row slice.
         """
-        return CourseEnrollment.objects.users_enrolled_in(
+        base = grade_report_enrolled_count(context.course_id)
+        start = context.batch_start or 0
+        end = context.batch_end if context.batch_end is not None else base
+        return max(0, min(end, base) - start)
+
+    def _enrolled_user_ids(self, context):
+        """
+        Ordered list of user ids the report will process (parallel path),
+        including the optional [batch_start, batch_end) row slice.
+        """
+        user_ids = CourseEnrollment.objects.users_enrolled_in(
             context.course_id,
             include_inactive=True,
             verified_only=generate_grade_report_for_verified_only(),
-        ).count()
-
-    def _enrolled_user_ids(self, context):
-        """Ordered list of user ids the report will process (parallel path)."""
-        return list(
-            CourseEnrollment.objects.users_enrolled_in(
-                context.course_id,
-                include_inactive=True,
-                verified_only=generate_grade_report_for_verified_only(),
-            ).order_by('id').values_list('id', flat=True)
-        )
+        ).order_by('id').values_list('id', flat=True)
+        # Push the [start, end) row slice to the DB (OFFSET/LIMIT) instead of
+        # materializing every id. A None end means "through the last learner".
+        return list(user_ids[(context.batch_start or 0):context.batch_end])
 
     @staticmethod
     def _partial_report_name(entry_id, part_index):
@@ -630,7 +676,12 @@ class CourseGradeReport(object):
         from lms.djangoapps.instructor_task.tasks import calculate_grades_csv_chunk, finalize_grades_csv
 
         context.update_status(u'Starting grades (parallel)')
-        chunk_size = getattr(settings, 'GRADE_REPORT_PARALLEL_CHUNK_SIZE', self.PARALLEL_CHUNK_SIZE)
+        # A superuser-supplied batch size, when set, also drives the parallel
+        # chunk size so the control is honored on this path (not just sequential).
+        chunk_size = (
+            context.user_batch_size
+            or getattr(settings, 'GRADE_REPORT_PARALLEL_CHUNK_SIZE', self.PARALLEL_CHUNK_SIZE)
+        )
         user_ids = self._enrolled_user_ids(context)
         chunks = [
             user_ids[i:i + chunk_size]
@@ -671,6 +722,13 @@ class CourseGradeReport(object):
             routing_key=routing_key,
         )
         chord(header_tasks)(callback)
+        TASK_LOG.info(
+            u'GradeReport[parallel] dispatched: InstructorTask=%s parent_task_id=%s course=%s '
+            u'enrolled=%s chunks=%s chunk_size=%s first_chunk_task_id=%s routing_key=%s',
+            context.entry_id, entry.task_id, text_type(context.course_id),
+            len(user_ids), len(chunks), chunk_size,
+            (chunk_task_ids[0] if chunk_task_ids else None), routing_key,
+        )
         return task_progress
 
     @staticmethod
@@ -686,6 +744,10 @@ class CourseGradeReport(object):
         Error rows are written to a separate partial file rather than returned
         through the result backend, so only small counts cross the broker.
         """
+        TASK_LOG.info(
+            u'GradeReport[parallel] chunk start: InstructorTask=%s part=%s learners=%s',
+            context.entry_id, part_index, len(user_ids),
+        )
         users = list(get_user_model().objects.filter(id__in=user_ids).select_related('profile'))
         with modulestore().bulk_operations(context.course_id):
             success_rows, error_rows = self._rows_for_users(context, users)
@@ -698,6 +760,11 @@ class CourseGradeReport(object):
             report_store.store_rows(
                 context.course_id, self._partial_error_name(context.entry_id, part_index), error_rows,
             )
+        TASK_LOG.info(
+            u'GradeReport[parallel] chunk done: InstructorTask=%s part=%s learners=%s '
+            u'succeeded=%s failed=%s',
+            context.entry_id, part_index, len(user_ids), len(success_rows), len(error_rows),
+        )
         return {
             'part_index': part_index,
             'succeeded': len(success_rows),
@@ -705,10 +772,13 @@ class CourseGradeReport(object):
         }
 
     def _concatenate_parts(self, context, report_store, num_parts, headers, report_prefix, name_fn, date,
-                           skip_if_empty=False):
+                           skip_if_empty=False, tracker_name=None):
         """
         Concatenate stored partial CSVs (0..num_parts-1) behind `headers`, upload,
         and return the uploaded report's filename (or None if skipped).
+
+        ``tracker_name`` is forwarded to the upload so the analytics event name
+        can stay fixed even when ``report_prefix`` (the filename) varies.
         """
         paths = []
         for part_index in range(num_parts):
@@ -727,7 +797,9 @@ class CourseGradeReport(object):
                     for line in part_file:
                         final_file.write(line if isinstance(line, bytes) else line.encode('utf-8'))
             final_file.seek(0)
-            return upload_file_to_report_store(final_file, report_prefix, context.course_id, date)
+            return upload_file_to_report_store(
+                final_file, report_prefix, context.course_id, date, tracker_name=tracker_name,
+            )
         finally:
             final_file.close()
 
@@ -777,7 +849,8 @@ class CourseGradeReport(object):
                 date = datetime.now(UTC)
                 report_name = self._concatenate_parts(
                     context, report_store, num_parts, self._success_headers(context),
-                    'grade_report', self._partial_report_name, date,
+                    self._report_csv_name(context), self._partial_report_name, date,
+                    tracker_name='grade_report',
                 )
                 self._concatenate_parts(
                     context, report_store, num_parts, self._error_headers(),
@@ -808,18 +881,68 @@ class CourseGradeReport(object):
             entry.task_output = InstructorTask.create_output_for_success(progress)
             entry.task_state = SUCCESS
         entry.save_now()
+        TASK_LOG.info(
+            u'GradeReport[parallel] finalize: InstructorTask=%s task_id=%s course=%s state=%s '
+            u'parts=%s succeeded=%s failed=%s duration_ms=%s report=%s',
+            context.entry_id, entry.task_id, text_type(context.course_id), entry.task_state,
+            num_parts, succeeded, failed_count, progress.get('duration_ms'), report_name,
+        )
         return progress
 
-    def _stream_and_upload(self, context, success_headers, error_headers, batched_rows):
+    @staticmethod
+    def _report_csv_name(context):
+        """
+        Report file base name that reflects the options chosen, so downloads are
+        self-describing, e.g. ``grade_report_fast``,
+        ``grade_report_uniform``, ``grade_report_perlearner_rows0-1000``.
+        """
+        parts = ['grade_report']
+        if not context.include_progress_columns:
+            parts.append('fast')
+        else:
+            parts.append(context.progress_structure_mode.replace('_', ''))
+        if context.batch_start is not None or context.batch_end is not None:
+            start = context.batch_start or 0
+            end = context.batch_end if context.batch_end is not None else 'end'
+            parts.append(u'rows{}-{}'.format(start, end))
+        return '_'.join(parts)
+
+    @staticmethod
+    def _persist_task_progress(entry, progress_state):
+        """
+        Best-effort persist of in-progress state to the InstructorTask row, so
+        the Pending Tasks status column advances even when the Celery result
+        backend does not retain custom PROGRESS meta (the AsyncResult path).
+        Subtask-based reports already persist to the row this way; this brings
+        the sequential path in line.
+
+        Best-effort by design: a progress-status write failing (e.g. a transient
+        lock timeout) must never abort an in-flight report, so errors are logged
+        and swallowed. Only the two changed columns are written.
+        """
+        try:
+            entry.task_state = PROGRESS
+            entry.task_output = InstructorTask.create_output_for_success(progress_state)
+            entry.save(update_fields=['task_state', 'task_output'])
+        except Exception:  # pylint: disable=broad-except
+            TASK_LOG.exception(
+                u'GradeReport[seq] failed to persist progress for InstructorTask=%s', entry.id,
+            )
+
+    def _stream_and_upload(self, context, success_headers, error_headers, batched_rows, entry):
         """
         Write each batch of rows to an on-disk temporary file and upload the
         finished files to the report store without buffering the whole CSV in
         memory. This bounds peak memory to roughly a single batch regardless of
         course size.
+
+        ``entry`` is the InstructorTask row; progress is persisted to it as the
+        report streams (see ``_persist_task_progress``).
         """
         date = datetime.now(UTC)
         succeeded = 0
         failed = 0
+        last_logged = 0
 
         success_file = TemporaryFile()
         error_file = TemporaryFile()
@@ -845,11 +968,29 @@ class CourseGradeReport(object):
                 context.task_progress.succeeded = succeeded
                 context.task_progress.failed = failed
                 context.task_progress.attempted = succeeded + failed
-                context.task_progress.update_task_state()
+                progress_state = context.task_progress.update_task_state()
+
+                processed = succeeded + failed
+                if processed - last_logged >= GRADE_REPORT_LOG_PROGRESS_EVERY:
+                    last_logged = processed
+                    # Persist progress to the InstructorTask row (throttled to
+                    # this cadence) so the Pending Tasks column reads it from the
+                    # DB, independent of whether the Celery result backend retains
+                    # PROGRESS meta on this deployment.
+                    self._persist_task_progress(entry, progress_state)
+                    TASK_LOG.info(
+                        u'GradeReport[seq] progress: InstructorTask=%s processed=%s/%s '
+                        u'succeeded=%s failed=%s',
+                        context.entry_id, processed, context.task_progress.total,
+                        succeeded, failed,
+                    )
 
             success_text.flush()
             success_file.seek(0)
-            report_name = upload_file_to_report_store(success_file, 'grade_report', context.course_id, date)
+            report_name = upload_file_to_report_store(
+                success_file, self._report_csv_name(context), context.course_id, date,
+                tracker_name='grade_report',
+            )
             if wrote_error_header:
                 error_text.flush()
                 error_file.seek(0)
@@ -879,6 +1020,12 @@ class CourseGradeReport(object):
                 'Course Progress', 'Total Block Types',
                 'Total Completed Block Types', ' Completed Units', 'Incomplete Units',
             ]
+        else:
+            # Fast flow: a single Course Progress column read from the stored
+            # CourseProgressStats value (refreshed by the progress-stats cron),
+            # so no per-learner structure walk is done. Labeled '(stored)' to
+            # distinguish it from the live 'Course Progress' column above.
+            headers += ['Course Progress (stored)']
         return headers
 
     def _error_headers(self):
@@ -937,9 +1084,23 @@ class CourseGradeReport(object):
     def _batch_users(self, context):
         """
         Returns a generator of batches of users.
-        """
 
-        def grouper(iterable, chunk_size=self.USER_BATCH_SIZE, fillvalue=None):
+        Honors the optional advanced batch controls on ``context``: a custom
+        per-batch size, and a half-open [batch_start, batch_end) slice of the
+        id-ordered enrollee list.
+        """
+        batch_size = context.user_batch_size or self.USER_BATCH_SIZE
+        range_start = context.batch_start or 0
+        range_end = context.batch_end  # None => through the last learner
+
+        def _sliced(ordered):
+            """
+            Apply the [range_start, range_end) row slice to an ordered sequence
+            or queryset. A None range_end means "through the last row".
+            """
+            return ordered[range_start:range_end]
+
+        def grouper(iterable, chunk_size=batch_size, fillvalue=None):
             args = [iter(iterable)] * chunk_size
             return zip_longest(*args, fillvalue=fillvalue)
 
@@ -969,8 +1130,10 @@ class CourseGradeReport(object):
                 include_inactive=True,
                 verified_only=verified_only,
             )
-            users = users.select_related('profile')
-            return grouper(users)
+            # order_by('id') makes the row slice deterministic and matches the
+            # ordering used by the parallel path and the info line in the UI.
+            users = users.order_by('id').select_related('profile')
+            return grouper(_sliced(users))
 
         def users_for_course_v2(course_id, verified_only=False):
             """
@@ -985,7 +1148,7 @@ class CourseGradeReport(object):
                 filter_kwargs['courseenrollment__mode'] = CourseMode.VERIFIED
 
             user_ids_list = get_user_model().objects.filter(**filter_kwargs).values_list('id', flat=True).order_by('id')
-            user_chunks = grouper(user_ids_list)
+            user_chunks = grouper(_sliced(user_ids_list))
             for user_ids in user_chunks:
                 user_ids = [user_id for user_id in user_ids if user_id is not None]
                 min_id = min(user_ids)
@@ -1078,6 +1241,29 @@ class CourseGradeReport(object):
             experiment_group_names.append(group.name if group else '')
         return experiment_group_names
 
+    def _user_visibility_key(self, user, context):
+        """
+        A hashable key identifying learners who see the same block structure, so
+        they can share a cached structure in the uniform path. Built only from
+        read-only signals -- cohort (assign=False), enrollment mode, and
+        split-test experiment groups (assign=False) -- so computing it never
+        assigns a learner to a cohort or experiment group as a side effect.
+
+        Cohort id captures content-group gating (content groups map from the
+        cohort); enrollment mode captures enrollment-track gating; experiment
+        group names capture split-test gating. Over-splitting (e.g. two cohorts
+        mapped to the same content group) only costs an extra cache entry, never
+        a wrong structure.
+        """
+        cohort = get_cohort(user, context.course_id, assign=False, use_cached=True)
+        cohort_id = cohort.id if cohort else None
+        enrollment_mode = CourseEnrollment.enrollment_mode_for_user(user, context.course_id)[0]
+        return (
+            cohort_id,
+            enrollment_mode,
+            tuple(self._user_experiment_group_names(user, context)),
+        )
+
     def _user_team_names(self, user, bulk_teams):
         """
         Returns a list of names of teams in which the given user belongs.
@@ -1158,6 +1344,12 @@ class CourseGradeReport(object):
                     context.course_id, users,
                 )
 
+            # Fast flow: one bulk read of the stored per-learner course progress
+            # (no structure walk) to fill the single Course Progress column.
+            stored_progress = {}
+            if not include_progress and users:
+                stored_progress = self._bulk_stored_progress(context.course_id, users)
+
             success_rows, error_rows = [], []
             for user, course_grade, error in CourseGradeFactory().iter(
                 users,
@@ -1188,6 +1380,8 @@ class CourseGradeReport(object):
                         _flatten_course_block_tree, cohort_cache,
                         bulk_completion_keys, bulk_completion_types,
                     )
+                else:
+                    row.append(stored_progress.get(user.id, ''))
 
                 success_rows.append(row)
             return success_rows, error_rows
@@ -1202,11 +1396,10 @@ class CourseGradeReport(object):
             # (A) Structure + total_block_types computed once per *visibility
             # group* (exact legacy values), reused for every learner in that
             # group; only completion is overlaid per learner. The group key is
-            # cohort + content/experiment-partition group memberships, so the
-            # cache is correct for cohort- and partition-gated courses alike.
-            cohort = get_cohort(user, context.course_id, assign=False, use_cached=True)
-            cohort_id = cohort.id if cohort else None
-            group_key = (cohort_id, tuple(self._user_experiment_group_names(user, context)))
+            # cohort + enrollment mode + split-test groups (all read-only, no
+            # assignment side effects), covering content-group, enrollment-track
+            # and split-test gating so the cached structure is correct per group.
+            group_key = self._user_visibility_key(user, context)
             if group_key not in cohort_cache:
                 rep_request = create_dummy_request(current_site, user)
                 block_info, __ = get_progress_statistics_by_block_types(rep_request, course_id_str)
@@ -1257,6 +1450,25 @@ class CourseGradeReport(object):
             completed_units, incomplete_units = flatten_fn(tree)
 
         return [user_progress, total_bt, total_completed_bt, completed_units, incomplete_units]
+
+    @staticmethod
+    def _bulk_stored_progress(course_key, users):
+        """
+        One query for the whole batch: the stored per-learner course progress
+        from CourseProgressStats (refreshed by the progress-stats cron), keyed by
+        user id and formatted as a whole-number percent string. Learners with no
+        stored row map to nothing (rendered blank), signalling "not yet synced".
+        """
+        user_ids = [user.id for user in users]
+        rows = CourseProgressStats.objects.filter(
+            enrollment__course_id=course_key,
+            enrollment__user_id__in=user_ids,
+        ).values_list('enrollment__user_id', 'progress')
+        return {
+            user_id: u'{:.0f}'.format(progress)
+            for user_id, progress in rows
+            if progress is not None
+        }
 
     @staticmethod
     def _bulk_completions_with_types(course_key, users):

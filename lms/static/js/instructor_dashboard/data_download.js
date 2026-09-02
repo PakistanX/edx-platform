@@ -356,6 +356,21 @@
                     postData.include_progress_columns =
                         $('#grade-report-include-progress').is(':checked') ? 'true' : 'false';
                     postData.progress_structure_mode = $('#grade-report-structure-mode').val();
+                    // Advanced batch controls (superuser-only; only present when the
+                    // waffle is on). Send only the fields the user actually filled in;
+                    // the server re-checks authorization and validates the values.
+                    var $batchSize = $('#grade-report-batch-size');
+                    if ($batchSize.length) {
+                        if ($batchSize.val() !== '') {
+                            postData.batch_size = $batchSize.val();
+                        }
+                        if ($('#grade-report-range-start').val() !== '') {
+                            postData.batch_start = $('#grade-report-range-start').val();
+                        }
+                        if ($('#grade-report-range-end').val() !== '') {
+                            postData.batch_end = $('#grade-report-range-end').val();
+                        }
+                    }
                 }
                 dataDownloadObj.clear_display();
                 return $.ajax({
