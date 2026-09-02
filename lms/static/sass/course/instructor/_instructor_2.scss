@@ -1502,9 +1502,17 @@
         height: 300px;
         padding: ($baseline/4);
       }
-      // Disable horizontal scroll bar when grid only has 1 column. Remove this CSS class when more columns added.
-      .slick-viewport {
-        overflow-x: hidden !important;
+      // Give the header row enough height so its labels are not clipped.
+      .slick-header-columns {
+        height: ($baseline * 1.5);
+      }
+      .slick-header-column {
+        height: ($baseline * 1.5);
+        line-height: ($baseline * 1.5);
+      }
+      // Generation-time column (right-aligned, matches the download link on the left).
+      .file-download-duration {
+        text-align: left;
       }
     }
   }
@@ -1807,9 +1815,17 @@ input[name="subject"] {
         height: 300px;
         padding: ($baseline/4);
       }
-      // Disable horizontal scroll bar when grid only has 1 column. Remove this CSS class when more columns added.
-      .slick-viewport {
-        overflow-x: hidden !important;
+      // Give the header row enough height so its labels are not clipped.
+      .slick-header-columns {
+        height: ($baseline * 1.5);
+      }
+      .slick-header-column {
+        height: ($baseline * 1.5);
+        line-height: ($baseline * 1.5);
+      }
+      // Generation-time column (right-aligned, matches the download link on the left).
+      .file-download-duration {
+        text-align: left;
       }
     }
   }

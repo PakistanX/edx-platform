@@ -341,13 +341,17 @@ def submit_calculate_problem_responses_csv(request, course_key, problem_location
     return submit_task(request, task_type, task_class, course_key, task_input, task_key)
 
 
-def submit_calculate_grades_csv(request, course_key):
+def submit_calculate_grades_csv(request, course_key, task_input=None):
     """
     AlreadyRunningError is raised if the course's grades are already being updated.
+
+    ``task_input`` (optional dict) carries per-report options, e.g.
+    ``include_progress_columns`` (bool) and ``progress_structure_mode``
+    ('legacy' | 'per_learner' | 'uniform'); see _CourseGradeReportContext.
     """
     task_type = 'grade_course'
     task_class = calculate_grades_csv
-    task_input = {}
+    task_input = task_input or {}
     task_key = ""
 
     return submit_task(request, task_type, task_class, course_key, task_input, task_key)

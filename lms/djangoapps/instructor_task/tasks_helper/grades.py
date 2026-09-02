@@ -2,8 +2,10 @@
 Functionality for generating grade reports.
 """
 
+import copy
 import csv
 import io
+import json
 import logging
 import re
 from collections import OrderedDict, defaultdict
@@ -11,8 +13,10 @@ from datetime import datetime
 from itertools import chain
 from tempfile import TemporaryFile
 from time import time
+from uuid import uuid4
 
 import six
+from celery.states import FAILURE, SUCCESS
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.sites.models import Site
@@ -43,8 +47,21 @@ from openedx.core.djangoapps.content.block_structure.api import get_course_in_ca
 from openedx.core.djangoapps.course_groups.cohorts import bulk_cache_cohorts, get_cohort, is_course_cohorted
 from openedx.core.djangoapps.user_api.course_tag.api import BulkCourseTags
 from openedx.core.lib.cache_utils import get_cache
+from completion.models import BlockCompletion
 from openedx.features.course_experience.utils import get_course_outline_block_tree
-from openedx.features.pakx.lms.overrides.utils import create_dummy_request, get_progress_statistics_by_block_types
+from openedx.features.pakx.lms.overrides.utils import (
+    CORE_BLOCK_TYPES,
+    PROBLEM_BLOCK_TYPES,
+    VIDEO_BLOCK_TYPES,
+    create_dummy_request,
+    get_progress_statistics_by_block_types,
+)
+from lms.djangoapps.instructor_task.config.waffle import (
+    grade_report_uniform_block_structure_enabled,
+    optimize_grade_report_progress_columns_enabled,
+    parallelize_grade_report_enabled,
+)
+from lms.djangoapps.instructor_task.models import InstructorTask, ReportStore
 from student.models import CourseEnrollment
 from student.roles import BulkRoleCache
 from xmodule.modulestore.django import modulestore
@@ -55,6 +72,14 @@ from .runner import TaskProgress
 from .utils import upload_csv_to_report_store, upload_file_to_report_store
 
 TASK_LOG = logging.getLogger('edx.celery.task')
+
+# Block types that do not count toward completion (mirrors the "completable"
+# filter used by get_course_outline_block_tree's recurse_mark_complete). Used by
+# the uniform (A) progress-column path when overlaying completion in memory.
+COMPLETION_EXCLUDED_BLOCK_TYPES = frozenset([
+    'discussion', 'pakx_microlearning', 'pakx_completion',
+    'google_drive', 'google-drive', 'google_document', 'google-document',
+])
 
 
 def recalculate_grades_for_course(_xmodule_instance_args, _entry_id, course_id, task_input, action_name):
@@ -308,7 +333,27 @@ class _CourseGradeReportContext(object):
         )
         self.action_name = action_name
         self.course_id = course_id
+        self.entry_id = _entry_id
         self.task_progress = TaskProgress(self.action_name, total=None, start_time=time())
+
+        # Per-report options (task_input), falling back to the waffle defaults.
+        #  - include_progress_columns: include the resource-intensive custom
+        #    columns (Course Progress / block types / completed & incomplete
+        #    units). Turn off for a fast standard grade report.
+        #  - progress_structure_mode: how those columns are computed --
+        #    'legacy'      : original per-learner path (two page-render helpers),
+        #    'per_learner' : (B) per-learner visibility, lightweight tree,
+        #    'uniform'     : (A) one shared structure + bulk completion (fastest;
+        #                    only correct when the course is not gated per learner).
+        task_input = _task_input or {}
+        self.include_progress_columns = bool(task_input.get('include_progress_columns', True))
+        if grade_report_uniform_block_structure_enabled():
+            default_mode = 'uniform'
+        elif optimize_grade_report_progress_columns_enabled():
+            default_mode = 'per_learner'
+        else:
+            default_mode = 'legacy'
+        self.progress_structure_mode = task_input.get('progress_structure_mode') or default_mode
 
     @lazy
     def course(self):
@@ -502,23 +547,268 @@ class CourseGradeReport(object):
             context = _CourseGradeReportContext(_xmodule_instance_args, _entry_id, course_id, _task_input, action_name)
             return CourseGradeReport()._generate(context)
 
+    # Number of learners each parallel chunk processes when the report is fanned
+    # out across subtasks (see _generate_parallel).
+    PARALLEL_CHUNK_SIZE = 500
+
     def _generate(self, context):
         """
         Internal method for generating a grade report for the given context.
 
-        Rows are streamed batch-by-batch straight to a spooled temporary file and
+        Rows are streamed batch-by-batch straight to an on-disk temporary file and
         uploaded from there, so the full result set is never held in memory (which
         previously caused OOM on large courses).
+
+        When the parallelize waffle is on, the work is instead fanned out across
+        parallel subtasks (one per learner chunk), each writing a partial CSV that
+        a finalize task concatenates into the single report.
         """
+        if parallelize_grade_report_enabled():
+            return self._generate_parallel(context)
+
         context.update_status(u'Starting grades')
         success_headers = self._success_headers(context)
         error_headers = self._error_headers()
+
+        # Set the total up front so the dashboard shows a real progress bar
+        # (completed of total) that advances after each batch, rather than
+        # "No status information available".
+        context.task_progress.total = self._total_enrolled(context)
         batched_rows = self._batched_rows(context)
 
         context.update_status(u'Compiling and uploading grades')
-        self._stream_and_upload(context, success_headers, error_headers, batched_rows)
+        report_name = self._stream_and_upload(context, success_headers, error_headers, batched_rows)
 
-        return context.update_status(u'Completed grades')
+        # Record the report filename alongside the progress (duration_ms is
+        # already part of the state) so the UI can show duration against the link.
+        return context.task_progress.update_task_state(extra_meta={
+            'step': u'Completed grades',
+            'report_name': report_name,
+        })
+
+    def _total_enrolled(self, context):
+        """
+        Number of enrollees the report will process -- the denominator used for
+        the progress bar. Mirrors the enrollment set iterated by ``_batch_users``.
+        """
+        return CourseEnrollment.objects.users_enrolled_in(
+            context.course_id,
+            include_inactive=True,
+            verified_only=generate_grade_report_for_verified_only(),
+        ).count()
+
+    def _enrolled_user_ids(self, context):
+        """Ordered list of user ids the report will process (parallel path)."""
+        return list(
+            CourseEnrollment.objects.users_enrolled_in(
+                context.course_id,
+                include_inactive=True,
+                verified_only=generate_grade_report_for_verified_only(),
+            ).order_by('id').values_list('id', flat=True)
+        )
+
+    @staticmethod
+    def _partial_report_name(entry_id, part_index):
+        """Storage name for a chunk's partial CSV (concatenated by finalize)."""
+        return u'_grade_report_parts/{entry_id}/part_{part_index:05d}'.format(
+            entry_id=entry_id, part_index=part_index,
+        )
+
+    def _generate_parallel(self, context):
+        """
+        Fan the report out across parallel subtasks. Each chunk of learners is
+        rendered to a partial CSV by ``calculate_grades_csv_chunk``; a
+        ``finalize_grades_csv`` chord callback concatenates the partials into the
+        single report and marks the InstructorTask complete.
+
+        Subtasks are registered on the InstructorTask so BaseInstructorTask.on_success
+        defers completion to the finalize task (it only auto-completes when no
+        subtasks are registered).
+        """
+        from celery import chord
+        from lms.djangoapps.instructor_task.subtasks import initialize_subtask_info
+        from lms.djangoapps.instructor_task.tasks import calculate_grades_csv_chunk, finalize_grades_csv
+
+        context.update_status(u'Starting grades (parallel)')
+        chunk_size = getattr(settings, 'GRADE_REPORT_PARALLEL_CHUNK_SIZE', self.PARALLEL_CHUNK_SIZE)
+        user_ids = self._enrolled_user_ids(context)
+        chunks = [
+            user_ids[i:i + chunk_size]
+            for i in range(0, len(user_ids), chunk_size)
+        ] or [[]]
+        chunk_task_ids = [text_type(uuid4()) for _ in chunks]
+
+        entry = InstructorTask.objects.get(pk=context.entry_id)
+        task_progress = initialize_subtask_info(entry, context.action_name, len(user_ids), chunk_task_ids)
+
+        routing_key = getattr(settings, 'GRADES_DOWNLOAD_ROUTING_KEY', None)
+
+        def _error_handler():
+            # Immutable so it runs with just these kwargs; marks the task FAILURE
+            # and cleans up partials when a chunk fails (a failed chord header
+            # otherwise leaves the InstructorTask stuck in PROGRESS forever).
+            return finalize_grades_csv.subtask(
+                kwargs={'entry_id': context.entry_id, 'num_parts': len(chunks), 'failed': True},
+                routing_key=routing_key,
+                immutable=True,
+            )
+
+        header_tasks = [
+            calculate_grades_csv_chunk.subtask(
+                kwargs={
+                    'entry_id': context.entry_id,
+                    'part_index': part_index,
+                    'user_ids': chunk,
+                },
+                task_id=chunk_task_ids[part_index],
+                routing_key=routing_key,
+                link_error=_error_handler(),
+            )
+            for part_index, chunk in enumerate(chunks)
+        ]
+        callback = finalize_grades_csv.subtask(
+            kwargs={'entry_id': context.entry_id, 'num_parts': len(chunks)},
+            routing_key=routing_key,
+        )
+        chord(header_tasks)(callback)
+        return task_progress
+
+    @staticmethod
+    def _partial_error_name(entry_id, part_index):
+        """Storage name for a chunk's partial error CSV (concatenated by finalize)."""
+        return u'_grade_report_parts/{entry_id}/error_{part_index:05d}'.format(
+            entry_id=entry_id, part_index=part_index,
+        )
+
+    def generate_partial(self, context, user_ids, part_index):
+        """
+        Render one chunk of learners to a partial CSV (no header) and store it.
+        Error rows are written to a separate partial file rather than returned
+        through the result backend, so only small counts cross the broker.
+        """
+        users = list(get_user_model().objects.filter(id__in=user_ids).select_related('profile'))
+        with modulestore().bulk_operations(context.course_id):
+            success_rows, error_rows = self._rows_for_users(context, users)
+
+        report_store = ReportStore.from_config('GRADES_DOWNLOAD')
+        report_store.store_rows(
+            context.course_id, self._partial_report_name(context.entry_id, part_index), success_rows,
+        )
+        if error_rows:
+            report_store.store_rows(
+                context.course_id, self._partial_error_name(context.entry_id, part_index), error_rows,
+            )
+        return {
+            'part_index': part_index,
+            'succeeded': len(success_rows),
+            'failed': len(error_rows),
+        }
+
+    def _concatenate_parts(self, context, report_store, num_parts, headers, report_prefix, name_fn, date,
+                           skip_if_empty=False):
+        """
+        Concatenate stored partial CSVs (0..num_parts-1) behind `headers`, upload,
+        and return the uploaded report's filename (or None if skipped).
+        """
+        paths = []
+        for part_index in range(num_parts):
+            path = report_store.path_to(context.course_id, name_fn(context.entry_id, part_index))
+            if report_store.storage.exists(path):
+                paths.append(path)
+        if skip_if_empty and not paths:
+            return None
+        final_file = TemporaryFile()
+        try:
+            header_buffer = io.StringIO()
+            csv.writer(header_buffer).writerow(headers)
+            final_file.write(header_buffer.getvalue().encode('utf-8'))
+            for path in paths:
+                with report_store.storage.open(path) as part_file:
+                    for line in part_file:
+                        final_file.write(line if isinstance(line, bytes) else line.encode('utf-8'))
+            final_file.seek(0)
+            return upload_file_to_report_store(final_file, report_prefix, context.course_id, date)
+        finally:
+            final_file.close()
+
+    def _delete_parts(self, context, report_store, num_parts):
+        """Remove all partial success/error files for this report, ignoring errors."""
+        for part_index in range(num_parts):
+            for name_fn in (self._partial_report_name, self._partial_error_name):
+                path = report_store.path_to(context.course_id, name_fn(context.entry_id, part_index))
+                try:
+                    if report_store.storage.exists(path):
+                        report_store.storage.delete(path)
+                except Exception:  # pylint: disable=broad-except
+                    TASK_LOG.warning(u'Could not delete partial grade report %s', path)
+
+    @staticmethod
+    def _elapsed_ms(entry):
+        """Total wall time since the report was submitted (from the stored start_time)."""
+        try:
+            existing = json.loads(entry.task_output) if entry.task_output else {}
+            start = existing.get('start_time')
+        except (ValueError, TypeError):
+            start = None
+        return int((time() - start) * 1000) if start else 0
+
+    def finalize(self, context, part_results, failed=False, num_parts=None):
+        """
+        Concatenate the partial CSVs (in order) behind the header into the single
+        report, upload it, mark the InstructorTask complete, and remove the parts.
+
+        ``num_parts`` is used for concatenation/cleanup so the error path (where
+        ``part_results`` is empty) still cleans up the partials that succeeded
+        chunks wrote. If concatenation/upload itself fails, the task is marked
+        FAILURE rather than left stuck in PROGRESS.
+        """
+        entry = InstructorTask.objects.get(pk=context.entry_id)
+        report_store = ReportStore.from_config('GRADES_DOWNLOAD')
+
+        if num_parts is None:
+            num_parts = len(part_results or [])
+        succeeded = sum(part.get('succeeded', 0) for part in (part_results or []))
+        failed_count = sum(part.get('failed', 0) for part in (part_results or []))
+
+        report_name = None
+        error_message = None
+        if not failed:
+            try:
+                date = datetime.now(UTC)
+                report_name = self._concatenate_parts(
+                    context, report_store, num_parts, self._success_headers(context),
+                    'grade_report', self._partial_report_name, date,
+                )
+                self._concatenate_parts(
+                    context, report_store, num_parts, self._error_headers(),
+                    'grade_report_err', self._partial_error_name, date, skip_if_empty=True,
+                )
+            except Exception as exc:  # pylint: disable=broad-except
+                TASK_LOG.exception(u'Grade report finalize failed for InstructorTask %s', context.entry_id)
+                failed = True
+                error_message = text_type(exc)
+
+        # Always attempt to remove the partial files (success or failure).
+        self._delete_parts(context, report_store, num_parts)
+
+        context.task_progress.total = succeeded + failed_count
+        context.task_progress.attempted = succeeded + failed_count
+        context.task_progress.succeeded = succeeded
+        context.task_progress.failed = failed_count
+        progress = context.task_progress.state
+        progress['duration_ms'] = self._elapsed_ms(entry)
+        if report_name:
+            progress['report_name'] = report_name
+        if failed:
+            entry.task_output = InstructorTask.create_output_for_failure(
+                Exception(error_message or 'grade report failed: one or more learner chunks errored'), '',
+            )
+            entry.task_state = FAILURE
+        else:
+            entry.task_output = InstructorTask.create_output_for_success(progress)
+            entry.task_state = SUCCESS
+        entry.save_now()
+        return progress
 
     def _stream_and_upload(self, context, success_headers, error_headers, batched_rows):
         """
@@ -559,11 +849,12 @@ class CourseGradeReport(object):
 
             success_text.flush()
             success_file.seek(0)
-            upload_file_to_report_store(success_file, 'grade_report', context.course_id, date)
+            report_name = upload_file_to_report_store(success_file, 'grade_report', context.course_id, date)
             if wrote_error_header:
                 error_text.flush()
                 error_file.seek(0)
                 upload_file_to_report_store(error_file, 'grade_report_err', context.course_id, date)
+            return report_name
         finally:
             # Closing the text wrapper also closes the underlying temp file.
             success_text.close()
@@ -573,7 +864,7 @@ class CourseGradeReport(object):
         """
         Returns a list of all applicable column headers for this grade report.
         """
-        return (
+        headers = (
             ["Student ID", "Email", "Username", "Date Joined"] +
             self._grades_header(context) +
             (['Cohort Name'] if context.cohorts_enabled else []) +
@@ -581,9 +872,14 @@ class CourseGradeReport(object):
             (['Team Name'] if context.teams_enabled else []) +
             ['Enrollment Track', 'Verification Status'] +
             ['Certificate Eligible', 'Certificate Delivered', 'Certificate Type'] +
-            ['Enrollment Status', 'Course Progress', 'Total Block Types'] +
-            ['Total Completed Block Types', ' Completed Units', 'Incomplete Units']
+            ['Enrollment Status']
         )
+        if context.include_progress_columns:
+            headers += [
+                'Course Progress', 'Total Block Types',
+                'Total Completed Block Types', ' Completed Units', 'Incomplete Units',
+            ]
+        return headers
 
     def _error_headers(self):
         """
@@ -840,8 +1136,27 @@ class CourseGradeReport(object):
             _recurse_children(blocks.get('children', []))
             return completed_units, incomplete_units
 
+        # Constant across all learners in this report; fetch once instead of
+        # per user (each call was a Site lookup + a throwaway request object).
+        current_site = Site.objects.get_current()
+        course_id_str = text_type(context.course_id)
+        include_progress = context.include_progress_columns
+        mode = context.progress_structure_mode
+
         with modulestore().bulk_operations(context.course_id):
             bulk_context = _CourseGradeBulkContext(context, users)
+
+            # Uniform (A): the visible structure is the same within a cohort, so
+            # the structure + total_block_types are computed once per cohort group
+            # (keyed by cohort id) and reused; only completion varies per learner,
+            # fetched for the whole batch in one query.
+            cohort_cache = {}
+            bulk_completion_keys = None
+            bulk_completion_types = None
+            if include_progress and mode == 'uniform' and users:
+                bulk_completion_keys, bulk_completion_types = self._bulk_completions_with_types(
+                    context.course_id, users,
+                )
 
             success_rows, error_rows = [], []
             for user, course_grade, error in CourseGradeFactory().iter(
@@ -853,27 +1168,153 @@ class CourseGradeReport(object):
                 if not course_grade:
                     # An empty gradeset means we failed to grade a student.
                     error_rows.append([user.id, user.username, text_type(error)])
-                else:
-                    block_info, __ = get_progress_statistics_by_block_types(
-                        create_dummy_request(Site.objects.get_current(), user), text_type(context.course_id))
-                    course_block_tree = get_course_outline_block_tree(
-                        create_dummy_request(Site.objects.get_current(), user), text_type(context.course_id), user, allow_start_dates_in_future=True
+                    continue
+
+                row = (
+                    [user.id, user.email, user.username] +
+                    self._user_enrollment_timestamp(user, context.course_id) +
+                    self._user_grades(course_grade, context) +
+                    self._user_cohort_group_names(user, context) +
+                    self._user_experiment_group_names(user, context) +
+                    self._user_team_names(user, bulk_context.teams) +
+                    self._user_verification_mode(user, context, bulk_context.enrollments) +
+                    self._user_certificate_info(user, context, course_grade, bulk_context.certs) +
+                    [_user_enrollment_status(user, context.course_id)]
+                )
+
+                if include_progress:
+                    row += self._progress_columns(
+                        context, user, current_site, course_id_str, mode,
+                        _flatten_course_block_tree, cohort_cache,
+                        bulk_completion_keys, bulk_completion_types,
                     )
-                    completed_units, incomplete_units = _flatten_course_block_tree(course_block_tree)
-                    success_rows.append(
-                        [user.id, user.email, user.username] +
-                        self._user_enrollment_timestamp(user, context.course_id) +
-                        self._user_grades(course_grade, context) +
-                        self._user_cohort_group_names(user, context) +
-                        self._user_experiment_group_names(user, context) +
-                        self._user_team_names(user, bulk_context.teams) +
-                        self._user_verification_mode(user, context, bulk_context.enrollments) +
-                        self._user_certificate_info(user, context, course_grade, bulk_context.certs) +
-                        [_user_enrollment_status(user, context.course_id)] +
-                        [float(block_info['user_progress'])] + [block_info['total_block_types']] +
-                        [block_info['total_completed_block_types']] + [completed_units] + [incomplete_units]
-                    )
+
+                success_rows.append(row)
             return success_rows, error_rows
+
+    def _progress_columns(self, context, user, current_site, course_id_str, mode,
+                          flatten_fn, cohort_cache, bulk_completion_keys, bulk_completion_types):
+        """
+        Compute the custom progress columns for a single learner in the selected
+        ``mode`` (legacy / per_learner / uniform).
+        """
+        if mode == 'uniform':
+            # (A) Structure + total_block_types computed once per *visibility
+            # group* (exact legacy values), reused for every learner in that
+            # group; only completion is overlaid per learner. The group key is
+            # cohort + content/experiment-partition group memberships, so the
+            # cache is correct for cohort- and partition-gated courses alike.
+            cohort = get_cohort(user, context.course_id, assign=False, use_cached=True)
+            cohort_id = cohort.id if cohort else None
+            group_key = (cohort_id, tuple(self._user_experiment_group_names(user, context)))
+            if group_key not in cohort_cache:
+                rep_request = create_dummy_request(current_site, user)
+                block_info, __ = get_progress_statistics_by_block_types(rep_request, course_id_str)
+                structure_tree = get_course_outline_block_tree(
+                    rep_request, course_id_str, None, allow_start_dates_in_future=True, lightweight=True,
+                )
+                cohort_cache[group_key] = {
+                    'total_bt': block_info['total_block_types'],
+                    'tree': structure_tree,
+                }
+            cached = cohort_cache[group_key]
+            total_bt = cached['total_bt']
+            total_completed_bt = self._completed_block_types_from_types(
+                bulk_completion_types.get(user.id, []),
+            )
+            total_blocks = sum(total_bt.values())
+            total_done = sum(total_completed_bt.values())
+            user_progress = float(format((total_done / total_blocks) * 100, '.0f')) if total_blocks else 0.0
+            if cached['tree']:
+                tree = copy.deepcopy(cached['tree'])
+                self._overlay_completion(tree, bulk_completion_keys.get(user.id, set()))
+                completed_units, incomplete_units = flatten_fn(tree)
+            else:
+                completed_units, incomplete_units = [], []
+        elif mode == 'per_learner':
+            # (B) Per-learner visibility; lightweight tree (skips the outline
+            # page's scored/graded/resume passes). Exact stats via the existing
+            # helper.
+            dummy_request = create_dummy_request(current_site, user)
+            block_info, __ = get_progress_statistics_by_block_types(dummy_request, course_id_str)
+            tree = get_course_outline_block_tree(
+                dummy_request, course_id_str, user, allow_start_dates_in_future=True, lightweight=True,
+            )
+            user_progress = float(block_info['user_progress'])
+            total_bt = block_info['total_block_types']
+            total_completed_bt = block_info['total_completed_block_types']
+            completed_units, incomplete_units = flatten_fn(tree)
+        else:
+            # Legacy: original two page-render helpers per learner.
+            dummy_request = create_dummy_request(current_site, user)
+            block_info, __ = get_progress_statistics_by_block_types(dummy_request, course_id_str)
+            tree = get_course_outline_block_tree(
+                dummy_request, course_id_str, user, allow_start_dates_in_future=True,
+            )
+            user_progress = float(block_info['user_progress'])
+            total_bt = block_info['total_block_types']
+            total_completed_bt = block_info['total_completed_block_types']
+            completed_units, incomplete_units = flatten_fn(tree)
+
+        return [user_progress, total_bt, total_completed_bt, completed_units, incomplete_units]
+
+    @staticmethod
+    def _bulk_completions_with_types(course_key, users):
+        """
+        One query for the whole batch. Returns two dicts:
+          keys:  {user_id: set(completed block-key strings)}  -- for unit overlay
+          types: {user_id: [completed block_type, ...]}        -- for block-type counts
+        """
+        rows = BlockCompletion.objects.filter(
+            user_id__in=[u.id for u in users],
+            context_key=course_key,
+        ).values_list('user_id', 'block_key', 'block_type', 'completion')
+        keys = defaultdict(set)
+        types = defaultdict(list)
+        for user_id, block_key, block_type, completion in rows:
+            # total_completed_block_types (types) counts BlockCompletion row
+            # existence, matching the legacy get_progress_information aggregate.
+            types[user_id].append(block_type)
+            # Unit completion (keys) requires a truthy completion value, matching
+            # get_course_outline_block_tree's recurse_mark_complete.
+            if completion:
+                keys[user_id].add(text_type(block_key))
+        return keys, types
+
+    @staticmethod
+    def _completed_block_types_from_types(block_types):
+        """
+        Categorize a learner's completed block types exactly like the legacy
+        ``get_progress_information`` aggregate (independent per-category counts).
+        """
+        counts = {'video': 0, 'problem': 0, 'html': 0, 'other': 0}
+        for block_type in block_types:
+            if block_type in VIDEO_BLOCK_TYPES:
+                counts['video'] += 1
+            if block_type in PROBLEM_BLOCK_TYPES:
+                counts['problem'] += 1
+            if block_type == 'html':
+                counts['html'] += 1
+            if block_type not in CORE_BLOCK_TYPES:
+                counts['other'] += 1
+        return counts
+
+    def _overlay_completion(self, block, completed_keys):
+        """
+        Mark completion on a shared block tree for a single learner, mirroring
+        get_course_outline_block_tree's recurse_mark_complete: a leaf is complete
+        if its key is in ``completed_keys``; a container is complete if all of its
+        completable children are complete.
+        """
+        children = block.get('children')
+        if children:
+            for child in children:
+                self._overlay_completion(child, completed_keys)
+            completable = [c for c in children if c.get('type') not in COMPLETION_EXCLUDED_BLOCK_TYPES]
+            block['complete'] = bool(completable) and all(c.get('complete') for c in completable)
+        else:
+            block['complete'] = text_type(block.get('id')) in completed_keys
+        return block.get('complete')
 
 
 class ProblemGradeReport(GradeReportBase):

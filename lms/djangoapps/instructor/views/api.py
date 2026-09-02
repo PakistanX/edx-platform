@@ -82,7 +82,7 @@ from lms.djangoapps.instructor.views import INVOICE_KEY
 from lms.djangoapps.instructor.views.instructor_task_helpers import extract_email_features, extract_task_features
 from lms.djangoapps.instructor_task import api as task_api
 from lms.djangoapps.instructor_task.api_helper import AlreadyRunningError, QueueConnectionError
-from lms.djangoapps.instructor_task.models import ReportStore
+from lms.djangoapps.instructor_task.models import InstructorTask, ReportStore
 from openedx.core.djangoapps.ace_common.template_context import get_base_template_context
 from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
 from openedx.core.djangoapps.course_groups.cohorts import is_course_cohorted
@@ -2580,13 +2580,43 @@ def list_report_downloads(request, course_id):
     report_store = ReportStore.from_config(config_name='GRADES_DOWNLOAD')
     report_name = request.POST.get("report_name", None)
 
-    response_payload = {
-        'downloads': [
-            dict(name=name, url=url, link=HTML(u'<a href="{}">{}</a>').format(HTML(url), Text(name)))
-            for name, url in report_store.links_for(course_id) if report_name is None or name == report_name
-        ]
-    }
-    return JsonResponse(response_payload)
+    # Map report filename -> generation duration (seconds), recorded in the
+    # grade-report task output, so each link can show how long it took.
+    durations = _grade_report_durations(course_id)
+
+    downloads = []
+    for name, url in report_store.links_for(course_id):
+        if report_name is not None and name != report_name:
+            continue
+        downloads.append(dict(
+            name=name, url=url,
+            # Generation time (seconds) recorded by the grade-report task, shown
+            # in its own right-aligned column; None when not recorded.
+            duration_seconds=durations.get(name),
+            link=HTML(u'<a href="{}">{}</a>').format(HTML(url), Text(name)),
+        ))
+    return JsonResponse({'downloads': downloads})
+
+
+def _grade_report_durations(course_id):
+    """
+    Return {report_filename: duration_seconds} from recent successful grade-report
+    tasks for this course, so the download list can show generation time per file.
+    """
+    durations = {}
+    recent_tasks = InstructorTask.objects.filter(
+        course_id=course_id, task_type='grade_course', task_state='SUCCESS',
+    ).order_by('-id')[:100]
+    for task in recent_tasks:
+        try:
+            output = json.loads(task.task_output) if task.task_output else {}
+        except ValueError:
+            continue
+        name = output.get('report_name')
+        duration_ms = output.get('duration_ms')
+        if name and duration_ms is not None and name not in durations:
+            durations[name] = int(round(duration_ms / 1000.0))
+    return durations
 
 
 @require_POST
@@ -2637,10 +2667,23 @@ def export_ora2_data(request, course_id):
 def calculate_grades_csv(request, course_id):
     """
     AlreadyRunningError is raised if the course's grades are already being updated.
+
+    Accepts optional POST parameters to control the report's custom progress
+    columns:
+        - include_progress_columns: 'false'/'0'/'no' to omit the resource-intensive
+          Course Progress / block-type / completed & incomplete unit columns.
+        - progress_structure_mode: 'legacy' | 'per_learner' | 'uniform'.
     """
     report_type = _('grade')
     course_key = CourseKey.from_string(course_id)
-    task_api.submit_calculate_grades_csv(request, course_key)
+    task_input = {}
+    include_progress = request.POST.get('include_progress_columns')
+    if include_progress is not None:
+        task_input['include_progress_columns'] = include_progress not in ('false', 'False', '0', 'no', '')
+    progress_mode = request.POST.get('progress_structure_mode')
+    if progress_mode in ('legacy', 'per_learner', 'uniform'):
+        task_input['progress_structure_mode'] = progress_mode
+    task_api.submit_calculate_grades_csv(request, course_key, task_input=task_input)
     success_status = SUCCESS_MESSAGE_TEMPLATE.format(report_type=report_type)
 
     return JsonResponse({"status": success_status})

@@ -350,11 +350,19 @@
             this.$async_report_btn.click(function(e) {
                 var url = $(e.target).data('endpoint');
                 var errorMessage = '';
+                var postData = {};
+                if (e.target.name === 'calculate-grades-csv') {
+                    // Per-report options for the grade report's custom columns.
+                    postData.include_progress_columns =
+                        $('#grade-report-include-progress').is(':checked') ? 'true' : 'false';
+                    postData.progress_structure_mode = $('#grade-report-structure-mode').val();
+                }
                 dataDownloadObj.clear_display();
                 return $.ajax({
                     type: 'POST',
                     dataType: 'json',
                     url: url,
+                    data: postData,
                     error: function(error) {
                         if (error.responseText) {
                             errorMessage = JSON.parse(error.responseText);

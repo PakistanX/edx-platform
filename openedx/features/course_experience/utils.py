@@ -24,9 +24,15 @@ from xmodule.modulestore.django import modulestore
 
 
 @request_cached()
-def get_course_outline_block_tree(request, course_id, user=None, allow_start_dates_in_future=False):
+def get_course_outline_block_tree(request, course_id, user=None, allow_start_dates_in_future=False, lightweight=False):
     """
     Returns the root block of the course outline, with children as blocks.
+
+    lightweight (bool): When True, only the block hierarchy and per-block
+        completion are computed. The 'scored', 'num_graded_problems',
+        auth-denial and last-accessed/resume annotations are skipped. This is
+        used by the grade report, which needs completion but discards those
+        fields, so it avoids several full-tree passes per learner.
 
     allow_start_dates_in_future (bool): When True, will allow blocks to be
             returned that can bypass the StartDateTransformer's filter to show
@@ -224,6 +230,11 @@ def get_course_outline_block_tree(request, course_id, user=None, allow_start_dat
         'feedback',
         'ai_grader',
         'pxc',
+        
+        # 'github_xblock',
+        # 'autograder_xblock',
+        # 'xblock_jupyter_graded',
+        # 'xblock_jupyter_viewer',
     ]
     all_blocks = get_blocks(
         request,
@@ -256,11 +267,16 @@ def get_course_outline_block_tree(request, course_id, user=None, allow_start_dat
     course_outline_root_block = all_blocks['blocks'].get(all_blocks['root'], None)
     if course_outline_root_block:
         populate_children(course_outline_root_block, all_blocks['blocks'])
-        recurse_mark_scored(course_outline_root_block)
-        recurse_num_graded_problems(course_outline_root_block)
-        recurse_mark_auth_denial(course_outline_root_block)
+        if not lightweight:
+            # These annotations (scored / num_graded_problems / auth-denial /
+            # resume) are used by the outline page but not by the grade report,
+            # so the lightweight path skips these extra full-tree passes.
+            recurse_mark_scored(course_outline_root_block)
+            recurse_num_graded_problems(course_outline_root_block)
+            recurse_mark_auth_denial(course_outline_root_block)
         if user:
-            set_last_accessed_default(course_outline_root_block)
+            if not lightweight:
+                set_last_accessed_default(course_outline_root_block)
             mark_blocks_completed(
                 block=course_outline_root_block,
                 user=request.user,

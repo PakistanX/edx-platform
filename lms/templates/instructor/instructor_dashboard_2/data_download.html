@@ -95,6 +95,21 @@ from openedx.core.djangolib.markup import HTML, Text
 
   %if settings.FEATURES.get('ALLOW_COURSE_STAFF_GRADE_DOWNLOADS') or section_data['access']['admin'] or settings.FEATURES.get('ALLOW_COURSE_DATA_RESEARCHER_GRADE_DOWNLOADS'):
     <p>${_("Click to generate a CSV grade report for all currently enrolled students.")}</p>
+    <div class="grade-report-options">
+      <label for="grade-report-include-progress">
+        <input type="checkbox" id="grade-report-include-progress" name="grade-report-include-progress" checked>
+        ${_("Include progress / completion columns")}
+      </label>
+      <span class="tip">${_("These columns (Course Progress, block types, completed & incomplete units) are resource-intensive to compute; uncheck for a faster standard report.")}</span>
+      <br>
+      <label for="grade-report-structure-mode">${_("Block structure computation")}</label>
+      <select id="grade-report-structure-mode" name="grade-report-structure-mode">
+        <option value="">${_("Default")}</option>
+        <option value="per_learner">${_("Per-learner (respects gated content)")}</option>
+        <option value="uniform">${_("Uniform (faster; only for courses not gated per learner)")}</option>
+        <option value="legacy">${_("Legacy")}</option>
+      </select>
+    </div>
     <p>
       <input type="button" name="calculate-grades-csv" class="async-report-btn" value="${_("Generate Grade Report")}" data-endpoint="${ section_data['calculate_grades_csv_url'] }"/>
       <input type="button" name="problem-grade-report" class="async-report-btn" value="${_("Generate Problem Grade Report")}" data-endpoint="${ section_data['problem_grade_report_url'] }"/>
