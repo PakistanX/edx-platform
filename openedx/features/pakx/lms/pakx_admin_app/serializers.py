@@ -15,7 +15,31 @@ from openedx.core.djangoapps.user_api.accounts.serializers import LanguageProfic
 from student.models import CourseEnrollment, LanguageProficiency, Registration, UserProfile
 
 from .constants import GROUP_TRAINING_MANAGERS, LEARNER, ORG_ADMIN, ORG_ROLES, TRAINING_MANAGER
+from .models import MAUReport
 from .utils import specify_user_role
+
+
+class MAUReportSerializer(serializers.ModelSerializer):
+    """Serializer for a Monthly Active Users report row shown in the reports table."""
+    month = serializers.SerializerMethodField()
+    organization = serializers.SerializerMethodField()
+
+    class Meta:
+        model = MAUReport
+        fields = (
+            'id', 'organization', 'is_overall', 'month',
+            'active_user_count', 'excluded_staff_count', 'created_at',
+        )
+
+    @staticmethod
+    def get_month(obj):
+        return obj.month.strftime('%Y-%m')
+
+    @staticmethod
+    def get_organization(obj):
+        if obj.is_overall:
+            return 'All organizations'
+        return obj.organization_name or obj.organization_short_name
 
 
 class CourseStatsListSerializer(serializers.ModelSerializer):

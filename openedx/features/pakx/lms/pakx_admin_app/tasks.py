@@ -19,7 +19,7 @@ from openedx.core.lib.celery.task_utils import emulate_http_request
 from student.models import CourseEnrollment
 
 from .message_types import EnrolmentNotification
-from .utils import create_user, get_org_users_qs
+from .utils import create_user, get_org_users_qs_for_user
 
 log = getLogger(__name__)
 
@@ -119,7 +119,7 @@ def enroll_users(request_user_id, user_ids, course_keys_string):
     if request_user:
         enrolled_email_data = []
         site = Site.objects.get_current()
-        users_to_enroll = get_org_users_qs(request_user).filter(id__in=user_ids)
+        users_to_enroll = get_org_users_qs_for_user(request_user).filter(id__in=user_ids)
         try:
             with transaction.atomic():
                 for course_key_string in course_keys_string:
@@ -143,3 +143,42 @@ def enroll_users(request_user_id, user_ids, course_keys_string):
             log.info("Task terminated!")
     else:
         log.info("Invalid request user id - Task terminated!")
+
+
+@task(name='generate_monthly_mau_reports')
+def generate_monthly_mau_reports(year=None, month=None):
+    """
+    Generate Monthly Active Users reports for every active organization plus the
+    overall report. Defaults to the previous calendar month; scheduled to run on
+    the first day of each month via CELERYBEAT_SCHEDULE.
+    """
+    from .mau import generate_all_mau_reports
+    reports = generate_all_mau_reports(year, month)
+    log.info("Generated %s MAU reports", len(reports))
+
+
+@task(name='export_course_completions')
+def export_course_completions():
+    """
+    Push completed learners to a Google Sheet for each entry in
+    ``settings.COURSE_COMPLETIONS_SHEET_EXPORTS`` (a list of dicts with keys
+    ``course``, ``spreadsheet`` and optional ``sheet``). Scheduled daily via
+    CELERYBEAT_SCHEDULE. One failing course is logged and skipped so it does not
+    block the others.
+    """
+    from .completions_export import CompletionsExportError, export_course_completions as run_export
+
+    exports = getattr(settings, 'COURSE_COMPLETIONS_SHEET_EXPORTS', None) or []
+    for entry in exports:
+        course = entry.get('course')
+        spreadsheet = entry.get('spreadsheet')
+        if not course or not spreadsheet:
+            log.error("Skipping malformed COURSE_COMPLETIONS_SHEET_EXPORTS entry: %r", entry)
+            continue
+        try:
+            count = run_export(course, spreadsheet, sheet_name=entry.get('sheet', 'Sheet1'))
+            log.info("Completions export: %s rows for %s -> %s", count, course, spreadsheet)
+        except CompletionsExportError as exc:
+            log.error("Completions export failed for %s: %s", course, exc)
+        except Exception:  # pylint: disable=broad-except
+            log.exception("Unexpected error exporting completions for %s", course)

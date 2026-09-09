@@ -23,3 +23,15 @@ ORG_ROLES = (
     (TRAINING_MANAGER, 'Training Manager'),
     (LEARNER, 'LEARNER'),
 )
+
+# Monthly Active Users (MAU) reports
+MAU_REPORTS_S3_FOLDER = 'mau-reports'
+MAU_REPORTS_OVERALL_FOLDER = 'all'
+MAU_REPORT_DEFAULT_PAGE_SIZE = 10
+MAU_REPORT_MAX_PAGE_SIZE = 100
+
+MAU_USER_TYPE_LEARNER = 'learner'
+MAU_USER_TYPE_COURSE_STAFF = 'course_staff'
+MAU_USER_TYPE_ADMIN_STAFF = 'admin_staff'
+
+MAU_REPORT_CSV_HEADERS = ['user_type', 'username', 'email', 'date_joined', 'last_login']
