@@ -19,7 +19,7 @@ from openedx.core.lib.celery.task_utils import emulate_http_request
 from student.models import CourseEnrollment
 
 from .message_types import EnrolmentNotification
-from .utils import create_user, get_org_users_qs
+from .utils import create_user, get_org_users_qs_for_user
 
 log = getLogger(__name__)
 
@@ -119,7 +119,7 @@ def enroll_users(request_user_id, user_ids, course_keys_string):
     if request_user:
         enrolled_email_data = []
         site = Site.objects.get_current()
-        users_to_enroll = get_org_users_qs(request_user).filter(id__in=user_ids)
+        users_to_enroll = get_org_users_qs_for_user(request_user).filter(id__in=user_ids)
         try:
             with transaction.atomic():
                 for course_key_string in course_keys_string:
@@ -143,3 +143,30 @@ def enroll_users(request_user_id, user_ids, course_keys_string):
             log.info("Task terminated!")
     else:
         log.info("Invalid request user id - Task terminated!")
+
+
+@task(name='generate_monthly_mau_reports')
+def generate_monthly_mau_reports(year=None, month=None):
+    """
+    Generate Monthly Active Users reports for every active organization plus the
+    overall report. Defaults to the previous calendar month; scheduled to run on
+    the first day of each month via CELERYBEAT_SCHEDULE.
+    """
+    from .mau import generate_all_mau_reports
+    reports = generate_all_mau_reports(year, month)
+    log.info("Generated %s MAU reports", len(reports))
+
+
+@task(name='export_course_completions')
+def export_course_completions():
+    """
+    Push completed learners to a Google Sheet for each entry in
+    ``settings.COURSE_COMPLETIONS_SHEET_EXPORTS``. Kept so the export can be
+    triggered via celery if desired; the scheduled run is driven from cron by the
+    ``export_all_course_completions`` management command (celery-beat is not used
+    on this deployment).
+    """
+    from .completions_export import export_all_configured
+
+    succeeded, failed = export_all_configured()
+    log.info("Completions export finished: succeeded=%s failed=%s", succeeded, failed)

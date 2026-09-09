@@ -1519,6 +1519,11 @@ MIDDLEWARE = [
     #'django.contrib.auth.middleware.AuthenticationMiddleware',
     'openedx.core.djangoapps.cache_toolbox.middleware.CacheBackedAuthenticationMiddleware',
 
+    # Bump last_login into the current month for active learners on long-lived
+    # sessions, so MAU counts are not undercounted (gated by the waffle switch
+    # ilmx.refresh_last_login_monthly; runs after auth so request.user is set).
+    'openedx.features.pakx.lms.overrides.middleware.RefreshLastLoginOnMonthChangeMiddleware',
+
     'student.middleware.UserStandingMiddleware',
     'openedx.core.djangoapps.contentserver.middleware.StaticContentServer',
 

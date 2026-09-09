@@ -16,6 +16,7 @@ from django.contrib.sites.models import Site
 from django.db import transaction
 from django.db.models import Count, Exists, ExpressionWrapper, F, IntegerField, OuterRef, Prefetch, Q, Subquery, Sum
 from django.db.models.functions import TruncDay, TruncMonth, TruncQuarter
+from django.core.files.storage import default_storage
 from django.http import Http404, HttpResponse
 from django.middleware import csrf
 from django.urls import reverse
@@ -40,6 +41,7 @@ from openedx.features.pakx.lms.overrides.models import CourseProgressStats
 from organizations.models import Organization
 from student.models import CourseAccessRole, CourseEnrollment, LanguageProficiency
 
+from .mau import get_scoped_mau_reports
 from .message_types import DialogAcademyUserEnrollmentNotification
 from .management.commands.enroll_users_for_dialog_academy \
     import PROGRAM_GUIDELINES_LINK, CYBERBULLYING_AVOIDANCE_LINK, DIALOG_ACADEMY_ORG_ID
@@ -56,12 +58,13 @@ from .constants import (
     TRAINING_MANAGER,
     USER_ACCOUNT_DEACTIVATED_MSG
 )
-from .pagination import CourseEnrollmentPagination, PakxAdminAppPagination
+from .pagination import CourseEnrollmentPagination, MAUReportPagination, PakxAdminAppPagination
 from .permissions import CanAccessPakXAdminPanel, DialogAcademyIsStaffOrAllowedEmail, IsSameOrganization, IsStaffOrSuperUser
 from .serializers import (
     CoursesSerializer,
     CourseStatsListSerializer,
     LearnersSerializer,
+    MAUReportSerializer,
     UserCourseEnrollmentSerializer,
     UserDetailViewSerializer,
     UserListingSerializer,
@@ -686,11 +689,14 @@ def _get_paid_verified_enrollment_counts_by_course(user_qs, start_date, end_date
     """
     Return paid verified enrollment counts grouped by course run (course_id).
 
+    Only currently active (is_active=True) verified enrollments are counted; seats that
+    were later unenrolled are excluded.
+
     Includes:
-    - verified enrollments whose CourseEnrollment.created falls within the window
+    - active verified enrollments whose CourseEnrollment.created falls within the window
     - enrollments created before the window that upgraded from a non-verified mode to
-      verified during the window (from enrollment history; excluded from the first query
-      via created__lt=start_date to avoid double-counting)
+      verified during the window and are still active (from enrollment history; excluded
+      from the first query via created__lt=start_date to avoid double-counting)
 
     Uses order_by() before annotate so CourseEnrollment.Meta.ordering does not add
     user/course to GROUP BY and collapse counts to one per learner.
@@ -698,6 +704,7 @@ def _get_paid_verified_enrollment_counts_by_course(user_qs, start_date, end_date
     enrollment_filters = Q(
         user__in=user_qs,
         mode='verified',
+        is_active=True,
         created__range=[start_date, end_date],
     )
     if org_filter is not None:
@@ -739,7 +746,7 @@ def _get_paid_verified_enrollment_counts_by_course(user_qs, start_date, end_date
         previous_mode__in=CourseMode.VERIFIED_MODES,
     ).values_list('id', flat=True).distinct()
 
-    upgrade_count_filters = Q(id__in=upgraded_enrollment_ids)
+    upgrade_count_filters = Q(id__in=upgraded_enrollment_ids, is_active=True)
     if org_filter is not None:
         upgrade_count_filters &= org_filter
 
@@ -1230,6 +1237,45 @@ class OrganizationListAPI(views.APIView):
             active=True
         ).order_by('name').values('short_name', 'name')
         return Response(status=status.HTTP_200_OK, data=list(organizations))
+
+
+class MAUReportListAPI(generics.ListAPIView):
+    """
+    Paginated list of Monthly Active Users reports.
+    <lms>/adminpanel/mau-reports/
+
+    Scoped like the dashboard org selector: an unrestricted admin sees the selected
+    org's reports (or the overall reports when no org is selected); course staff see
+    only their own org's reports. Supports `page`, `page_size`.
+    """
+    authentication_classes = [SessionAuthentication]
+    permission_classes = [CanAccessPakXAdminPanel]
+    pagination_class = MAUReportPagination
+    serializer_class = MAUReportSerializer
+
+    def get_queryset(self):
+        return get_scoped_mau_reports(self.request)
+
+
+class MAUReportDownloadView(views.APIView):
+    """
+    Stream a single MAU report CSV.
+    <lms>/adminpanel/mau-reports/<report_id>/download/
+
+    Only reports within the requester's scope are downloadable; anything else 404s.
+    """
+    authentication_classes = [SessionAuthentication]
+    permission_classes = [CanAccessPakXAdminPanel]
+
+    def get(self, request, report_id, *args, **kwargs):  # pylint: disable=unused-argument
+        report = get_scoped_mau_reports(request).filter(id=report_id).first()
+        if not report or not default_storage.exists(report.file_path):
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+        with default_storage.open(report.file_path) as report_file:
+            response = HttpResponse(report_file.read(), content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename="{}"'.format(report.file_path.split('/')[-1])
+        return response
 
 
 class CourseListAPI(generics.ListAPIView):
