@@ -22,7 +22,6 @@ from openedx.core.djangoapps.lang_pref import LANGUAGE_KEY
 from openedx.core.djangoapps.site_configuration import helpers as configuration_helpers
 from openedx.core.djangoapps.user_api.preferences.api import get_user_preference
 from openedx.core.lib.celery.task_utils import emulate_http_request
-from openedx.features.pakx.lms.overrides.constants import SKIP_UPDATE_COURSE_PROGRESS_COURSE_IDS 
 from openedx.features.pakx.lms.overrides.message_types import ContactUs, CourseProgress
 from openedx.features.pakx.lms.overrides.models import CourseProgressStats
 from openedx.features.pakx.lms.overrides.post_assessment import check_and_unlock_user_milestone
@@ -161,27 +160,30 @@ def update_course_progress_stats():
     for item in progress_models:
         user = item.enrollment.user
         course_id = item.enrollment.course_id
-        # if course_id in SKIP_UPDATE_COURSE_PROGRESS_COURSE_IDS:
-        #     continue
-        course_progress = float(
-            get_course_progress_percentage(create_dummy_request(Site.objects.get_current(), user),
-                                           text_type(course_id)))
-        course_overview = CourseOverview.get_from_id(course_id)
-        grades = CourseGradeFactory().read(user=user, course_key=course_id)
-        completed = course_progress >= 100
-        fields_list = ['progress', 'grade']
-        if course_progress >= 100:
-            item.completion_date = timezone.now()
-            fields_list.append('completion_date')
-        item.progress = course_progress
-        item.grade = grades.letter_grade
+        try:
+            course_progress = float(
+                get_course_progress_percentage(create_dummy_request(Site.objects.get_current(), user),
+                                            text_type(course_id)))
+            course_overview = CourseOverview.get_from_id(course_id)
+            grades = CourseGradeFactory().read(user=user, course_key=course_id)
+            completed = course_progress >= 100
+            fields_list = ['progress', 'grade']
+            if course_progress >= 100:
+                item.completion_date = timezone.now()
+                fields_list.append('completion_date')
+            item.progress = course_progress
+            item.grade = grades.letter_grade
 
-        data = {'course_name': course_overview.display_name, 'username': user.username,
-                'email': user.email,
-                'language': get_user_preference(user, LANGUAGE_KEY),
-                'completed': completed,
-                'status_message': "Completed" if completed else "Pending",
-                'course_progress': course_progress}
+            data = {'course_name': course_overview.display_name, 'username': user.username,
+                    'email': user.email,
+                    'language': get_user_preference(user, LANGUAGE_KEY),
+                    'completed': completed,
+                    'status_message': "Completed" if completed else "Pending",
+                    'course_progress': course_progress}
+
+        except Exception as ex:
+            log.error("Exception in update course progress stats cronjob {}".format(ex))
+            continue
 
         if data["completed"] and item.email_reminder_status != CourseProgressStats.COURSE_COMPLETED:
             # TODO: Un-comment send_reminder_email call when Email templates are finalized
@@ -194,7 +196,8 @@ def update_course_progress_stats():
                 # send_reminder_email.delay(data, text_type(course_id))
                 item.email_reminder_status = CourseProgressStats.REMINDER_SENT
                 fields_list.append('email_reminder_status')
-        item.save(update_fields=fields_list)
+        if fields_list:
+            item.save(update_fields=fields_list)
 
 
 @task(name='unlock_subsections')

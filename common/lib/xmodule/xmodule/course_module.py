@@ -631,6 +631,17 @@ class CourseFields(object):
         scope=Scope.settings,
         default=""
     )
+    cert_template_url = String(
+        help=_(
+            'Use this setting only when bypassing certificates creation from Certificates menu option. '
+            'Between quotation marks, enter the "Studio" URL of file uploaded in Files & Uploads tab '
+            '(or any other public URL) of the course certificate template image (.jpg, .jpeg, .png accepted). '
+            'When set, certificate will be generated using this template.'
+        ),
+        display_name=_("Template File URL"),
+        scope=Scope.settings,
+        default=""
+    )
     cert_html_view_enabled = Boolean(
         display_name=_("Certificate Web/HTML View Enabled"),
         help=_("If true, certificate Web/HTML views are enabled for the course."),

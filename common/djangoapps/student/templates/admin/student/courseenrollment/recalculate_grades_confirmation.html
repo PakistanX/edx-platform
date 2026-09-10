@@ -1,0 +1,54 @@
+{% extends "admin/base_site.html" %}
+{% load i18n l10n admin_urls %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+  &rsaquo; <a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a>
+  &rsaquo; <a href="{% url opts|admin_urlname:'changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a>
+  &rsaquo; {% trans 'Recalculate grades' %}
+</div>
+{% endblock %}
+
+{% block content %}
+<p>{% trans "You are about to submit a grade recalculation for the following enrollment(s):" %}</p>
+
+<ul>
+  {% for enrollment in enrollments %}
+    <li>{{ enrollment.user }} &mdash; {{ enrollment.course_id }}</li>
+  {% endfor %}
+</ul>
+
+<form method="post">{% csrf_token %}
+  <fieldset class="module aligned" style="margin-top: 1em;">
+    <div class="form-row">
+      {% if is_superuser %}
+        <div style="padding-left: 12px;">
+          <label for="id_force_if_frozen" style="display: inline; float: none; width: auto;">
+            <input type="checkbox" name="force_if_frozen" id="id_force_if_frozen">
+            {% trans "Force recalculation even if grades are frozen" %}
+          </label>
+          <p class="help" style="padding-left: 12px;">
+            {% trans "Recomputes grades even for courses whose grades are frozen (more than 30 days after the end date)." %}
+          </p>
+        </div>
+      {% else %}
+        <p class="help" style="padding-left: 12px;">
+          {% trans "Only superusers can force recalculation of frozen grades; this run will respect the frozen-grades guard." %}
+        </p>
+      {% endif %}
+    </div>
+  </fieldset>
+
+  {% for id in selected_ids %}
+    <input type="hidden" name="{{ action_checkbox_name }}" value="{{ id|unlocalize }}">
+  {% endfor %}
+  <input type="hidden" name="action" value="recalculate_grades">
+  <input type="hidden" name="confirm" value="1">
+
+  <div class="submit-row">
+    <input type="submit" class="default" value="{% trans 'Recalculate grades' %}">
+    <a href="{% url opts|admin_urlname:'changelist' %}" class="button cancel-link">{% trans 'Cancel' %}</a>
+  </div>
+</form>
+{% endblock %}

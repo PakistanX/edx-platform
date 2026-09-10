@@ -26,6 +26,7 @@ import six
 from boto.exception import BotoServerError
 from django.conf import settings
 from django.contrib.auth.models import User
+from django.core.files import File
 from django.core.files.base import ContentFile
 from django.db import models, transaction
 from django.utils.encoding import python_2_unicode_compatible
@@ -299,6 +300,17 @@ class DjangoStorageReportStore(ReportStore):
         csvwriter.writerows(self._get_utf8_encoded_rows(rows))
         output_buffer.seek(0)
         self.store(course_id, filename, output_buffer)
+
+    def store_file(self, course_id, filename, file_handle):
+        """
+        Store an already-serialized, UTF-8 encoded file-like object as `filename`,
+        streaming it to the storage backend. Unlike `store`/`store_rows`, this does
+        not read the whole file into memory, so it is safe for very large reports.
+        `file_handle` must be a binary file-like object; it is read from the start.
+        """
+        path = self.path_to(course_id, filename)
+        file_handle.seek(0)
+        self.storage.save(path, File(file_handle))
 
     def links_for(self, course_id):
         """

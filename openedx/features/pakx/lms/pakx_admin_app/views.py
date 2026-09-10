@@ -2,30 +2,49 @@
 Views for Admin Panel API
 """
 from csv import DictReader, DictWriter
-from datetime import timedelta
+from datetime import datetime, time, timedelta
+from decimal import Decimal
 from io import StringIO
 from itertools import groupby
+from logging import getLogger
 
 import six
 from dateutil.parser import parse
 from django.conf import settings
-from django.contrib.auth.models import Group
-from django.db.models import ExpressionWrapper, F, IntegerField, Prefetch, Q, Sum
+from django.contrib.auth.models import Group, User
+from django.contrib.sites.models import Site
+from django.db import transaction
+from django.db.models import Count, Exists, ExpressionWrapper, F, IntegerField, OuterRef, Prefetch, Q, Subquery, Sum
+from django.db.models.functions import TruncDay, TruncMonth, TruncQuarter
+from django.core.files.storage import default_storage
 from django.http import Http404, HttpResponse
 from django.middleware import csrf
 from django.urls import reverse
+from django.utils import timezone
 from django.utils.decorators import method_decorator
+from edx_ace import Recipient, ace
 from rest_framework import generics, status, views, viewsets
 from rest_framework.authentication import SessionAuthentication
 from rest_framework.filters import OrderingFilter
+from rest_framework.renderers import BrowsableAPIRenderer, JSONRenderer
 from rest_framework.response import Response
+from opaque_keys.edx.keys import CourseKey
+from course_modes.models import CourseMode
 
+from openedx.core.djangoapps.ace_common.template_context import get_base_template_context
 from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
 from openedx.core.djangoapps.cors_csrf.decorators import ensure_csrf_cookie_cross_domain
+from openedx.core.djangoapps.site_configuration import helpers as configuration_helpers
 from openedx.core.djangoapps.user_api.accounts.image_helpers import get_profile_image_urls_for_user
+from openedx.core.lib.celery.task_utils import emulate_http_request
 from openedx.features.pakx.lms.overrides.models import CourseProgressStats
+from organizations.models import Organization
 from student.models import CourseAccessRole, CourseEnrollment, LanguageProficiency
 
+from .mau import get_scoped_mau_reports
+from .message_types import DialogAcademyUserEnrollmentNotification
+from .management.commands.enroll_users_for_dialog_academy \
+    import PROGRAM_GUIDELINES_LINK, CYBERBULLYING_AVOIDANCE_LINK, DIALOG_ACADEMY_ORG_ID
 from .constants import (
     BULK_REGISTRATION_TASK_SUCCESS_MSG,
     ENROLLMENT_COURSE_DIFF_ORG_ERROR_MSG,
@@ -35,18 +54,23 @@ from .constants import (
     GROUP_TRAINING_MANAGERS,
     ORG_ADMIN,
     SELF_ACTIVE_STATUS_CHANGE_ERROR_MSG,
-    TRAINING_MANAGER
+    SELF_PASSWORD_RESET_ERROR_MSG,
+    TRAINING_MANAGER,
+    USER_ACCOUNT_DEACTIVATED_MSG
 )
-from .pagination import CourseEnrollmentPagination, PakxAdminAppPagination
-from .permissions import CanAccessPakXAdminPanel, IsSameOrganization
+from .pagination import CourseEnrollmentPagination, MAUReportPagination, PakxAdminAppPagination
+from .permissions import CanAccessPakXAdminPanel, DialogAcademyIsStaffOrAllowedEmail, IsSameOrganization, IsStaffOrSuperUser
 from .serializers import (
     CoursesSerializer,
     CourseStatsListSerializer,
     LearnersSerializer,
+    MAUReportSerializer,
     UserCourseEnrollmentSerializer,
     UserDetailViewSerializer,
     UserListingSerializer,
-    UserSerializer
+    UserSerializer,
+    DialogAcademyCourseActionSerializer,
+    DialogAcademyBulkCourseActionSerializer
 )
 from .tasks import bulk_user_registration, enroll_users
 from .utils import (
@@ -54,15 +78,18 @@ from .utils import (
     do_user_and_courses_have_same_org,
     extract_filters_and_search,
     get_completed_course_count_filters,
-    get_course_overview_same_org_filter,
+    get_effective_org_regex,
     get_enroll_able_course_qs,
     get_org_users_qs,
     get_request_user_org_id,
     get_roles_q_filters,
     get_user_data_from_bulk_registration_file,
-    get_user_org,
-    is_courses_enroll_able
+    is_courses_enroll_able,
+    is_unrestricted_admin,
+    save_file_to_contentstore
 )
+
+log = getLogger(__name__)
 
 
 class UserCourseEnrollmentsListAPI(generics.ListAPIView):
@@ -106,8 +133,9 @@ class UserCourseEnrollmentsListAPI(generics.ListAPIView):
     def get_queryset(self):
         qs = CourseEnrollment.objects.filter(user_id=self.kwargs['user_id'], is_active=True)
 
-        if not self.request.user.is_superuser:
-            qs = qs.filter(course__org__iregex=get_user_org(self.request.user))
+        org_regex = get_effective_org_regex(self.request)
+        if org_regex is not None:
+            qs = qs.filter(course__org__iregex=org_regex)
 
         return qs.select_related(
             'enrollment_stats',
@@ -138,10 +166,10 @@ class UserProfileViewSet(viewsets.ModelViewSet):
 
     def get_object(self):
         group_qs = Group.objects.filter(name__in=[GROUP_TRAINING_MANAGERS, GROUP_ORGANIZATION_ADMIN]).order_by('name')
-        completed_count, in_progress_count = get_completed_course_count_filters(req_user=self.request.user)
+        completed_count, in_progress_count = get_completed_course_count_filters(request=self.request)
 
         user_obj = get_org_users_qs(
-            self.request.user
+            self.request
         ).filter(
             id=self.kwargs['pk']
         ).prefetch_related(
@@ -167,7 +195,7 @@ class UserProfileViewSet(viewsets.ModelViewSet):
         if request.data.get('profile'):
             request.data['profile']['organization'] = get_request_user_org_id(self.request)
 
-        is_created, res_data = create_user(request.data, request.scheme, next_url=reverse('account_settings'))
+        is_created, res_data, _ = create_user(request.data, next_url=reverse('account_settings'))
         if is_created:
             return Response(UserSerializer(res_data).data, status=status.HTTP_201_CREATED)
 
@@ -180,7 +208,7 @@ class UserProfileViewSet(viewsets.ModelViewSet):
         file_data = StringIO(request.FILES['file'].read().decode('utf-8'))
         file_reader = DictReader(file_data)
 
-        required_col_names = {'name', 'username', 'email', 'organization_id', 'role', 'employee_id', 'language'}
+        required_col_names = {'name', 'username', 'email', 'organization_id', 'role', 'employee_id', 'language', 'verified'}
         if not set(file_reader.fieldnames) == required_col_names:
             return Response(
                 'Invalid column names! Correct names are: "{}"'.format('" | "'.join(required_col_names)),
@@ -188,7 +216,7 @@ class UserProfileViewSet(viewsets.ModelViewSet):
             )
 
         users = get_user_data_from_bulk_registration_file(file_reader, get_request_user_org_id(self.request))
-        bulk_user_registration.delay(users, request.user.email, request.scheme)
+        bulk_user_registration.delay(users, request.user.email)
 
         return Response(BULK_REGISTRATION_TASK_SUCCESS_MSG, status=status.HTTP_200_OK)
 
@@ -220,6 +248,12 @@ class UserProfileViewSet(viewsets.ModelViewSet):
         roles_qs = get_roles_q_filters(roles)
         if roles_qs:
             self.queryset = self.queryset.filter(roles_qs)
+        
+        learner_status = self.request.query_params['learner_status'].split(',') if self.request.query_params.get('learner_status') else []
+        if learner_status == ['active']:
+            self.queryset = self.queryset.filter(is_active=True)
+        elif learner_status == ['inactive']:
+            self.queryset = self.queryset.filter(is_active=False)
 
         username = self.request.query_params['username'] if self.request.query_params.get('username') else None
         if username:
@@ -249,7 +283,7 @@ class UserProfileViewSet(viewsets.ModelViewSet):
         if self.request.query_params.get("ordering"):
             self.ordering = self.request.query_params['ordering'].split(',') + self.ordering
 
-        queryset = get_org_users_qs(self.request.user).exclude(id=self.request.user.id)
+        queryset = get_org_users_qs(self.request).exclude(id=self.request.user.id)
         group_qs = Group.objects.filter(name__in=[GROUP_TRAINING_MANAGERS, GROUP_ORGANIZATION_ADMIN]).order_by('name')
         return queryset.select_related(
             'profile'
@@ -286,6 +320,37 @@ class UserProfileViewSet(viewsets.ModelViewSet):
 
         return Response(status=status.HTTP_404_NOT_FOUND)
 
+    def reset_user_password(self, request, *args, **kwargs):
+        """
+        method to send a password reset link for a user
+        :param ids: send password reset link for these user ids
+        :return: response with respective status
+        """
+        from django.contrib.auth.models import User
+        from openedx.core.djangoapps.user_authn.views.password_reset import send_password_reset_email_for_user, destroy_oauth_tokens
+
+        ids = request.data["ids"]
+        if [str(self.request.user.id)] == ids:
+            return Response(SELF_PASSWORD_RESET_ERROR_MSG, status=status.HTTP_403_FORBIDDEN)
+
+        if isinstance(ids, int):
+            user = User.objects.get(id=ids)
+            send_password_reset_email_for_user(user, request)
+            destroy_oauth_tokens(user)
+
+            return Response(status=status.HTTP_200_OK)
+
+        if ids == "all":
+            users = self.get_queryset().all()
+        else:
+            users = User.objects.filter(id__in=ids)
+
+        for user in users:
+            send_password_reset_email_for_user(user, request)
+            destroy_oauth_tokens(user)
+
+        return Response(status=status.HTTP_200_OK)
+
 
 class CourseEnrolmentViewSet(viewsets.ModelViewSet):
     """
@@ -307,7 +372,7 @@ class CourseEnrolmentViewSet(viewsets.ModelViewSet):
         if not do_user_and_courses_have_same_org(request.data["course_keys"], request.user):
             return Response(ENROLLMENT_COURSE_DIFF_ORG_ERROR_MSG, status=status.HTTP_400_BAD_REQUEST)
 
-        user_qs = get_org_users_qs(request.user).filter(id__in=request.data["user_ids"]).values_list('id', flat=True)
+        user_qs = get_org_users_qs(request).filter(id__in=request.data["user_ids"]).values_list('id', flat=True)
 
         if len(request.data["user_ids"]) != len(user_qs):
             other_org_users = list(set(request.data["user_ids"]) - set(list(user_qs)))
@@ -328,7 +393,9 @@ class AnalyticsStats(views.APIView):
             "completed_course_count": 1,
             "course_assignment_count": 7,
             "course_in_progress": 6,
-            "learner_count": 4
+            "learner_count": 4,
+            "daily_learner_count": 2,
+            "monthly_learner_count": 4,
         }
     """
     authentication_classes = [SessionAuthentication]
@@ -338,11 +405,16 @@ class AnalyticsStats(views.APIView):
         """
         get analytics quick stats about learner and their assigned courses
         """
-        user_qs = get_org_users_qs(self.request.user)
+        user_qs = get_org_users_qs(self.request)
         user_ids = user_qs.values_list('id', flat=True)
 
+        today = timezone.now().date()
+        start_of_month = timezone.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        daily_active_user = user_qs.filter(last_login__date=today).exclude(last_login__isnull=True).count()
+        monthly_active_user = user_qs.filter(last_login__gte=start_of_month).exclude(last_login__isnull=True).count()
+
         completed_count, in_progress_count = get_completed_course_count_filters(
-            exclude_staff_superuser=True, req_user=self.request.user
+            exclude_staff_superuser=True, request=self.request
         )
         course_stats = user_qs.annotate(
             passed=ExpressionWrapper(completed_count, output_field=IntegerField()),
@@ -353,12 +425,506 @@ class AnalyticsStats(views.APIView):
 
         data = {
             'learner_count': len(user_ids),
+            'daily_learner_count': daily_active_user,
+            'monthly_learner_count': monthly_active_user,
             'course_in_progress': course_stats.get('pending') or 0,
             'completed_course_count': course_stats.get('completions') or 0
         }
 
         data['course_assignment_count'] = data['course_in_progress'] + data['completed_course_count']
         return Response(status=status.HTTP_200_OK, data=data)
+
+
+class AnalyticsLoginStats(views.APIView):
+    """
+    API view for organization level login analytics stats
+    <lms>/adminpanel/analytics/login/
+
+    :return:
+        {
+           'labels': ['2024-09-01', '2024-09-02', '2024-09-03', '2024-09-04', '2024-09-05'],
+            'data': [10, 20, 15, 25, 30],
+        }
+    """
+    authentication_classes = [SessionAuthentication]
+    permission_classes = [CanAccessPakXAdminPanel]
+
+    def get(self, request, *args, **kwargs):  # pylint: disable=unused-argument
+        user_qs = get_org_users_qs(self.request)
+        start_date_str = request.GET.get('startDate')
+        end_date_str = request.GET.get('endDate')
+        granularity = request.GET.get('granularity', 'days')  # default granularity is days
+
+        # If no date is provided, default to the last 30 days
+        if not start_date_str or not end_date_str:
+            e_date = timezone.now().date()
+            s_date = e_date - timezone.timedelta(days=30)
+        else:
+            try:
+                s_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+                e_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+            except ValueError:
+                e_date = timezone.now().date()
+                s_date = e_date - timedelta(days=30)
+
+        start_date = timezone.make_aware(datetime.combine(s_date, time.min))
+        end_date = timezone.make_aware(datetime.combine(e_date, time.max))
+
+        if end_date > timezone.now():
+            end_date = timezone.now()
+        if start_date > end_date:
+            start_date = end_date - timezone.timedelta(days=30)
+
+        user_qs = user_qs.filter(last_login__range=[start_date, end_date])
+
+        if granularity == 'days':
+            logins_by_day = user_qs.filter(last_login__range=[start_date, end_date])\
+                .annotate(day=TruncDay('last_login'))\
+                .values('day')\
+                .annotate(login_count=Count('id'))\
+                .values('day', 'login_count')
+
+            data = {login['day'].date(): login['login_count'] for login in logins_by_day}
+
+            labels = []
+            login_data = []
+            current_date = start_date.date()
+            while current_date <= end_date.date():
+                labels.append(current_date.strftime('%Y-%m-%d'))
+                login_data.append(data.get(current_date, 0))
+                current_date += timedelta(days=1)
+
+        elif granularity == 'months':
+            logins_by_month = user_qs.filter(last_login__range=[start_date, end_date])\
+                .annotate(month=TruncMonth('last_login'))\
+                .values('month')\
+                .annotate(login_count=Count('id'))\
+                .values('month', 'login_count')
+
+            data = {login['month'].strftime('%Y-%m'): login['login_count'] for login in logins_by_month}
+
+            labels = []
+            login_data = []
+            current_date = start_date.replace(day=1)
+            while current_date <= end_date:
+                month_str = current_date.strftime('%b %Y')
+                labels.append(month_str)
+                login_data.append(data.get(current_date.strftime('%Y-%m'), 0))
+                current_date += timedelta(days=32)
+                current_date = current_date.replace(day=1)
+
+        elif granularity == 'quarters':
+            logins_by_quarter = user_qs.filter(last_login__range=[start_date, end_date])\
+                .annotate(quarter=TruncQuarter('last_login'))\
+                .values('quarter')\
+                .annotate(login_count=Count('id'))\
+                .values('quarter', 'login_count')
+
+            data = {(login['quarter'].year, (login['quarter'].month - 1) // 3 + 1): login['login_count']
+                    for login in logins_by_quarter}
+            labels = []
+            login_data = []
+            for year in range(start_date.year, end_date.year + 1):
+                for i in range(1, 5):
+                    if year == start_date.year and i < ((start_date.month - 1) // 3 + 1):
+                        continue
+                    if year == end_date.year and i > ((end_date.month - 1) // 3 + 1):
+                        break
+                    labels.append('Q{} {}'.format(i, year))
+                    login_data.append(data.get((year, i), 0))
+
+        return Response(
+            status=status.HTTP_200_OK,
+            data={
+                'labels': labels,
+                'login_data': login_data,
+            }
+        )
+
+
+class AnalyticsEnrollmentStats(views.APIView):
+    """
+    API view for organization level enrollment analytics stats partitioned by track (honor, audit, verified, etc.).
+    <lms>/adminpanel/analytics/enrollment/
+
+    :return:
+        {
+           'labels': ['2024-09-01', '2024-09-02'],
+           'enrollment_data': {
+                'honor': [5, 10],
+                'audit': [15, 20],
+                'verified': [2, 5],
+                'self-paced': [7, 15],
+                'instructor-led': [15, 20]
+           },
+           'summary_totals': {
+                'honor': 5,
+                'audit': 2,
+                'verified': 3,
+                'self_paced': 0,
+                'instructor_led': 10
+           }
+        }
+    """
+    authentication_classes = [SessionAuthentication]
+    permission_classes = [IsStaffOrSuperUser]
+
+    def get(self, request, *args, **kwargs):
+        user_qs = get_org_users_qs(self.request)
+        start_date_str = request.GET.get('startDate')
+        end_date_str = request.GET.get('endDate')
+        granularity = request.GET.get('granularity', 'days')
+
+        # If no date is provided, default to the last 30 days
+        if not start_date_str or not end_date_str:
+            e_date = timezone.now().date()
+            s_date = e_date - timezone.timedelta(days=30)
+        else:
+            try:
+                s_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+                e_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+            except ValueError:
+                e_date = timezone.now().date()
+                s_date = e_date - timedelta(days=30)
+
+        start_date = timezone.make_aware(datetime.combine(s_date, time.min))
+        end_date = timezone.make_aware(datetime.combine(e_date, time.max))
+
+        if end_date > timezone.now():
+            end_date = timezone.now()
+        if start_date > end_date:
+            start_date = end_date - timezone.timedelta(days=30)
+
+        # Filter enrollments belonging to the organization's users within the date range
+        enrollment_qs = CourseEnrollment.objects.filter(
+            user__in=user_qs,
+            created__range=[start_date, end_date]
+        ).select_related('course')
+
+        summary_totals = enrollment_qs.aggregate(
+            honor=Count('id', filter=Q(mode='honor')),
+            audit=Count('id', filter=Q(mode='audit')),
+            verified=Count('id', filter=Q(mode='verified')),
+            self_paced=Count('id', filter=Q(course__self_paced=True)),
+            instructor_led=Count('id', filter=Q(course__self_paced=False)),
+        )
+
+        all_tracks = [
+            'self_paced_honor', 'self_paced_audit', 'self_paced_verified',
+            'instructor_led_honor', 'instructor_led_audit', 'instructor_led_verified'
+        ]
+        enrollment_data = {track: [] for track in all_tracks}
+        labels = []
+
+        # Helper for conditional aggregation to keep code DRY
+        def get_aggregated_stats(qs, trunc_func):
+            return qs.annotate(period=trunc_func('created')) \
+                .values('period') \
+                .order_by() \
+                .annotate(
+                    # Self-Paced Combos
+                    self_paced_honor=Count('id', filter=Q(course__self_paced=True, mode='honor')),
+                    self_paced_audit=Count('id', filter=Q(course__self_paced=True, mode='audit')),
+                    self_paced_verified=Count('id', filter=Q(course__self_paced=True, mode='verified')),
+                    # Instructor-Led Combos
+                    instructor_led_honor=Count('id', filter=Q(course__self_paced=False, mode='honor')),
+                    instructor_led_audit=Count('id', filter=Q(course__self_paced=False, mode='audit')),
+                    instructor_led_verified=Count('id', filter=Q(course__self_paced=False, mode='verified')),
+                )
+
+        if granularity == 'days':
+            stats = get_aggregated_stats(enrollment_qs, TruncDay)
+            # Map by date into a lookup dictionary: {date_obj: {'honor': X, 'self-paced': Y, ...}}
+            data_map = {s['period'].date(): s for s in stats}
+            
+            curr = start_date.date()
+            while curr <= end_date.date():
+                labels.append(curr.strftime('%Y-%m-%d'))
+                day_counts = data_map.get(curr, {})
+                for track in all_tracks:
+                    enrollment_data[track].append(day_counts.get(track, 0))
+                curr += timedelta(days=1)
+
+        elif granularity == 'months':
+            stats = get_aggregated_stats(enrollment_qs, TruncMonth)
+            data_map = {s['period'].strftime('%Y-%m'): s for s in stats}
+            
+            curr = start_date.replace(day=1)
+            while curr <= end_date:
+                month_key = curr.strftime('%Y-%m')
+                labels.append(curr.strftime('%b %Y'))
+                month_counts = data_map.get(month_key, {})
+                for track in all_tracks:
+                    enrollment_data[track].append(month_counts.get(track, 0))
+                curr = (curr + timedelta(days=32)).replace(day=1)
+
+        elif granularity == 'quarters':
+            stats = get_aggregated_stats(enrollment_qs, TruncQuarter)
+            data_map = {(s['period'].year, (s['period'].month - 1) // 3 + 1): s for s in stats}
+            
+            for year in range(start_date.year, end_date.year + 1):
+                for q in range(1, 5):
+                    if year == start_date.year and q < ((start_date.month - 1) // 3 + 1): continue
+                    if year == end_date.year and q > ((end_date.month - 1) // 3 + 1): break
+                    
+                    labels.append('Q{} {}'.format(q, year))
+                    q_counts = data_map.get((year, q), {})
+                    for track in all_tracks:
+                        enrollment_data[track].append(q_counts.get(track, 0))
+
+        return Response(
+            status=status.HTTP_200_OK,
+            data={
+                'labels': labels,
+                'enrollment_data': enrollment_data,
+                'summary_totals': summary_totals
+            }
+        )
+
+
+TOP_COHORTS_DEFAULT_LIMIT = 10
+
+
+def _get_paid_verified_enrollment_counts_by_course(user_qs, start_date, end_date, org_filter=None):
+    """
+    Return paid verified enrollment counts grouped by course run (course_id).
+
+    Only currently active (is_active=True) verified enrollments are counted; seats that
+    were later unenrolled are excluded.
+
+    Includes:
+    - active verified enrollments whose CourseEnrollment.created falls within the window
+    - enrollments created before the window that upgraded from a non-verified mode to
+      verified during the window and are still active (from enrollment history; excluded
+      from the first query via created__lt=start_date to avoid double-counting)
+
+    Uses order_by() before annotate so CourseEnrollment.Meta.ordering does not add
+    user/course to GROUP BY and collapse counts to one per learner.
+    """
+    enrollment_filters = Q(
+        user__in=user_qs,
+        mode='verified',
+        is_active=True,
+        created__range=[start_date, end_date],
+    )
+    if org_filter is not None:
+        enrollment_filters &= org_filter
+
+    counts_by_course = {
+        row['course_id']: row['paid_enrollments']
+        for row in CourseEnrollment.objects.filter(enrollment_filters)
+        .values('course_id')
+        .order_by()
+        .annotate(paid_enrollments=Count('id'))
+        .filter(paid_enrollments__gt=0)
+    }
+
+    historical_enrollment = CourseEnrollment.history.model
+    previous_history = historical_enrollment.objects.filter(
+        id=OuterRef('id'),
+        history_date__lt=OuterRef('history_date'),
+    ).order_by('-history_date')
+
+    upgrade_filters = Q(
+        user__in=user_qs,
+        mode='verified',
+        history_type='~',
+        history_date__range=[start_date, end_date],
+        created__lt=start_date,
+    )
+    if org_filter is not None:
+        upgrade_filters &= org_filter
+
+    upgraded_enrollment_ids = historical_enrollment.objects.filter(
+        upgrade_filters
+    ).annotate(
+        previous_mode=Subquery(previous_history.values('mode')[:1]),
+        has_previous_history=Exists(previous_history),
+    ).filter(
+        has_previous_history=True,
+    ).exclude(
+        previous_mode__in=CourseMode.VERIFIED_MODES,
+    ).values_list('id', flat=True).distinct()
+
+    upgrade_count_filters = Q(id__in=upgraded_enrollment_ids, is_active=True)
+    if org_filter is not None:
+        upgrade_count_filters &= org_filter
+
+    for row in CourseEnrollment.objects.filter(upgrade_count_filters).values('course_id').order_by().annotate(
+        paid_enrollments=Count('id')
+    ).filter(paid_enrollments__gt=0):
+        counts_by_course[row['course_id']] = counts_by_course.get(row['course_id'], 0) + row['paid_enrollments']
+
+    return [
+        {'course_id': course_id, 'paid_enrollments': paid_count}
+        for course_id, paid_count in counts_by_course.items()
+        if paid_count > 0
+    ]
+
+
+class AnalyticsTopCohorts(views.APIView):
+    """
+    API view for top-performing course cohorts (course runs) by paid enrollments and realized revenue.
+
+    <lms>/adminpanel/analytics/top-cohorts/
+
+    A cohort here is a course run. Paid enrollments include:
+    - current verified-mode CourseEnrollment rows created in the selected date range
+    - enrollments created before the selected date range but upgraded from a non-verified mode to verified
+      during the selected date range
+
+    Revenue is estimated from the current verified course seat price multiplied by paid enrollment count.
+    It is not order-ledger revenue and does not account for historical price changes or refunds.
+
+    Query params:
+        startDate, endDate (YYYY-MM-DD):
+            Inclusive analytics window; defaults to current calendar month.
+        limit:
+            Max cohorts returned. Defaults to 10 and is capped at 25.
+        sortBy:
+            "revenue" (default) or "enrollments".
+
+    :return:
+        {
+            'cohorts': [
+                {
+                    'course_id': 'course-v1:ORG+CODE+RUN',
+                    'display_name': 'Cohort display name',
+                    'paid_enrollments': 12,
+                    'seat_price': 5000.0,
+                    'revenue': 60000.0,
+                    'currency': 'PKR',
+                    'is_highest_revenue': true,
+                    'is_highest_enrollment': false,
+                },
+            ],
+            'currency': 'PKR',
+            'highlights': {
+                'highest_revenue': { ...cohort fields... },
+                'highest_enrollment': { ...cohort fields... },
+            },
+        }
+    """
+    authentication_classes = [SessionAuthentication]
+    permission_classes = [IsStaffOrSuperUser]
+
+    def get(self, request, *args, **kwargs):
+        user_qs = get_org_users_qs(self.request)
+        start_date_str = request.GET.get('startDate')
+        end_date_str = request.GET.get('endDate')
+
+        if not start_date_str or not end_date_str:
+            e_date = timezone.now().date()
+            s_date = e_date.replace(day=1)
+        else:
+            try:
+                s_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+                e_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+            except ValueError:
+                e_date = timezone.now().date()
+                s_date = e_date.replace(day=1)
+
+        start_date = timezone.make_aware(datetime.combine(s_date, time.min))
+        end_date = timezone.make_aware(datetime.combine(e_date, time.max))
+
+        if end_date > timezone.now():
+            end_date = timezone.now()
+        if start_date > end_date:
+            start_date = end_date.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+        try:
+            limit = int(request.GET.get('limit', TOP_COHORTS_DEFAULT_LIMIT))
+        except (TypeError, ValueError):
+            limit = TOP_COHORTS_DEFAULT_LIMIT
+        limit = max(1, min(limit, 25))
+
+        sort_by = request.GET.get('sortBy', 'revenue')
+        if sort_by not in ('revenue', 'enrollments'):
+            sort_by = 'revenue'
+
+        org_regex = get_effective_org_regex(request)
+        org_filter = Q(course__org__iregex=org_regex) if org_regex is not None else None
+
+        cohort_stats = _get_paid_verified_enrollment_counts_by_course(
+            user_qs,
+            start_date,
+            end_date,
+            org_filter=org_filter,
+        )
+
+        if not cohort_stats:
+            default_currency = settings.PAID_COURSE_REGISTRATION_CURRENCY[0].upper()
+            return Response(
+                status=status.HTTP_200_OK,
+                data={
+                    'cohorts': [],
+                    'currency': default_currency,
+                    'highlights': {
+                        'highest_revenue': None,
+                        'highest_enrollment': None,
+                    },
+                }
+            )
+
+        course_ids = [stat['course_id'] for stat in cohort_stats]
+        overviews = {
+            overview.id: overview
+            for overview in CourseOverview.objects.filter(id__in=course_ids)
+        }
+
+        cohorts = []
+        default_currency = settings.PAID_COURSE_REGISTRATION_CURRENCY[0].upper()
+
+        for stat in cohort_stats:
+            course_key = stat['course_id']
+            overview = overviews.get(course_key)
+            display_name = overview.display_name if overview else six.text_type(course_key)
+
+            verified_mode = CourseMode.verified_mode_for_course(course_id=course_key)
+            if verified_mode:
+                seat_price = Decimal(verified_mode.min_price)
+                currency = verified_mode.currency.upper()
+            else:
+                seat_price = Decimal('0')
+                currency = default_currency
+
+            paid_enrollments = stat['paid_enrollments']
+            revenue = seat_price * paid_enrollments
+
+            cohorts.append({
+                'course_id': six.text_type(course_key),
+                'display_name': display_name,
+                'paid_enrollments': paid_enrollments,
+                'seat_price': float(seat_price),
+                'revenue': float(revenue),
+                'currency': currency,
+            })
+
+        highest_revenue = max(cohorts, key=lambda cohort: cohort['revenue'])
+        highest_enrollment = max(cohorts, key=lambda cohort: cohort['paid_enrollments'])
+
+        for cohort in cohorts:
+            cohort['is_highest_revenue'] = cohort['course_id'] == highest_revenue['course_id']
+            cohort['is_highest_enrollment'] = cohort['course_id'] == highest_enrollment['course_id']
+
+        if sort_by == 'enrollments':
+            cohorts.sort(key=lambda cohort: cohort['paid_enrollments'], reverse=True)
+        else:
+            cohorts.sort(key=lambda cohort: cohort['revenue'], reverse=True)
+
+        chart_currency = cohorts[0]['currency'] if cohorts else default_currency
+
+        return Response(
+            status=status.HTTP_200_OK,
+            data={
+                'cohorts': cohorts[:limit],
+                'currency': chart_currency,
+                'highlights': {
+                    'highest_revenue': highest_revenue,
+                    'highest_enrollment': highest_enrollment,
+                },
+            }
+        )
 
 
 class CourseStatsListAPI(generics.ListAPIView):
@@ -405,14 +971,17 @@ class CourseStatsListAPI(generics.ListAPIView):
         search_text, progress_filters = extract_filters_and_search(self.request)
 
         completed_count, in_progress_count = get_completed_course_count_filters(
-            exclude_staff_superuser=True, req_user=self.request.user
+            exclude_staff_superuser=True,
+            request=self.request,
+            active_users_only=progress_filters['active_only']
         )
         overview_qs = CourseOverview.objects.filter(
             display_name__icontains=search_text
         ) if search_text else CourseOverview.objects.all()
 
-        if not self.request.user.is_superuser:
-            overview_qs = overview_qs.filter(get_course_overview_same_org_filter(self.request.user))
+        org_regex = get_effective_org_regex(self.request)
+        if org_regex is not None:
+            overview_qs = overview_qs.filter(org__iregex=org_regex)
         overview_qs = overview_qs.annotate(in_progress=in_progress_count, completed=completed_count)
 
         if progress_filters['completed'] and progress_filters['in_progress']:
@@ -479,6 +1048,9 @@ class LearnerListAPI(generics.ListAPIView):
     def apply_learner_progress_filters(self, progress_filters, users, enrollments):
         """Apply filters for learner's progress."""
 
+        if progress_filters['active_only']:
+            users = users.filter(is_active=True)
+
         if progress_filters['in_progress'] or progress_filters['completed']:
             users = users.filter(id__in=enrollments.values_list('user', flat=True).distinct())
             if not progress_filters['in_progress'] or not progress_filters['completed']:
@@ -495,14 +1067,15 @@ class LearnerListAPI(generics.ListAPIView):
     def get_queryset(self):
         search_text, progress_filters = extract_filters_and_search(self.request)
 
-        user_qs = get_org_users_qs(self.request.user)
+        user_qs = get_org_users_qs(self.request)
         enrollment_qs = CourseEnrollment.objects.filter(is_active=True)
 
         if search_text:
             user_qs = user_qs.filter(profile__name__icontains=search_text)
 
-        if not self.request.user.is_superuser:
-            enrollment_qs = enrollment_qs.filter(course__org__iregex=get_user_org(self.request.user))
+        org_regex = get_effective_org_regex(self.request)
+        if org_regex is not None:
+            enrollment_qs = enrollment_qs.filter(course__org__iregex=org_regex)
 
         user_qs, enrollment_qs = self.apply_learner_progress_filters(progress_filters, user_qs, enrollment_qs)
 
@@ -610,7 +1183,7 @@ class UserInfo(views.APIView):
         """
         get user's basic info
         """
-        if self.request.user.is_superuser:
+        if is_unrestricted_admin(self.request.user):
             languages_qs = LanguageProficiency.objects.all()
         else:
             languages_qs = LanguageProficiency.objects.filter(
@@ -625,19 +1198,84 @@ class UserInfo(views.APIView):
             'name': self.request.user.profile.name,
             'username': self.request.user.username,
             'is_superuser': self.request.user.is_superuser,
+            'is_staff': self.request.user.is_staff,
             'id': self.request.user.id,
             'csrf_token': csrf.get_token(self.request),
             'languages': [lang[0] for lang in groupby(languages)],
             'all_languages': all_languages,
-            'role': None
+            'role': None,
+            'learner_state': 'active',
         }
         user_groups = Group.objects.filter(
-            user=self.request.user, name__in=[GROUP_TRAINING_MANAGERS, GROUP_ORGANIZATION_ADMIN]
+            user=self.request.user, name__in=[GROUP_TRAINING_MANAGERS, GROUP_ORGANIZATION_ADMIN], 
         ).order_by('name').first()
         if user_groups:
             user_info['role'] = TRAINING_MANAGER if user_groups.name == GROUP_TRAINING_MANAGERS else ORG_ADMIN
 
         return Response(status=status.HTTP_200_OK, data=user_info)
+
+
+class OrganizationListAPI(views.APIView):
+    """
+    List organizations selectable as a data filter in the admin panel.
+    <lms>/adminpanel/organizations/
+
+    Restricted to unrestricted admins (Django staff / superusers); course staff
+    are scoped to their own org and never receive this list.
+
+    :return:
+        [
+            {"short_name": "acme", "name": "Acme Inc."},
+            {"short_name": "globex", "name": "Globex"}
+        ]
+    """
+    authentication_classes = [SessionAuthentication]
+    permission_classes = [IsStaffOrSuperUser]
+
+    def get(self, request, *args, **kwargs):  # pylint: disable=unused-argument
+        organizations = Organization.objects.filter(
+            active=True
+        ).order_by('name').values('short_name', 'name')
+        return Response(status=status.HTTP_200_OK, data=list(organizations))
+
+
+class MAUReportListAPI(generics.ListAPIView):
+    """
+    Paginated list of Monthly Active Users reports.
+    <lms>/adminpanel/mau-reports/
+
+    Scoped like the dashboard org selector: an unrestricted admin sees the selected
+    org's reports (or the overall reports when no org is selected); course staff see
+    only their own org's reports. Supports `page`, `page_size`.
+    """
+    authentication_classes = [SessionAuthentication]
+    permission_classes = [CanAccessPakXAdminPanel]
+    pagination_class = MAUReportPagination
+    serializer_class = MAUReportSerializer
+
+    def get_queryset(self):
+        return get_scoped_mau_reports(self.request)
+
+
+class MAUReportDownloadView(views.APIView):
+    """
+    Stream a single MAU report CSV.
+    <lms>/adminpanel/mau-reports/<report_id>/download/
+
+    Only reports within the requester's scope are downloadable; anything else 404s.
+    """
+    authentication_classes = [SessionAuthentication]
+    permission_classes = [CanAccessPakXAdminPanel]
+
+    def get(self, request, report_id, *args, **kwargs):  # pylint: disable=unused-argument
+        report = get_scoped_mau_reports(request).filter(id=report_id).first()
+        if not report or not default_storage.exists(report.file_path):
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+        with default_storage.open(report.file_path) as report_file:
+            response = HttpResponse(report_file.read(), content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename="{}"'.format(report.file_path.split('/')[-1])
+        return response
 
 
 class CourseListAPI(generics.ListAPIView):
@@ -657,8 +1295,9 @@ class CourseListAPI(generics.ListAPIView):
 
     def get_queryset(self):
         queryset = CourseOverview.objects.filter(get_enroll_able_course_qs())
-        if not self.request.user.is_superuser:
-            queryset = queryset.filter(get_course_overview_same_org_filter(self.request.user))
+        org_regex = get_effective_org_regex(self.request)
+        if org_regex is not None:
+            queryset = queryset.filter(org__iregex=org_regex)
 
         user_id = self.request.query_params.get('user_id', '').strip().lower()
         if user_id:
@@ -690,7 +1329,7 @@ class UserSearchInputListAPI(views.APIView):
     permission_classes = [CanAccessPakXAdminPanel]
 
     def get(self, *args, **kwargs):  # pylint: disable=unused-argument
-        qs = get_org_users_qs(self.request.user).exclude(id=self.request.user.id)
+        qs = get_org_users_qs(self.request).exclude(id=self.request.user.id)
         users = {user.id: {'email': user.email} for user in qs}
         return Response(status=status.HTTP_200_OK, data={'users': users})
 
@@ -708,3 +1347,224 @@ class UserUpdateEnrollmentMode(views.APIView):
 
         CourseEnrollment.objects.bulk_update(updated_enrollments, ['mode'], batch_size=3)
         return Response(status=status.HTTP_200_OK)
+
+
+class DialogAcademyEnrollmentFormView(views.APIView):
+    authentication_classes = (SessionAuthentication,)
+    permission_classes = (DialogAcademyIsStaffOrAllowedEmail,)
+    renderer_classes = (BrowsableAPIRenderer, JSONRenderer)
+    serializer_class = DialogAcademyCourseActionSerializer
+
+    def get(self, request):
+        """
+        Return the empty form structure
+        """
+        serializer = self.serializer_class()
+        return Response({'status': 'Ready to receive data'})
+
+    def post(self, request):
+        def clean(str_to_clean):
+            return str_to_clean.strip() if isinstance(str_to_clean, str) else str_to_clean
+
+        serializer = self.serializer_class(data=request.data)
+        
+        if serializer.is_valid():
+            course_key_string = serializer.validated_data['course_id']
+            name = serializer.validated_data['name']
+            username = serializer.validated_data['username']
+            email = serializer.validated_data['email']
+            course_datetime_str = serializer.validated_data['course_datetime_str']
+            meeting_link = serializer.validated_data['meeting_link']
+            protocol = 'https://' if not settings.DEBUG else 'http://'
+
+            user_data = {
+                'role': 4,
+                'email': clean(email),
+                'username': clean(username),
+                'profile': {
+                    'name': clean(name.title()),
+                    'employee_id': '',
+                    'language_code': {'code': 'en'},
+                    'organization': DIALOG_ACADEMY_ORG_ID,
+                },
+                'verified': False
+            }
+
+            try:
+                site = Site.objects.get_current()
+                course_key = CourseKey.from_string(course_key_string)
+                course_overview = CourseOverview.objects.get(id=course_key)
+                now = timezone.now()
+                if course_overview.enrollment_start and now < course_overview.enrollment_start or \
+                    course_overview.enrollment_end and now > course_overview.enrollment_end:
+                    return Response(
+                        'Course is not open for enrollment. Aborting user creation and enrollment, email not sent!',
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+
+                with emulate_http_request(site, request.user):
+                    is_created, user, user_password = create_user(user_data, next_url=reverse('account_settings'), send_creation_email=False)
+                if not is_created and len(user.items()) == 1 and 'username' in user:
+                    log.info('User with details already exists {} --- errors {}'.format(user_data, user))
+                    return Response(
+                        'A user with that username already exists. Please retry with a different username or use the same email address as of the existing user.',
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+
+                user = User.objects.get(email=user_data.get('email'))
+                try:
+                    with transaction.atomic():
+                        CourseEnrollment.enroll(user, course_key, check_access=True)
+                except Exception as e:
+                    log.exception('User {} is already enrolled in course {}. Sending email only! --- {}'.format(email, course_key_string, str(e)))
+
+                email_context = {
+                    'course': course_overview.display_name,
+                    'image_url': protocol + site.domain + course_overview.course_image_url,
+                    'url': "{}{}/courses/{}/overview".format(protocol, site.domain, course_key_string),
+                    'site_name': site.domain,
+                    'dashboard_url': '{}{}/dashboard'.format(protocol, site.domain),
+                    'platform_name': configuration_helpers.get_value('PLATFORM_NAME', settings.PLATFORM_NAME),
+                    'user_password': user_password if user_password else '',
+                    'session_timeline': course_datetime_str,
+                    'google_meet_link': meeting_link, 
+                    'program_guidelines_link': PROGRAM_GUIDELINES_LINK,
+                    'cyberbulling_avoidance_link': CYBERBULLYING_AVOIDANCE_LINK,
+                }
+                context = get_base_template_context(site, user=user)
+                context.update(email_context)
+
+                with emulate_http_request(site, request.user):
+                    message = DialogAcademyUserEnrollmentNotification().personalize(
+                        recipient=Recipient(context['username'], context['email']),
+                        language='en',
+                        user_context=context,
+                    )
+                    ace.send(message)
+
+                return Response(
+                    "Enrollment of {type} user with email {email} completed for course: {course}. Email sent!".format(
+                        type="new" if is_created else "pre-existing",
+                        email=email,
+                        course=course_key_string
+                    ),
+                    status=status.HTTP_200_OK
+                )
+            except Exception as e:
+                return Response(
+                    {"error": str(e)},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class DialogAcademyBulkEnrollmentFormView(views.APIView):
+    authentication_classes = (SessionAuthentication,)
+    permission_classes = (DialogAcademyIsStaffOrAllowedEmail,)
+    renderer_classes = (BrowsableAPIRenderer, JSONRenderer)
+    serializer_class = DialogAcademyBulkCourseActionSerializer
+
+    def get(self, request):
+        """
+        Return the empty form structure
+        """
+        return Response({'status': 'Ready to receive data'})
+
+    def post(self, request):
+        serializer = self.serializer_class(data=request.data)
+        
+        if serializer.is_valid():
+            uploaded_file = serializer.validated_data['file']
+            course_key_string = serializer.validated_data['course_id']
+            course_datetime_str = serializer.validated_data['course_datetime_str']
+            meeting_link = serializer.validated_data['meeting_link']
+
+            try:
+                site = Site.objects.get_current()
+                course_key = CourseKey.from_string(course_key_string)
+                course_overview = CourseOverview.objects.get(id=course_key)
+                now = timezone.now()
+                if course_overview.enrollment_start and now < course_overview.enrollment_start or \
+                    course_overview.enrollment_end and now > course_overview.enrollment_end:
+                    return Response(
+                        'Course is not open for enrollment. Aborting user creation and enrollment, email not sent!',
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+
+                protocol = 'https://' if not settings.DEBUG else 'http://'
+                save_file_to_contentstore(uploaded_file, course_key)
+                uploaded_file.seek(0)
+                file_data = StringIO(uploaded_file.read().decode('utf-8'))
+                file_reader = DictReader(file_data)
+
+                required_col_names = {'name', 'username', 'email', 'organization_id', 'role', 'employee_id', 'language', 'verified'}
+                if not required_col_names.issubset(set(file_reader.fieldnames) or []):
+                    return Response(
+                        'Invalid column names! Correct names are: "{}"'.format('" | "'.join(required_col_names)),
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                
+                users = get_user_data_from_bulk_registration_file(file_reader, default_org_id=DIALOG_ACADEMY_ORG_ID)
+                bulk_user_registration(users, request.user.email, send_creation_email=False)
+
+                response_data = ["Enrollments task completed for course: {course}".format(course=course_key_string)]
+
+                for _, user in enumerate(users, start=1):
+                    try:
+                        user_email = user.get('email')
+                        enroll_user = User.objects.filter(email=user_email)
+                        if not enroll_user:
+                            response_data.append('User creation failed for email {} because of existing username {}. Email not sent!'.format(user_email, user.get('username')))
+                            continue
+
+                        enroll_user = enroll_user.first()
+                        
+                        try:
+                            with transaction.atomic():
+                                CourseEnrollment.enroll(enroll_user, course_key, check_access=True)
+                                log.info('User {} enrolled successfully.'.format(user_email))
+                                response_data.append('User {} is enrolled. Sending email'.format(user_email))
+                        except Exception as e:
+                            log.exception('User {} is already enrolled in course {}. Sending email only! --- {}'.format(user_email, course_key_string, str(e)))
+                            response_data.append('User {} already enrolled. Sending email only!'.format(user_email))
+                        
+                        email_context = {
+                            'course': course_overview.display_name,
+                            'image_url': protocol + site.domain + course_overview.course_image_url,
+                            'url': "{}{}/courses/{}/overview".format(protocol, site.domain, course_key_string),
+                            'site_name': site.domain,
+                            'dashboard_url': '{}{}/dashboard'.format(protocol, site.domain),
+                            'platform_name': configuration_helpers.get_value('PLATFORM_NAME', settings.PLATFORM_NAME),
+                            'user_password': user.get('user_password', ''),
+                            'session_timeline': course_datetime_str,
+                            'google_meet_link': meeting_link,
+                            'program_guidelines_link': PROGRAM_GUIDELINES_LINK,
+                            'cyberbulling_avoidance_link': CYBERBULLYING_AVOIDANCE_LINK,
+                        }
+                        context = get_base_template_context(site, user=enroll_user)
+                        context.update(email_context)
+
+                        with emulate_http_request(site, request.user):
+                            message = DialogAcademyUserEnrollmentNotification().personalize(
+                                recipient=Recipient(context['username'], context['email']),
+                                language='en',
+                                user_context=context,
+                            )
+                            ace.send(message)
+                    except Exception as e:  # pylint: disable=broad-except
+                        log.exception('Failed to enroll user in course --- {}'.format(str(e)))
+
+                response_data.append('Please check your email and logs for user creation stats. Only existing username will fail creation and enrollment email will not be sent.')
+                return Response(
+                    response_data,
+                    status=status.HTTP_200_OK
+                )
+                
+            except Exception as e:
+                return Response(
+                    {"error": str(e)},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

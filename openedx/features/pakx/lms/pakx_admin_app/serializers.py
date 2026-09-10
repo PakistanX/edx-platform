@@ -3,6 +3,7 @@ Serializer for Admin Panel APIs
 """
 from re import match
 
+from django.conf import settings
 from django.contrib.auth.models import User
 from django.db import transaction
 from django.db.models import Q
@@ -14,7 +15,31 @@ from openedx.core.djangoapps.user_api.accounts.serializers import LanguageProfic
 from student.models import CourseEnrollment, LanguageProficiency, Registration, UserProfile
 
 from .constants import GROUP_TRAINING_MANAGERS, LEARNER, ORG_ADMIN, ORG_ROLES, TRAINING_MANAGER
+from .models import MAUReport
 from .utils import specify_user_role
+
+
+class MAUReportSerializer(serializers.ModelSerializer):
+    """Serializer for a Monthly Active Users report row shown in the reports table."""
+    month = serializers.SerializerMethodField()
+    organization = serializers.SerializerMethodField()
+
+    class Meta:
+        model = MAUReport
+        fields = (
+            'id', 'organization', 'is_overall', 'month',
+            'active_user_count', 'excluded_staff_count', 'created_at',
+        )
+
+    @staticmethod
+    def get_month(obj):
+        return obj.month.strftime('%Y-%m')
+
+    @staticmethod
+    def get_organization(obj):
+        if obj.is_overall:
+            return 'All organizations'
+        return obj.organization_name or obj.organization_short_name
 
 
 class CourseStatsListSerializer(serializers.ModelSerializer):
@@ -288,7 +313,11 @@ class LearnersSerializer(serializers.ModelSerializer):
 
     @staticmethod
     def get_completed_courses(obj):
-        return len([stat for stat in obj.enrollment if stat.enrollment_stats.progress == 100])
+        complete_course_count = 0
+        for stat in obj.enrollment:
+            if hasattr(stat, 'enrollment_stats') and stat.enrollment_stats.progress == 100:
+                complete_course_count += 1
+        return complete_course_count
 
 
 class CoursesSerializer(serializers.ModelSerializer):
@@ -300,3 +329,38 @@ class CoursesSerializer(serializers.ModelSerializer):
 
     def get_instructor(self, obj):
         return self.context['instructors'].get(obj.id) or []
+
+
+# Dialog Academy Enrollments Specific
+class DialogAcademyCourseActionSerializer(serializers.Serializer):
+    name = serializers.CharField(max_length=255, required=True)
+    username = serializers.CharField(max_length=255, required=True)
+    email = serializers.EmailField(required=True)
+    course_id = serializers.ChoiceField(choices=[], required=True)
+    course_datetime_str = serializers.CharField(max_length=255, required=True, help_text="Tip: from 05th January to 09th January, 6:00-7:30 pm IST")
+    meeting_link = serializers.URLField(max_length=255, required=True, help_text="Tip: https://meet.google.com/wdq-qfpt-xaz")
+
+    def __init__(self, *args, **kwargs):
+        """
+        Populate course_id choices on initialization
+        """
+        super(DialogAcademyCourseActionSerializer, self).__init__(*args, **kwargs)
+        
+        # Filter courses specifically for Dialog_Academy
+        queryset = CourseOverview.objects.filter(org='Dialogue_Academy')
+        if settings.DEBUG:
+            queryset = CourseOverview.objects.filter(org='ilmX')
+        
+        # Create a list of tuples (course_key_string, display_name)
+        self.fields['course_id'].choices = [
+            (str(course.id), str(course.id))
+            for course in queryset
+        ]
+
+
+# Dialog Academy Bulk Enrollments Specific
+class DialogAcademyBulkCourseActionSerializer(DialogAcademyCourseActionSerializer):
+    name = None
+    username = None
+    email = None
+    file = serializers.FileField(write_only=True, required=True, use_url=True, label="Upload CSV File")

@@ -508,6 +508,20 @@
                             edx.HtmlUtils.HTML('">'), dataContext.name,
                             edx.HtmlUtils.HTML('</a>'));
                     }
+                },
+                {
+                    id: 'duration',
+                    field: 'duration_seconds',
+                    name: gettext('Duration (sec)'),
+                    toolTip: gettext('Time taken to generate the report, in seconds.'),
+                    sortable: false,
+                    minWidth: 80,
+                    maxWidth: 120,
+                    cssClass: 'file-download-duration',
+                    formatter: function(row, cell, value) {
+                        // Blank when the duration was not recorded; right-aligned via CSS.
+                        return (value === null || value === undefined) ? '' : String(value);
+                    }
                 }
             ];
             $tablePlaceholder = $('<div/>', {
@@ -527,7 +541,11 @@
                     report_url: reportUrl
                 });
             });
-            return grid.autosizeColumns();
+            // Let forceFitColumns fill the container instead of autosizeColumns,
+            // which would size columns to (long filename) content and cause an
+            // unnecessary horizontal scrollbar with empty trailing space.
+            grid.resizeCanvas();
+            return grid;
         };
 
         return ReportDownloads;

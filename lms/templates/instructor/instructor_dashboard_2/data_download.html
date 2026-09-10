@@ -80,8 +80,10 @@ from openedx.core.djangolib.markup import HTML, Text
       <p>
         <input type="button" name="issued-certificates-list" value="${_("View Certificates Issued")}" data-csv="false" data-endpoint="${ section_data['get_issued_certificates_url'] }">
         <input type="button" name="issued-certificates-csv" value="${_("Download CSV of Certificates Issued")}" data-csv="true" data-endpoint="${ section_data['get_issued_certificates_url'] }">
+        <input type="button" name="download-certificate-report" value="${_("Download Certificate URLs Report")}" data-endpoint="${ section_data['download_cert_report_url'] }"/>
       </p>
       <div class="data-display-table certificate-data-display-table" id="data-issued-certificates-table"></div>
+      <div class="issued-certificates-success request-response msg msg-confirm copy"></div>
       <div class="issued-certificates-error request-response-error msg msg-error copy"></div>
     </div>
 
@@ -91,8 +93,45 @@ from openedx.core.djangolib.markup import HTML, Text
   %endif
   <div class="data-display-table profile-data-display-table" id="data-student-profiles-table"></div>
 
-  %if settings.FEATURES.get('ALLOW_COURSE_STAFF_GRADE_DOWNLOADS') or section_data['access']['admin']:
+  %if settings.FEATURES.get('ALLOW_COURSE_STAFF_GRADE_DOWNLOADS') or section_data['access']['admin'] or settings.FEATURES.get('ALLOW_COURSE_DATA_RESEARCHER_GRADE_DOWNLOADS'):
     <p>${_("Click to generate a CSV grade report for all currently enrolled students.")}</p>
+    <div class="grade-report-options">
+      <div class="grade-report-option">
+        <label class="option-check" for="grade-report-include-progress">
+          <input type="checkbox" id="grade-report-include-progress" name="grade-report-include-progress" checked>
+          <span class="option-title">${_("Include progress / completion columns")}</span>
+        </label>
+        <span class="option-tip">${_("Adds live Course Progress, block types, and completed / incomplete unit columns (resource-intensive to compute). Uncheck for a faster report that still includes a stored Course Progress column, as of the last progress sync.")}</span>
+      </div>
+      <div class="grade-report-option">
+        <% default_mode = section_data.get('grade_report_default_structure_mode', '') %>
+        <label class="option-title" for="grade-report-structure-mode">${_("Block structure computation")}</label>
+        <select id="grade-report-structure-mode" name="grade-report-structure-mode">
+          <option value="per_learner" ${'selected' if default_mode == 'per_learner' else ''}>${_("Per-learner (respects gated content)")}${_(" — default") if default_mode == 'per_learner' else ''}</option>
+          <option value="uniform" ${'selected' if default_mode == 'uniform' else ''}>${_("Uniform — faster; only for courses not gated per learner")}${_(" — default") if default_mode == 'uniform' else ''}</option>
+          <option value="legacy" ${'selected' if default_mode == 'legacy' else ''}>${_("Legacy")}${_(" — default") if default_mode == 'legacy' else ''}</option>
+        </select>
+        <span class="option-tip">${_("How the progress / completion columns are calculated. Leave on the default unless you have a specific reason to change it.")}</span>
+      </div>
+      %if section_data.get('show_grade_report_batch_range'):
+      <div class="grade-report-option grade-report-batch-range">
+        <span class="option-title">${_("Batch controls (superuser only)")}</span>
+        <span class="option-tip">${_("Total enrolled learners: {total}. Rows are the 0-based positions in this id-ordered list.").format(total=section_data.get('grade_report_total_enrolled', 0))}</span>
+        <div class="batch-range-fields">
+          <label for="grade-report-batch-size">${_("Batch size")}
+            <input type="number" id="grade-report-batch-size" name="grade-report-batch-size" min="1" step="1" placeholder="100">
+          </label>
+          <label for="grade-report-range-start">${_("Start row")}
+            <input type="number" id="grade-report-range-start" name="grade-report-range-start" min="0" step="1" placeholder="0">
+          </label>
+          <label for="grade-report-range-end">${_("End row (exclusive)")}
+            <input type="number" id="grade-report-range-end" name="grade-report-range-end" min="1" step="1" placeholder="${section_data.get('grade_report_total_enrolled', 0)}">
+          </label>
+        </div>
+        <span class="option-tip">${_("Leave all blank to process every learner with the default batch size. If you set a range, End must be greater than Start.")}</span>
+      </div>
+      %endif
+    </div>
     <p>
       <input type="button" name="calculate-grades-csv" class="async-report-btn" value="${_("Generate Grade Report")}" data-endpoint="${ section_data['calculate_grades_csv_url'] }"/>
       <input type="button" name="problem-grade-report" class="async-report-btn" value="${_("Generate Problem Grade Report")}" data-endpoint="${ section_data['problem_grade_report_url'] }"/>

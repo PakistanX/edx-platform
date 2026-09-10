@@ -44,7 +44,6 @@
                     headers: headers,
                     success: function() {
                         try{
-                          window.dataLayer = window.dataLayer || [];
                           window.dataLayer.push({
                             event: "login",
                             method: "Direct"

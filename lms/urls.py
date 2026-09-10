@@ -2,6 +2,7 @@
 URLs for LMS
 """
 
+
 from config_models.views import ConfigurationModelCurrentAPIView
 from django.conf import settings
 from django.conf.urls import include, url
@@ -175,6 +176,7 @@ urlpatterns = [
     url(r'^api/experiments/', include(('experiments.urls', 'lms.djangoapps.experiments'), namespace='api_experiments')),
     url(r'^api/discounts/', include(('openedx.features.discounts.urls', 'openedx.features.discounts'),
                                     namespace='api_discounts')),
+    url(r'^impersonate/', include('impersonate.urls')),
 ]
 
 # include all pakx lms urls at the start of the url patterns list

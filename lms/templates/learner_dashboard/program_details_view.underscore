@@ -27,13 +27,13 @@
                 <% if (discount_data.is_discounted) { %>
                     <span class='list-price'>
                         <%- StringUtils.interpolate(
-                            gettext('${listPrice}'), {listPrice: discount_data.total_incl_tax_excl_discounts.toFixed(2)}
+                            gettext('{listPrice}'), {listPrice: discount_data.total_incl_tax_excl_discounts.toFixed(2)}
                         )
                         %>
                     </span>
                 <% } %>
                 <%- StringUtils.interpolate(
-                        gettext(' ${price} {currency} )'),
+                        gettext(' {price} {currency} )'),
                         {price: full_program_price.toFixed(2), currency: discount_data.currency}
                     )
                 %>

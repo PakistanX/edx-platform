@@ -1143,6 +1143,15 @@ PIPELINE['JAVASCRIPT'] = {
     },
 }
 
+# fix: "Invalid type for parameter ContentType" error on js upload
+PIPELINE['MIMETYPES'] = (
+    ('text/coffeescript', '.coffee'),
+    ('text/less', '.less'),
+    ('text/javascript', '.js'),
+    ('text/x-sass', '.sass'),
+    ('text/x-scss', '.scss'),
+)
+
 STATICFILES_IGNORE_PATTERNS = (
     "*.py",
     "*.pyc",
@@ -1495,6 +1504,9 @@ INSTALLED_APPS = [
     # Management of per-user schedules
     'openedx.core.djangoapps.schedules',
     'rest_framework_jwt',
+
+    # AI Grader
+    'ai_grader',
 ]
 
 ######################### PAKX APPS #####################################

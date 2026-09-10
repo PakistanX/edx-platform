@@ -21,6 +21,7 @@ of the query for traversing StudentModule objects.
 """
 
 
+import json
 import logging
 from functools import partial
 
@@ -29,15 +30,25 @@ from django.conf import settings
 from django.utils.translation import ugettext_noop
 
 from bulk_email.tasks import perform_delegate_email_batches
+from lms.djangoapps.instructor_task.models import InstructorTask
 from lms.djangoapps.instructor_task.tasks_base import BaseInstructorTask
-from lms.djangoapps.instructor_task.tasks_helper.certs import generate_students_certificates
+from lms.djangoapps.instructor_task.tasks_helper.certs import (
+    generate_students_certificates,
+    download_generated_certificates_report
+)
 from lms.djangoapps.instructor_task.tasks_helper.enrollments import (
     upload_enrollment_report,
     upload_exec_summary_report,
     upload_may_enroll_csv,
     upload_students_csv
 )
-from lms.djangoapps.instructor_task.tasks_helper.grades import CourseGradeReport, ProblemGradeReport, ProblemResponses
+from lms.djangoapps.instructor_task.tasks_helper.grades import (
+    CourseGradeReport,
+    ProblemGradeReport,
+    ProblemResponses,
+    _CourseGradeReportContext,
+    recalculate_grades_for_course
+)
 from lms.djangoapps.instructor_task.tasks_helper.misc import (
     cohort_students_and_upload,
     upload_course_survey_report,
@@ -81,6 +92,20 @@ def rescore_problem(entry_id, xmodule_instance_args):
 
     visit_fcn = partial(perform_module_state_update, update_fcn, None)
     return run_main_task(entry_id, visit_fcn, action_name)
+
+
+@task(base=BaseInstructorTask, routing_key=settings.POLICY_CHANGE_GRADES_ROUTING_KEY)
+def recalculate_course_grades(entry_id, xmodule_instance_args):
+    """Recomputes course and subsection grades for enrolled learners.
+
+    `entry_id` is the id value of the InstructorTask entry that corresponds to this task.
+    The entry's `task_input` may contain a `student_id` (to limit the recompute to a
+    single learner) and a `force` flag (to recompute even when grades are frozen).
+    """
+    # Translators: This is a past-tense verb that is inserted into task progress messages as {action}.
+    action_name = ugettext_noop('recalculated')
+    task_fn = partial(recalculate_grades_for_course, xmodule_instance_args)
+    return run_main_task(entry_id, task_fn, action_name)
 
 
 @task(base=BaseInstructorTask)
@@ -189,6 +214,39 @@ def calculate_grades_csv(entry_id, xmodule_instance_args):
     return run_main_task(entry_id, task_fn, action_name)
 
 
+def _build_grade_report_context(entry_id):
+    """Rebuild the grade report context from a stored InstructorTask (parallel path)."""
+    entry = InstructorTask.objects.get(pk=entry_id)
+    task_input = json.loads(entry.task_input) if entry.task_input else {}
+    # Translators: past-tense verb inserted into task progress messages.
+    action_name = ugettext_noop('graded')
+    return _CourseGradeReportContext(None, entry_id, entry.course_id, task_input, action_name)
+
+
+@task(routing_key=settings.GRADES_DOWNLOAD_ROUTING_KEY)
+def calculate_grades_csv_chunk(entry_id, part_index, user_ids):
+    """
+    Render one learner chunk of the grade report to a partial CSV. Fanned out in
+    parallel by CourseGradeReport._generate_parallel; results are gathered by
+    finalize_grades_csv.
+    """
+    context = _build_grade_report_context(entry_id)
+    return CourseGradeReport().generate_partial(context, user_ids, part_index)
+
+
+@task(routing_key=settings.GRADES_DOWNLOAD_ROUTING_KEY)
+def finalize_grades_csv(part_results=None, entry_id=None, num_parts=None, failed=False):
+    """
+    Chord callback: concatenate the partial CSVs into the final grade report and
+    mark the InstructorTask complete. Also used as the chord's error handler
+    (with failed=True) so a failed chunk marks the task FAILURE rather than
+    leaving it stuck in PROGRESS.
+    """
+    context = _build_grade_report_context(entry_id)
+    results = part_results if isinstance(part_results, list) else []
+    return CourseGradeReport().finalize(context, results, failed=failed, num_parts=num_parts)
+
+
 @task(base=BaseInstructorTask, routing_key=settings.GRADES_DOWNLOAD_ROUTING_KEY)
 def calculate_problem_grade_report(entry_id, xmodule_instance_args):
     """
@@ -291,6 +349,21 @@ def generate_certificates(entry_id, xmodule_instance_args):
     )
 
     task_fn = partial(generate_students_certificates, xmodule_instance_args)
+    return run_main_task(entry_id, task_fn, action_name)
+
+
+@task(base=BaseInstructorTask)
+def download_certificate_report(entry_id, xmodule_instance_args):
+    """
+    Download generated certificates report.
+    """
+    action_name = ugettext_noop('download generated certificate report')
+    TASK_LOG.info(
+        u"Task: %s, InstructorTask ID: %s, Task type: %s, Preparing for task execution",
+        xmodule_instance_args.get('task_id'), entry_id, action_name
+    )
+
+    task_fn = partial(download_generated_certificates_report, xmodule_instance_args)
     return run_main_task(entry_id, task_fn, action_name)
 
 

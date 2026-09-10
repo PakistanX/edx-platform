@@ -27,6 +27,7 @@ urlpatterns = [
     url(r'^get_student_progress_url$', api.get_student_progress_url, name='get_student_progress_url'),
     url(r'^reset_student_attempts$', api.reset_student_attempts, name='reset_student_attempts'),
     url(r'^rescore_problem$', api.rescore_problem, name='rescore_problem'),
+    url(r'^recalculate_grades$', api.recalculate_grades, name='recalculate_grades'),
     url(r'^override_problem_score$', api.override_problem_score, name='override_problem_score'),
     url(r'^reset_student_attempts_for_entrance_exam$', api.reset_student_attempts_for_entrance_exam,
         name='reset_student_attempts_for_entrance_exam'),
@@ -92,4 +93,5 @@ urlpatterns = [
     url(r'^generate_bulk_certificate_exceptions', api.generate_bulk_certificate_exceptions,
         name='generate_bulk_certificate_exceptions'),
     url(r'^certificate_invalidation_view/$', api.certificate_invalidation_view, name='certificate_invalidation_view'),
+    url(r'^generate_cert_report$', api.generate_cert_report, name="generate_cert_report"),
 ]

@@ -152,8 +152,13 @@ def get_task_completion_info(instructor_task):
 
     if instructor_task.task_state == PROGRESS:
         # special message for providing progress updates:
-        # Translators: {action} is a past-tense verb that is localized separately. {attempted} and {succeeded} are counts.
-        msg_format = _(u"Progress: {action} {succeeded} of {attempted} so far")
+        if num_total:
+            # Translators: {action} is a past-tense verb (localized separately); {succeeded} and {total}
+            # are counts; {percent} is a percentage of completion.
+            msg_format = _(u"Progress: {action} {succeeded} of {total} ({percent}%)")
+        else:
+            # Translators: {action} is a past-tense verb that is localized separately. {attempted} and {succeeded} are counts.
+            msg_format = _(u"Progress: {action} {succeeded} of {attempted} so far")
     elif student is not None and problem_url is not None:
         # this reports on actions on problems for a particular student:
         if num_attempted == 0:
@@ -216,9 +221,11 @@ def get_task_completion_info(instructor_task):
         # Translators: {skipped} is a count.  This message is appended to task progress status messages.
         msg_format += _(u" (skipping {skipped})")
 
-    if student is None and num_attempted != num_total:
+    if instructor_task.task_state != PROGRESS and student is None and num_attempted != num_total:
         # Translators: {total} is a count.  This message is appended to task progress status messages.
         msg_format += _(u" (out of {total})")
+
+    num_percent = int(round(100.0 * num_succeeded / num_total)) if num_total else 0
 
     # Update status in task result object itself:
     message = msg_format.format(
@@ -226,6 +233,7 @@ def get_task_completion_info(instructor_task):
         succeeded=num_succeeded,
         attempted=num_attempted,
         total=num_total,
+        percent=num_percent,
         skipped=num_skipped,
         student=student
     )

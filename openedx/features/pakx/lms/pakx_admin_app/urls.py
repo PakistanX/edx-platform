@@ -3,20 +3,29 @@ URLs patterns for PakX admin app
 """
 from django.conf.urls import url
 from django.urls import include, path
+
 from rest_framework.routers import DefaultRouter
 
 from .views import (
     AnalyticsStats,
+    AnalyticsEnrollmentStats,
+    AnalyticsLoginStats,
+    AnalyticsTopCohorts,
     CourseEnrolmentViewSet,
     CourseListAPI,
     CourseStatsListAPI,
     DownloadCSVView,
     LearnerListAPI,
+    MAUReportDownloadView,
+    MAUReportListAPI,
+    OrganizationListAPI,
     UserCourseEnrollmentsListAPI,
     UserInfo,
     UserProfileViewSet,
     UserSearchInputListAPI,
-    UserUpdateEnrollmentMode
+    UserUpdateEnrollmentMode,
+    DialogAcademyEnrollmentFormView,
+    DialogAcademyBulkEnrollmentFormView
 )
 
 user_viewset_router = DefaultRouter()
@@ -25,16 +34,25 @@ user_viewset_router.register('users', UserProfileViewSet, basename='users')
 urlpatterns = [
     url(r'^users/activate/$', UserProfileViewSet.as_view({"post": "activate_users"})),
     url(r'^users/deactivate/$', UserProfileViewSet.as_view({"post": "deactivate_users"})),
+    url(r'^users/reset-password/$', UserProfileViewSet.as_view({"post": "reset_user_password"})),
     url(r'^users/bulk-registration/$', UserProfileViewSet.as_view({"post": "bulk_registration"})),
     url(r'^users/enroll/$', CourseEnrolmentViewSet.as_view({'post': 'enroll_users'})),
     url(r'^user-course-enrollments/(?P<user_id>\d+)/$', UserCourseEnrollmentsListAPI.as_view()),
     url(r'^update-enrollments/(?P<user_id>\d+)/$', UserUpdateEnrollmentMode.as_view()),
     url(r'^userinfo/$', UserInfo.as_view()),
+    url(r'^organizations/$', OrganizationListAPI.as_view()),
+    url(r'^mau-reports/$', MAUReportListAPI.as_view()),
+    url(r'^mau-reports/(?P<report_id>\d+)/download/$', MAUReportDownloadView.as_view()),
     url(r'^users/search/$', UserSearchInputListAPI.as_view()),
     url(r'^analytics/stats/$', AnalyticsStats.as_view()),
+    url(r'^analytics/login/$', AnalyticsLoginStats.as_view()),
+    url(r'^analytics/enrollment/$', AnalyticsEnrollmentStats.as_view()),
+    url(r'^analytics/top-cohorts/$', AnalyticsTopCohorts.as_view()),
     url(r'^analytics/learners/$', LearnerListAPI.as_view()),
     url(r'^analytics/download$', DownloadCSVView.as_view()),
     url(r'^courses/$', CourseListAPI.as_view()),
     url(r'^courses/stats/$', CourseStatsListAPI.as_view()),
+    url(r'^enrollments/dialog_academy/$', DialogAcademyEnrollmentFormView.as_view(), name='dialog_academy_enrollments'),
+    url(r'^enrollments/dialog_academy/bulk/$', DialogAcademyBulkEnrollmentFormView.as_view(), name='dialog_academy_bulk_enrollments'),
     path('', include(user_viewset_router.urls)),
 ]

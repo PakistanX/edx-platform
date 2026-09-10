@@ -10,6 +10,8 @@ ENROLLMENT_COURSE_EXPIRED_MSG = 'Enrollment date is passed for selected courses.
 ENROLLMENT_COURSE_DIFF_ORG_ERROR_MSG = "Your organization does not match with selected course(s)."
 ENROLLMENT_SUCCESS_MESSAGE = 'Enrollment task has been started successfully!\n' \
                              'Please refresh the page after couple of minutes to get the updated stats.'
+USER_ACCOUNT_DEACTIVATED_MSG = 'This account has been deactivated.'
+SELF_PASSWORD_RESET_ERROR_MSG = "User can't request password reset for their own account."
 
 ORG_ADMIN = 1
 STAFF = 2
@@ -21,3 +23,15 @@ ORG_ROLES = (
     (TRAINING_MANAGER, 'Training Manager'),
     (LEARNER, 'LEARNER'),
 )
+
+# Monthly Active Users (MAU) reports
+MAU_REPORTS_S3_FOLDER = 'mau-reports'
+MAU_REPORTS_OVERALL_FOLDER = 'all'
+MAU_REPORT_DEFAULT_PAGE_SIZE = 10
+MAU_REPORT_MAX_PAGE_SIZE = 100
+
+MAU_USER_TYPE_LEARNER = 'learner'
+MAU_USER_TYPE_COURSE_STAFF = 'course_staff'
+MAU_USER_TYPE_ADMIN_STAFF = 'admin_staff'
+
+MAU_REPORT_CSV_HEADERS = ['user_type', 'username', 'email', 'date_joined', 'last_login']

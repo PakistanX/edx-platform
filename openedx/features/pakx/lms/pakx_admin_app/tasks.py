@@ -19,7 +19,7 @@ from openedx.core.lib.celery.task_utils import emulate_http_request
 from student.models import CourseEnrollment
 
 from .message_types import EnrolmentNotification
-from .utils import create_user, get_org_users_qs
+from .utils import create_user, get_org_users_qs_for_user
 
 log = getLogger(__name__)
 
@@ -60,7 +60,7 @@ def send_bulk_registration_stats_email(email_msg, recipient):
 
 
 @task(name='bulk_user_registration')
-def bulk_user_registration(users_data, recipient, request_url_scheme):
+def bulk_user_registration(users_data, recipient, send_creation_email=True):
     def get_formatted_error_msg(errors, index):
         err_map = errors['response_errors']
         req_data = errors['req_data']
@@ -89,11 +89,13 @@ def bulk_user_registration(users_data, recipient, request_url_scheme):
 
     for idx, user in enumerate(users_data, start=1):
         with emulate_http_request(site, req_user):
-            is_created, user_data = create_user(user, request_url_scheme, next_url=reverse('account_settings'))
+            is_created, user_data, user_password = create_user(user, next_url=reverse('account_settings'), send_creation_email=send_creation_email)
         if is_created:
             created_emails.append(user_data.email)
         else:
             error_map[idx] = {'response_errors': user_data, 'req_data': user}
+        if user_password and is_created:        # used with sync call without delay
+            user['user_password'] = user_password
 
     err_msg_t = "User's email/username/name or index in file: {user_key}\n{msg}"
     errors_msg = [err_msg_t.format(**get_formatted_error_msg(err, index)) for index, err in error_map.items()]
@@ -117,7 +119,7 @@ def enroll_users(request_user_id, user_ids, course_keys_string):
     if request_user:
         enrolled_email_data = []
         site = Site.objects.get_current()
-        users_to_enroll = get_org_users_qs(request_user).filter(id__in=user_ids)
+        users_to_enroll = get_org_users_qs_for_user(request_user).filter(id__in=user_ids)
         try:
             with transaction.atomic():
                 for course_key_string in course_keys_string:
@@ -125,7 +127,7 @@ def enroll_users(request_user_id, user_ids, course_keys_string):
                     course_overview = CourseOverview.objects.get(id=CourseKey.from_string(course_key_string))
                     email_context = {
                         'course': course_overview.display_name,
-                        'image_url': 'https://' + site.domain + course_overview.course_image_url,
+                        'image_url': 'https://' if not settings.DEBUG else 'http://' + site.domain + course_overview.course_image_url,
                         'url': "https://{}/courses/{}/overview".format(site.domain, course_key_string),
                     }
                     for user in users_to_enroll:
@@ -141,3 +143,42 @@ def enroll_users(request_user_id, user_ids, course_keys_string):
             log.info("Task terminated!")
     else:
         log.info("Invalid request user id - Task terminated!")
+
+
+@task(name='generate_monthly_mau_reports')
+def generate_monthly_mau_reports(year=None, month=None):
+    """
+    Generate Monthly Active Users reports for every active organization plus the
+    overall report. Defaults to the previous calendar month; scheduled to run on
+    the first day of each month via CELERYBEAT_SCHEDULE.
+    """
+    from .mau import generate_all_mau_reports
+    reports = generate_all_mau_reports(year, month)
+    log.info("Generated %s MAU reports", len(reports))
+
+
+@task(name='export_course_completions')
+def export_course_completions():
+    """
+    Push completed learners to a Google Sheet for each entry in
+    ``settings.COURSE_COMPLETIONS_SHEET_EXPORTS`` (a list of dicts with keys
+    ``course``, ``spreadsheet`` and optional ``sheet``). Scheduled daily via
+    CELERYBEAT_SCHEDULE. One failing course is logged and skipped so it does not
+    block the others.
+    """
+    from .completions_export import CompletionsExportError, export_course_completions as run_export
+
+    exports = getattr(settings, 'COURSE_COMPLETIONS_SHEET_EXPORTS', None) or []
+    for entry in exports:
+        course = entry.get('course')
+        spreadsheet = entry.get('spreadsheet')
+        if not course or not spreadsheet:
+            log.error("Skipping malformed COURSE_COMPLETIONS_SHEET_EXPORTS entry: %r", entry)
+            continue
+        try:
+            count = run_export(course, spreadsheet, sheet_name=entry.get('sheet', 'Sheet1'))
+            log.info("Completions export: %s rows for %s -> %s", count, course, spreadsheet)
+        except CompletionsExportError as exc:
+            log.error("Completions export failed for %s: %s", course, exc)
+        except Exception:  # pylint: disable=broad-except
+            log.exception("Unexpected error exporting completions for %s", course)

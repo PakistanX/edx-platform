@@ -13,7 +13,10 @@ class CommonInitializationConfig(AppConfig):
     def ready(self):
         # Common settings validations for the LMS and CMS.
         from . import checks
+        from .ora_file_download import patch_ora_file_download_urls
+
         self._add_mimetypes()
+        patch_ora_file_download_urls()
 
     @staticmethod
     def _add_mimetypes():

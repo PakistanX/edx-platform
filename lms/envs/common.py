@@ -786,7 +786,7 @@ AUTHENTICATION_BACKENDS = [
     'bridgekeeper.backends.RulePermissionBackend',
 ]
 
-STUDENT_FILEUPLOAD_MAX_SIZE = 4 * 1000 * 1000  # 4 MB
+STUDENT_FILEUPLOAD_MAX_SIZE = 10 * 1000 * 1000  # 10 MB
 MAX_FILEUPLOADS_PER_INPUT = 20
 
 # Set request limits for maximum size of a request body and maximum number of GET/POST parameters. (>=Django 1.10)
@@ -1519,6 +1519,11 @@ MIDDLEWARE = [
     #'django.contrib.auth.middleware.AuthenticationMiddleware',
     'openedx.core.djangoapps.cache_toolbox.middleware.CacheBackedAuthenticationMiddleware',
 
+    # Bump last_login into the current month for active learners on long-lived
+    # sessions, so MAU counts are not undercounted (gated by the waffle switch
+    # ilmx.refresh_last_login_monthly; runs after auth so request.user is set).
+    'openedx.features.pakx.lms.overrides.middleware.RefreshLastLoginOnMonthChangeMiddleware',
+
     'student.middleware.UserStandingMiddleware',
     'openedx.core.djangoapps.contentserver.middleware.StaticContentServer',
 
@@ -1587,6 +1592,12 @@ MIDDLEWARE = [
 
     # This must be last
     'openedx.core.djangoapps.site_configuration.middleware.SessionCookieDomainOverrideMiddleware',
+
+    # Handles impersonation
+    'impersonate.middleware.ImpersonateMiddleware',
+
+    # Handles scorm pkg serving over same origin iframe, no longer used as we are proxying content from AWS S3 via nginx
+    # 'openedx.features.pakx.lms.overrides.middleware.XFrameOptionsSameOriginMiddleware',
 ]
 
 # Clickjacking protection can be disbaled by setting this to 'ALLOW'
@@ -2565,6 +2576,12 @@ INSTALLED_APPS = [
     # Management of per-user schedules
     'openedx.core.djangoapps.schedules',
     'rest_framework_jwt',
+
+    # Impersonate a user
+    'impersonate',
+
+    # AI Grader
+    'ai_grader',
 ]
 
 ######################### PAKX APPS #####################################

@@ -8,11 +8,13 @@ import logging
 from datetime import datetime
 from uuid import uuid4
 
+import json
 import six
 import pytz
 
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.models import User
 from django.http import Http404, HttpResponse
 from django.template import RequestContext
 from django.utils import translation
@@ -31,7 +33,9 @@ from lms.djangoapps.certificates.api import (
     get_certificate_footer_context,
     get_certificate_header_context,
     get_certificate_template,
-    get_certificate_url
+    get_certificate_from_template_asset,
+    get_certificate_url,
+    get_switch_note_data
 )
 from lms.djangoapps.certificates.models import (
     CertificateGenerationCourseSetting,
@@ -42,8 +46,9 @@ from lms.djangoapps.certificates.models import (
 )
 from lms.djangoapps.certificates.permissions import PREVIEW_CERTIFICATES
 from lms.djangoapps.courseware.courses import get_course_by_id
-from openedx.core.djangoapps.catalog.utils import get_course_run_details
+from openedx.core.djangoapps.catalog.utils import get_course_run_details, get_programs
 from openedx.core.djangoapps.certificates.api import certificates_viewable_for_course, display_date_for_certificate
+from openedx.core.djangoapps.credentials.utils import get_credentials_api_client
 from openedx.core.djangoapps.lang_pref.api import get_closest_released_language
 from openedx.core.djangoapps.site_configuration import helpers as configuration_helpers
 from openedx.core.lib.courses import course_image_url
@@ -57,6 +62,10 @@ _ = translation.ugettext
 
 
 INVALID_CERTIFICATE_TEMPLATE_PATH = 'certificates/invalid.html'
+LUMS_CERTIFICATE_ORGANIZATIONS = 'lums_certificate_organizations'
+TEACHING_PRACTICE_COURSE_IDS = 'teaching_practice_course_ids'
+SPECIALIZATION_PROGRAM_COURSE_IDS = 'specialization_program_course_ids'
+AIE_COURSE_IDS = 'aie_course_ids'
 
 
 def get_certificate_description(mode, certificate_type, platform_name):
@@ -149,6 +158,19 @@ def _update_certificate_context(context, course, user_certificate, platform_name
         platform_name=platform_name,
     )
 
+    try:
+        context["teaching_practice_course_ids"] = get_switch_note_data(TEACHING_PRACTICE_COURSE_IDS)
+        context["lums_certificate_organizations"] = get_switch_note_data(LUMS_CERTIFICATE_ORGANIZATIONS)
+        context["aie_course_ids"] = get_switch_note_data(AIE_COURSE_IDS)
+        specialization_program_course_ids = json.loads(get_switch_note_data(SPECIALIZATION_PROGRAM_COURSE_IDS, return_note=True))
+
+        if context['course_id'] in specialization_program_course_ids.keys():
+            context['program_courses'] = specialization_program_course_ids.get(context['course_id'])
+    except Exception:  # pylint: disable=broad-except
+        log.warning('Exception getting certificate context data from Switch note')
+
+    if course.cert_template_url:
+       context['certificate_img'] = get_certificate_from_template_asset(course.cert_template_url, context)
 
 def _update_context_with_basic_info(context, course_id, platform_name, configuration):
     """
@@ -476,6 +498,58 @@ def render_cert_by_uuid(request, certificate_uuid):
         )
         return render_html_view(request, six.text_type(certificate.course_id), certificate)
     except GeneratedCertificate.DoesNotExist:
+        raise Http404
+    
+def render_program_cert_by_uuid(request, certificate_uuid):
+    """
+    This public view generates an HTML representation of the specified program certificate
+    """
+    try:
+        credentials_client = get_credentials_api_client(
+            User.objects.get(username=settings.CREDENTIALS_SERVICE_USERNAME),
+        )
+        credential_service_response = credentials_client.credentials(certificate_uuid).get()
+        username = credential_service_response.get('username')
+        credentials = credential_service_response.get('credential')
+        date_string = credential_service_response.get('created')
+
+        user = User.objects.get(username=username)
+        program_uuid = credentials.get('program_uuid')
+        program = get_programs(uuid=program_uuid)
+        program_title = program.get('title')
+        program_certificate_url = program.get('program_certificate_url')
+        if not program_certificate_url:
+            log.info(u'Program certificate template is not configured. Unable to render program certificate for username %s - %s', user.username, program_uuid)
+        date = datetime.strptime(date_string.replace('Z', ''), '%Y-%m-%dT%H:%M:%S')
+
+        program_context = {}
+        program_context['course_id'] = program_uuid
+        program_context['certificate_date_issued'] = strftime_localized(date, "%B %-d, %Y")
+        program_context['accomplishment_copy_name'] = (user.profile.name or user.username).title()
+        program_context['certificate_id_number'] = certificate_uuid
+
+        program_certificate = get_certificate_from_template_asset(program_certificate_url, program_context)
+
+        context = {
+            'certificate_img': program_certificate,
+            "platform_name": "ilmX",
+            "logo_subtitle": "Certificate Validation",
+            "document_title": "{} Program Certificate | ilmX".format(program_title),
+            "badge": None,
+            "linked_in_url": None,
+            "twitter_share_enabled": False,
+            "facebook_app_id": "FACEBOOK_APP_ID",
+            "accomplishment_copy_username": user.username,
+            "accomplishment_user_id": user.id,
+            "certificate_id_number": certificate_uuid,
+            "document_banner": "Your Platform Name Here acknowledges the following student accomplishment",
+            "accomplishment_banner_congrats": "Congratulations! This page summarizes what you accomplished. Show it off to family, friends, and colleagues in your social and professional networks.",
+            "logo_url": "https://ilmx.org",
+            "logo_src": "/static/pakx/images/logo-ilmx.png",
+        }
+
+        return render_to_response("certificates/valid.html", context)
+    except Exception as ex:
         raise Http404
 
 

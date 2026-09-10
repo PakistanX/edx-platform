@@ -157,6 +157,22 @@ CELERY_QUEUES = {
 CELERY_ROUTES = "{}celery.Router".format(QUEUE_VARIANT)
 CELERYBEAT_SCHEDULE = {}  # For scheduling tasks, entries can be added to this dict
 
+# Generate Monthly Active Users (MAU) reports on the first day of each month at 00:00 (server TZ).
+from celery.schedules import crontab  # noqa: E402  pylint: disable=wrong-import-position
+CELERYBEAT_SCHEDULE['generate-monthly-mau-reports'] = {
+    'task': 'generate_monthly_mau_reports',
+    'schedule': crontab(day_of_month='1', hour=0, minute=0),
+}
+
+# Daily push of completed learners to Google Sheets. Each entry maps a course to
+# a spreadsheet; add courses here (or override in lms.yml)
+# Requires GOOGLE_SHEETS_SA_INFO (or GOOGLE_SHEETS_SA_KEYFILE) to be configured.
+COURSE_COMPLETIONS_SHEET_EXPORTS = ENV_TOKENS.get('COURSE_COMPLETIONS_SHEET_EXPORTS', [])
+CELERYBEAT_SCHEDULE['export-course-completions'] = {
+    'task': 'export_course_completions',
+    'schedule': crontab(hour=4, minute=0),
+}
+
 # STATIC_ROOT specifies the directory where static files are
 # collected
 STATIC_ROOT_BASE = ENV_TOKENS.get('STATIC_ROOT_BASE', None)
@@ -942,7 +958,7 @@ DEFAULT_PUBLIC_PARTNER_SPACE = ENV_TOKENS.get('DEFAULT_PUBLIC_PARTNER_SPACE', 'i
 COURSE_PROGRESS_REMINDER_EMAIL_DAYS = ENV_TOKENS.get('COURSE_PROGRESS_REMINDER_EMAIL_DAYS', 5)
 
 ####################################### SENTRY ###########################################
-SENTRY_DSN = ENV_TOKENS.get('SENTRY_DSN', None)
+SENTRY_DSN = ENV_TOKENS.get('SENTRY_DSN2', None)
 
 if SENTRY_DSN:
     import sentry_sdk

@@ -97,6 +97,17 @@
 
     <br><br>
 
+    <h5 class="hd hd-5">${_("Recalculate Grades")}</h5>
+    <label for="recalculate-grades-single">${_("Recompute this learner's course and subsection grades for the entire course.")}</label>
+    <br>
+    <input type="button" name="recalculate-grades-single" value="${_('Recalculate Learner\'s Grades')}" data-endpoint="${ section_data['recalculate_grades_url'] }">
+    <br>
+    <label>${_("Note: if a problem location is entered above, recalculation is limited to the subsection that contains that problem; otherwise the whole course is recomputed.")}</label>
+    <br>
+    <label>${_("Track progress in the Pending Tasks table at the bottom of this page.")}</label>
+
+    <br><br>
+
     %if settings.FEATURES.get('ENABLE_INSTRUCTOR_BACKGROUND_TASKS'):
         <h5 class="hd hd-5">${_("Score Override")}</h5>
         <label for="override-problem-score-single">${_("For the specified problem, override the learner's score.")}</label>
@@ -219,6 +230,16 @@
         <input type="button" class="molly-guard" name="rescore-problem-all" value="${_('Rescore All Learners\' Submissions')}" data-endpoint="${ section_data['rescore_problem_url'] }">
         <input type="button" class="molly-guard" name="rescore-problem-all-if-higher" value="${_('Rescore Only If Scores Improve')}" data-endpoint="${ section_data['rescore_problem_url'] }">
     </span>
+    <br><br>
+
+    <h5 class="hd hd-5">${_("Recalculate Grades")}</h5>
+    <label for="recalculate-grades-all">${_("Recompute course and subsection grades for all enrolled learners.")}</label>
+    <br>
+    <input type="button" class="molly-guard" name="recalculate-grades-all" value="${_('Recalculate All Learners\' Grades')}" data-endpoint="${ section_data['recalculate_grades_url'] }">
+    <br>
+    <label>${_("Note: if a problem location is entered above, recalculation is limited to the subsection that contains that problem; otherwise the whole course is recomputed.")}</label>
+    <br>
+    <label>${_("Track progress in the Pending Tasks table at the bottom of this page.")}</label>
     <br><br>
 
     <h5 class="hd hd-5">${_("Task Status")}</h5>

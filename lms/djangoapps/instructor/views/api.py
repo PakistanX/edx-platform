@@ -82,7 +82,8 @@ from lms.djangoapps.instructor.views import INVOICE_KEY
 from lms.djangoapps.instructor.views.instructor_task_helpers import extract_email_features, extract_task_features
 from lms.djangoapps.instructor_task import api as task_api
 from lms.djangoapps.instructor_task.api_helper import AlreadyRunningError, QueueConnectionError
-from lms.djangoapps.instructor_task.models import ReportStore
+from lms.djangoapps.instructor_task.config.waffle import grade_report_batch_range_enabled
+from lms.djangoapps.instructor_task.models import InstructorTask, ReportStore
 from openedx.core.djangoapps.ace_common.template_context import get_base_template_context
 from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
 from openedx.core.djangoapps.course_groups.cohorts import is_course_cohorted
@@ -2268,6 +2269,63 @@ def rescore_problem(request, course_id):
 @require_POST
 @ensure_csrf_cookie
 @cache_control(no_cache=True, no_store=True, must_revalidate=True)
+@require_course_permission(permissions.EDIT_COURSE_ACCESS)
+@common_exceptions_400
+def recalculate_grades(request, course_id):
+    """
+    Submit a background grade recalculation as an instructor task.
+
+    Progress and status are tracked through the instructor_task framework, so
+    the resulting task appears in the "Pending Tasks" table and the Django
+    admin InstructorTask model, and can be revoked there.
+
+    Takes either of the following (mutually exclusive) POST parameters:
+        - unique_student_identifier: an email or username -> recalculate the
+          course and subsection grades for that single learner.
+        - all_students=true -> recalculate grades for every enrolled learner.
+          Whole-course recalculation requires instructor access.
+    """
+    course_key = CourseKey.from_string(course_id)
+    course = get_course_with_access(request.user, 'staff', course_key)
+    all_students = _get_boolean_param(request, 'all_students')
+
+    if all_students and not has_access(request.user, 'instructor', course):
+        return HttpResponseForbidden("Requires instructor access.")
+
+    student_identifier = request.POST.get('unique_student_identifier', None)
+    student = None
+    if student_identifier is not None:
+        student = get_student_from_identifier(student_identifier)
+
+    if all_students and student:
+        return HttpResponseBadRequest(
+            "Cannot recalculate with all_students and unique_student_identifier."
+        )
+
+    # Optional: recompute only the subsection(s) that contain this problem.
+    problem_location = strip_if_string(request.POST.get('problem_location')) or None
+
+    response_payload = {'course_id': text_type(course_key)}
+    if student:
+        response_payload['student'] = student_identifier
+        task_api.submit_recalculate_course_grades(
+            request, course_key, student=student, problem_location=problem_location
+        )
+    elif all_students:
+        task_api.submit_recalculate_course_grades(
+            request, course_key, problem_location=problem_location
+        )
+    else:
+        return HttpResponseBadRequest("Missing query parameters.")
+
+    response_payload['task'] = TASK_SUBMISSION_OK
+    return JsonResponse(response_payload)
+
+
+@transaction.non_atomic_requests
+@require_POST
+@ensure_csrf_cookie
+@cache_control(no_cache=True, no_store=True, must_revalidate=True)
 @require_course_permission(permissions.OVERRIDE_GRADES)
 @require_post_params(problem_to_reset="problem urlname to reset", score='overriding score')
 @common_exceptions_400
@@ -2523,13 +2581,43 @@ def list_report_downloads(request, course_id):
     report_store = ReportStore.from_config(config_name='GRADES_DOWNLOAD')
     report_name = request.POST.get("report_name", None)
 
-    response_payload = {
-        'downloads': [
-            dict(name=name, url=url, link=HTML(u'<a href="{}">{}</a>').format(HTML(url), Text(name)))
-            for name, url in report_store.links_for(course_id) if report_name is None or name == report_name
-        ]
-    }
-    return JsonResponse(response_payload)
+    # Map report filename -> generation duration (seconds), recorded in the
+    # grade-report task output, so each link can show how long it took.
+    durations = _grade_report_durations(course_id)
+
+    downloads = []
+    for name, url in report_store.links_for(course_id):
+        if report_name is not None and name != report_name:
+            continue
+        downloads.append(dict(
+            name=name, url=url,
+            # Generation time (seconds) recorded by the grade-report task, shown
+            # in its own right-aligned column; None when not recorded.
+            duration_seconds=durations.get(name),
+            link=HTML(u'<a href="{}">{}</a>').format(HTML(url), Text(name)),
+        ))
+    return JsonResponse({'downloads': downloads})
+
+
+def _grade_report_durations(course_id):
+    """
+    Return {report_filename: duration_seconds} from recent successful grade-report
+    tasks for this course, so the download list can show generation time per file.
+    """
+    durations = {}
+    recent_tasks = InstructorTask.objects.filter(
+        course_id=course_id, task_type='grade_course', task_state='SUCCESS',
+    ).order_by('-id')[:100]
+    for task in recent_tasks:
+        try:
+            output = json.loads(task.task_output) if task.task_output else {}
+        except ValueError:
+            continue
+        name = output.get('report_name')
+        duration_ms = output.get('duration_ms')
+        if name and duration_ms is not None and name not in durations:
+            durations[name] = int(round(duration_ms / 1000.0))
+    return durations
 
 
 @require_POST
@@ -2571,6 +2659,66 @@ def export_ora2_data(request, course_id):
     return JsonResponse({"status": success_status})
 
 
+def _parse_grade_report_batch_input(post, course_key):
+    """
+    Validate the advanced grade-report batch controls (custom batch size and a
+    start/end learner-row range) from ``post`` for the given course.
+
+    Returns a dict of validated task_input keys (any of ``user_batch_size``,
+    ``batch_start``, ``batch_end``). Raises ``ValueError`` with a human-readable
+    message on any invalid input, so the caller rejects the request instead of
+    submitting a task that would silently produce the wrong rows.
+
+    Rows are 0-based positions into the id-ordered enrolled-learner list; the
+    range is half-open ``[start, end)``.
+    """
+    # Imported lazily: tasks_helper.grades pulls in heavy modulestore/courseware
+    # dependencies, and this view module is import-order sensitive.
+    from lms.djangoapps.instructor_task.tasks_helper.grades import grade_report_enrolled_count
+
+    max_batch_size = getattr(settings, 'GRADE_REPORT_MAX_BATCH_SIZE', 10000)
+    result = {}
+
+    def _as_int(name, raw):
+        try:
+            return int(raw)
+        except (TypeError, ValueError):
+            raise ValueError(_('{name} must be a whole number.').format(name=name))
+
+    raw_batch_size = post.get('batch_size')
+    if raw_batch_size not in (None, ''):
+        batch_size = _as_int(_('Batch size'), raw_batch_size)
+        if batch_size < 1 or batch_size > max_batch_size:
+            raise ValueError(
+                _('Batch size must be between 1 and {max}.').format(max=max_batch_size)
+            )
+        result['user_batch_size'] = batch_size
+
+    raw_start = post.get('batch_start')
+    raw_end = post.get('batch_end')
+    if raw_start not in (None, '') or raw_end not in (None, ''):
+        total = grade_report_enrolled_count(course_key)
+
+        start = _as_int(_('Start row'), raw_start) if raw_start not in (None, '') else 0
+        end = _as_int(_('End row'), raw_end) if raw_end not in (None, '') else total
+
+        if start < 0:
+            raise ValueError(_('Start row cannot be negative.'))
+        if end <= start:
+            raise ValueError(_('End row must be greater than Start row.'))
+        if start >= total:
+            raise ValueError(
+                _('Start row {start} is beyond the total enrolled learners ({total}).').format(
+                    start=start, total=total,
+                )
+            )
+        # An end past the last learner just means "to the end"; clamp it.
+        result['batch_start'] = start
+        result['batch_end'] = min(end, total)
+
+    return result
+
+
 @transaction.non_atomic_requests
 @require_POST
 @ensure_csrf_cookie
@@ -2580,10 +2728,42 @@ def export_ora2_data(request, course_id):
 def calculate_grades_csv(request, course_id):
     """
     AlreadyRunningError is raised if the course's grades are already being updated.
+
+    Accepts optional POST parameters to control the report's custom progress
+    columns:
+        - include_progress_columns: 'false'/'0'/'no' to omit the resource-intensive
+          Course Progress / block-type / completed & incomplete unit columns.
+        - progress_structure_mode: 'legacy' | 'per_learner' | 'uniform'.
+
+    Superuser-only (and waffle-gated) advanced batch controls:
+        - batch_size: per-batch chunk size.
+        - batch_start / batch_end: half-open learner-row range [start, end).
+      Invalid values are rejected with an error rather than submitting a task.
     """
     report_type = _('grade')
     course_key = CourseKey.from_string(course_id)
-    task_api.submit_calculate_grades_csv(request, course_key)
+    task_input = {}
+    include_progress = request.POST.get('include_progress_columns')
+    if include_progress is not None:
+        task_input['include_progress_columns'] = include_progress not in ('false', 'False', '0', 'no', '')
+    progress_mode = request.POST.get('progress_structure_mode')
+    if progress_mode in ('legacy', 'per_learner', 'uniform'):
+        task_input['progress_structure_mode'] = progress_mode
+
+    if any(key in request.POST for key in ('batch_size', 'batch_start', 'batch_end')):
+        # Never trust the client: re-check authorization server-side so a crafted
+        # request from a non-superuser (or with the waffle off) is refused.
+        if not (request.user.is_superuser and grade_report_batch_range_enabled()):
+            return JsonResponse(
+                _('You are not permitted to set grade-report batch controls.'),
+                status=403, safe=False,
+            )
+        try:
+            task_input.update(_parse_grade_report_batch_input(request.POST, course_key))
+        except ValueError as exc:
+            return JsonResponse(text_type(exc), status=400, safe=False)
+
+    task_api.submit_calculate_grades_csv(request, course_key, task_input=task_input)
     success_status = SUCCESS_MESSAGE_TEMPLATE.format(report_type=report_type)
 
     return JsonResponse({"status": success_status})
@@ -2973,7 +3153,7 @@ def _instructor_dash_url(course_key, section=None):
     return url
 
 
-@require_global_staff
+@require_course_permission(permissions.ENABLE_CERTIFICATE_GENERATION)
 @require_POST
 def generate_example_certificates(request, course_id=None):
     """Start generating a set of example certificates.
@@ -2986,6 +3166,8 @@ def generate_example_certificates(request, course_id=None):
 
     """
     course_key = CourseKey.from_string(course_id)
+    if not has_access(request.user, 'staff', course_key) and not request.user.is_staff:
+        return HttpResponseForbidden("Requires staff or instructor access.")
     certs_api.generate_example_certificates(course_key)
     return redirect(_instructor_dash_url(course_key, section='certificates'))
 
@@ -3003,6 +3185,8 @@ def enable_certificate_generation(request, course_id=None):
 
     """
     course_key = CourseKey.from_string(course_id)
+    if not has_access(request.user, 'staff', course_key) and not request.user.is_staff:
+        return HttpResponseForbidden("Requires staff or instructor access.")
     is_enabled = (request.POST.get('certificates-enabled', 'false') == 'true')
     certs_api.set_cert_generation_enabled(course_key, is_enabled)
     return redirect(_instructor_dash_url(course_key, section='certificates'))
@@ -3035,7 +3219,7 @@ def mark_student_can_skip_entrance_exam(request, course_id):
 @transaction.non_atomic_requests
 @ensure_csrf_cookie
 @cache_control(no_cache=True, no_store=True, must_revalidate=True)
-@require_global_staff
+@require_course_permission(permissions.ENABLE_CERTIFICATE_GENERATION)
 @require_POST
 @common_exceptions_400
 def start_certificate_generation(request, course_id):
@@ -3043,6 +3227,8 @@ def start_certificate_generation(request, course_id):
     Start generating certificates for all students enrolled in given course.
     """
     course_key = CourseKey.from_string(course_id)
+    if not has_access(request.user, 'staff', course_key) and not request.user.is_staff:
+        return HttpResponseForbidden("Requires staff or instructor access.")
     task = task_api.generate_certificates_for_students(request, course_key)
     message = _('Certificate generation task for all students of this course has been started. '
                 'You can view the status of the generation task in the "Pending Tasks" section.')
@@ -3057,7 +3243,7 @@ def start_certificate_generation(request, course_id):
 @transaction.non_atomic_requests
 @ensure_csrf_cookie
 @cache_control(no_cache=True, no_store=True, must_revalidate=True)
-@require_global_staff
+@require_course_permission(permissions.ENABLE_CERTIFICATE_GENERATION)
 @require_POST
 @common_exceptions_400
 def start_certificate_regeneration(request, course_id):
@@ -3066,6 +3252,8 @@ def start_certificate_regeneration(request, course_id):
     entry in POST data.
     """
     course_key = CourseKey.from_string(course_id)
+    if not has_access(request.user, 'staff', course_key) and not request.user.is_staff:
+        return HttpResponseForbidden("Requires staff or instructor access.")
     certificates_statuses = request.POST.getlist('certificate_statuses', [])
     if not certificates_statuses:
         return JsonResponse(
@@ -3078,6 +3266,7 @@ def start_certificate_regeneration(request, course_id):
         CertificateStatuses.downloadable,
         CertificateStatuses.error,
         CertificateStatuses.notpassing,
+        CertificateStatuses.unavailable,
         CertificateStatuses.audit_passing,
         CertificateStatuses.audit_notpassing,
     ]
@@ -3099,7 +3288,7 @@ def start_certificate_regeneration(request, course_id):
 @transaction.non_atomic_requests
 @ensure_csrf_cookie
 @cache_control(no_cache=True, no_store=True, must_revalidate=True)
-@require_global_staff
+@require_course_permission(permissions.ENABLE_CERTIFICATE_GENERATION)
 @require_http_methods(['POST', 'DELETE'])
 def certificate_exception_view(request, course_id):
     """
@@ -3110,6 +3299,8 @@ def certificate_exception_view(request, course_id):
     :return: JsonResponse object with success/error message or certificate exception data.
     """
     course_key = CourseKey.from_string(course_id)
+    if not has_access(request.user, 'staff', course_key) and not request.user.is_staff:
+        return HttpResponseForbidden("Requires staff or instructor access.")
     # Validate request data and return error response in case of invalid data
     try:
         certificate_exception, student = parse_request_data_and_get_user(request, course_key)
@@ -3288,6 +3479,8 @@ def generate_certificate_exceptions(request, course_id, generate_for=None):
     :return: JsonResponse object containing success/failure message and certificate exception data
     """
     course_key = CourseKey.from_string(course_id)
+    if not has_access(request.user, 'staff', course_key) and not request.user.is_staff:
+        return HttpResponseForbidden("Requires staff or instructor access.")
 
     if generate_for == 'all':
         # Generate Certificates for all white listed students
@@ -3337,6 +3530,9 @@ def generate_bulk_certificate_exceptions(request, course_id):
     notes_index = 1
     row_errors_key = ['data_format_error', 'user_not_exist', 'user_already_white_listed', 'user_not_enrolled']
     course_key = CourseKey.from_string(course_id)
+    if not has_access(request.user, 'staff', course_key) and not request.user.is_staff:
+        return HttpResponseForbidden("Requires staff or instructor access.")
+
     students, general_errors, success = [], [], []
     row_errors = {key: [] for key in row_errors_key}
 
@@ -3411,7 +3607,7 @@ def generate_bulk_certificate_exceptions(request, course_id):
 @transaction.non_atomic_requests
 @ensure_csrf_cookie
 @cache_control(no_cache=True, no_store=True, must_revalidate=True)
-@require_global_staff
+@require_course_permission(permissions.ENABLE_CERTIFICATE_GENERATION)
 @require_http_methods(['POST', 'DELETE'])
 def certificate_invalidation_view(request, course_id):
     """
@@ -3422,6 +3618,8 @@ def certificate_invalidation_view(request, course_id):
     :return: JsonResponse object with success/error message or certificate invalidation data.
     """
     course_key = CourseKey.from_string(course_id)
+    if not has_access(request.user, 'staff', course_key) and not request.user.is_staff:
+        return HttpResponseForbidden("Requires staff or instructor access.")
     # Validate request data and return error response in case of invalid data
     try:
         certificate_invalidation_data = parse_request_data(request)
@@ -3549,6 +3747,27 @@ def validate_request_data_and_get_certificate(certificate_invalidation, course_k
             "username/email and the selected course are correct and try again."
         ).format(student=student.username, course=course_key.course))
     return certificate
+
+
+@transaction.non_atomic_requests
+@ensure_csrf_cookie
+@cache_control(no_cache=True, no_store=True, must_revalidate=True)
+@require_course_permission(permissions.VIEW_ISSUED_CERTIFICATES)
+@require_POST
+def generate_cert_report(request, course_id):
+    course_key = CourseKey.from_string(course_id)
+    if not has_access(request.user, 'staff', course_key) and not request.user.is_staff:
+        return HttpResponseForbidden("Requires staff or instructor access.")
+    
+    # We pass the base URL for certificates so the task knows how to build the link
+    base_url = "https://{}/certificates/".format(request.get_host())
+    
+    task = task_api.submit_certificate_report_task(request, course_key, base_url)
+    response_payload = {
+        'success': True,
+        'message': _('Started download generated certificates report task ID {}').format(task.task_id),
+    }
+    return JsonResponse(response_payload)
 
 
 def _get_boolean_param(request, param_name):

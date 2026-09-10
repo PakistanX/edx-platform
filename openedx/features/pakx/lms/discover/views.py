@@ -15,13 +15,14 @@ from lms.djangoapps.courseware.courses import (
 )
 from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
 from openedx.core.djangoapps.user_api.accounts.image_helpers import get_profile_image_urls_for_user
-from openedx.features.pakx.lms.overrides.constants import COURSE_SLUG_MAPPING, TRAINING_SLUG_MAPPING
 from openedx.features.pakx.lms.discover.authentications import DiscoverAuthentication
 from openedx.features.pakx.lms.overrides.utils import (
     create_discount_data,
     get_or_create_course_overview_content,
     is_blank_str,
-    get_key_from_value
+    get_key_from_value,
+    get_course_slug_mapping,
+    get_training_slug_mapping
 )
 from util.organizations_helpers import get_organization_by_short_name
 from xmodule.modulestore.django import modulestore
@@ -81,13 +82,13 @@ class CourseDataView(APIView):
         pakx_short_logo = '/static/pakx/images/mooc/pakx-logo.png'
 
         course_id = text_type(course.id)
-        if course_id in COURSE_SLUG_MAPPING.values():
+        if course_id in get_course_slug_mapping().values():
             about_page_url = self.request.build_absolute_uri(reverse(
-                'custom-cap-url-courses', args=[get_key_from_value(COURSE_SLUG_MAPPING, course_id)]
+                'custom-cap-url-courses', args=[get_key_from_value(get_course_slug_mapping(), course_id)]
             ))
-        elif course_id in TRAINING_SLUG_MAPPING.values():
+        elif course_id in get_training_slug_mapping().values():
             about_page_url = self.request.build_absolute_uri(reverse(
-                'custom-cap-url-trainings', args=[get_key_from_value(COURSE_SLUG_MAPPING, course_id)]
+                'custom-cap-url-trainings', args=[get_key_from_value(get_training_slug_mapping(), course_id)]
             ))
         else:
             about_page_url = self.request.build_absolute_uri(

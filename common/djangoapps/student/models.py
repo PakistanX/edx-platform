@@ -16,6 +16,7 @@ import hashlib
 import inspect
 import json
 import logging
+import requests
 import uuid
 from collections import OrderedDict, defaultdict, namedtuple
 from datetime import datetime, timedelta
@@ -48,6 +49,7 @@ from eventtracking import tracker
 from model_utils.models import TimeStampedModel
 from opaque_keys.edx.django.models import CourseKeyField
 from opaque_keys.edx.keys import CourseKey
+from organizations.models import Organization
 from pytz import UTC
 from simple_history.models import HistoricalRecords
 from six import text_type
@@ -55,7 +57,6 @@ from six.moves import range
 from six.moves.urllib.parse import urlencode
 from slumber.exceptions import HttpClientError, HttpServerError
 from user_util import user_util
-from organizations.models import Organization
 
 import openedx.core.djangoapps.django_comment_common.comment_client as cc
 from course_modes.models import CourseMode, get_cosmetic_verified_display_price
@@ -258,6 +259,13 @@ def username_exists_or_retired(username):
     Check a username for existence -or- retirement against the User model.
     """
     return User.objects.filter(username=username).exists() or is_username_retired(username)
+
+
+def same_username_email_user_exists(username, email):
+    """
+    Check for existence of same username and email user and is not retirement against the User model.
+    """
+    return User.objects.filter(username=username, email=email).exists() and not is_username_retired(username) and not is_email_retired(email)
 
 
 def is_email_retired(email):
@@ -486,18 +494,24 @@ class UserProfile(models.Model):
     # p_se and p_oth in the existing data in db.
     # ('p_se', 'Doctorate in science or engineering'),
     # ('p_oth', 'Doctorate in another field'),
+    # Rmoved as part of ticket requirement PKX-1459
+    # (u'p', ugettext_noop(u'Doctorate')),
+    # (u'm', ugettext_noop(u"Master's or professional degree")),
+    # (u'b', ugettext_noop(u"Bachelor's degree")),
+    # (u'a', ugettext_noop(u"Associate degree")),
+    # (u'hs', ugettext_noop(u"Secondary/high school")),
+    # (u'jhs', ugettext_noop(u"Junior secondary/junior high/middle school")),
+    # (u'el', ugettext_noop(u"Elementary/primary school")),
+    # # Translators: 'None' refers to the student's level of education
+    # (u'none', ugettext_noop(u"No formal education")),
+    # # Translators: 'Other' refers to the student's level of education
+    # (u'other', ugettext_noop(u"Other education"))
     LEVEL_OF_EDUCATION_CHOICES = (
-        (u'p', ugettext_noop(u'Doctorate')),
-        (u'm', ugettext_noop(u"Master's or professional degree")),
-        (u'b', ugettext_noop(u"Bachelor's degree")),
-        (u'a', ugettext_noop(u"Associate degree")),
-        (u'hs', ugettext_noop(u"Secondary/high school")),
-        (u'jhs', ugettext_noop(u"Junior secondary/junior high/middle school")),
-        (u'el', ugettext_noop(u"Elementary/primary school")),
-        # Translators: 'None' refers to the student's level of education
-        (u'none', ugettext_noop(u"No formal education")),
-        # Translators: 'Other' refers to the student's level of education
-        (u'other', ugettext_noop(u"Other education"))
+        (u'u', ugettext_noop(u"Undergraduate")),
+        (u'g', ugettext_noop(u"Graduate")),
+        (u'elp', ugettext_noop(u"Entry Level Professional")),
+        (u'mslp', ugettext_noop(u"Mid-Senior Level Professional")),
+        (u'other', ugettext_noop(u"Other"))
     )
     level_of_education = models.CharField(
         blank=True, null=True, max_length=6, db_index=True,
@@ -950,15 +964,15 @@ class LoginFailures(models.Model):
         try:
             record = cls._get_record_for_user(user)
             if not record.lockout_until:
-                return False
+                return False, None
 
             now = datetime.now(UTC)
             until = record.lockout_until
             is_locked_out = until and now < until
 
-            return is_locked_out
+            return is_locked_out, until
         except ObjectDoesNotExist:
-            return False
+            return False, None
 
     @classmethod
     def increment_lockout_counter(cls, user):
@@ -2457,6 +2471,36 @@ def log_successful_login(sender, request, user, **kwargs):
         AUDIT_LOG.info(u"Login success - user.id: {0}".format(user.id))
     else:
         AUDIT_LOG.info(u"Login success - {0} ({1})".format(user.username, user.email))
+
+
+@receiver(user_logged_in)
+def update_user_country_on_login(sender, request, user, **kwargs):
+    # 1. Get the IP Address
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        ip = x_forwarded_for.split(',')[0]
+    else:
+        ip = request.META.get('REMOTE_ADDR')
+
+    log.info("User %s logged in from IP: %s", user.id, ip)
+    # Skip for local/internal IPs
+    if ip in ['127.0.0.1', 'localhost']:
+        return
+
+    try:
+        response = requests.get("https://ipinfo.io/{}?token={}".format(ip, settings.IPINFO_TOKEN), timeout=2)
+        if response.status_code == 200:
+            data = response.json()
+            country_code = data.get('country') # Returns 'US', 'FR', etc.
+
+            if country_code:
+                profile = UserProfile.objects.get(user=user)
+                # Only update if the user hasn't set it or it's different
+                if profile.country != country_code:
+                    profile.country = country_code
+                    profile.save()
+    except Exception as e:
+        print("Error updating country: {}".format(e))
 
 
 @receiver(user_logged_out)

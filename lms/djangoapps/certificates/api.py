@@ -6,7 +6,12 @@ rather than importing Django models directly.
 """
 
 
+import base64
+import json
 import logging
+import requests
+from io import BytesIO
+from PIL import Image, ImageDraw, ImageFont
 
 import six
 from django.conf import settings
@@ -15,6 +20,7 @@ from django.urls import reverse
 from eventtracking import tracker
 from opaque_keys.edx.django.models import CourseKeyField
 from opaque_keys.edx.keys import CourseKey
+from waffle.models import Switch
 
 from branding import api as branding_api
 from lms.djangoapps.certificates.models import (
@@ -31,10 +37,12 @@ from lms.djangoapps.certificates.models import (
 from lms.djangoapps.certificates.queue import XQueueCertInterface
 from lms.djangoapps.instructor.access import list_with_level
 from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
+from openedx.features.pakx.lms.overrides.constants import CERTIFICATE_LAYOUT_CONFIGS_DEFAULT, FONT_MAP
 from util.organizations_helpers import get_course_organization_id
 from xmodule.modulestore.django import modulestore
 
 log = logging.getLogger("edx.certificate")
+CERTIFICATE_LAYOUT_CONFIGS_ = 'certificate_layout_configs_'
 MODES = GeneratedCertificate.MODES
 
 
@@ -205,7 +213,7 @@ def generate_user_certificates(student, course_key, course=None, insecure=False,
     if beta_testers_queryset.filter(username=student.username):
         message = u'Cancelling course certificate generation for user [{}] against course [{}], user is a Beta Tester.'
         log.info(message.format(course_key, student.username))
-        return
+        return 'course beta tester is not allowed to generate a certificate.'
 
     xqueue = XQueueCertInterface()
     if insecure:
@@ -227,7 +235,7 @@ def generate_user_certificates(student, course_key, course=None, insecure=False,
     # If cert_status is not present in certificate valid_statuses (for example unverified) then
     # add_cert returns None and raises AttributeError while accesing cert attributes.
     if cert is None:
-        return
+        return 'cert_status is not present in certificate valid_statuses'
 
     if CertificateStatuses.is_passing_status(cert.status):
         emit_certificate_event('created', student, course_key, course, {
@@ -695,3 +703,107 @@ def get_certificate_footer_context():
         data.update({'company_about_url': about})
 
     return data
+
+
+def get_switch_note_data(switch_key, return_note=False):
+    switch = Switch.objects.filter(name=switch_key).first()
+    note = switch.note if switch and switch.note else ""
+    return note if return_note else note.split(",") if note else []
+
+
+def get_certificate_from_template_asset(cert_template_url, context):
+    adapter = requests.adapters.HTTPAdapter(
+        max_retries=requests.adapters.Retry(
+            total=3,
+            backoff_factor=1,
+            status_forcelist=[500, 502, 503, 504]
+        )
+    )
+    session = requests.Session()
+    session.mount("http://", adapter)
+    session.mount("https://", adapter)
+    r = session.get(cert_template_url, stream=True, timeout=10)
+    content_type = r.headers.get("Content-Type", "").lower()
+    try:
+        r.raise_for_status()
+    except requests.exceptions.Timeout:
+        log.error(
+            u"Request timed out while trying to fetch course or program certificate template. - %s",
+            context['course_id']
+        )
+    except requests.exceptions.ConnectionError:
+        log.error(
+            u"Network-related error occurred while trying to fetch course or program certificate template - %s",
+            context['course_id']
+        )
+    except requests.exceptions.HTTPError as e:
+        log.error(
+            u"HTTP error occurred while trying to fetch course or program certificate template %s - %s",
+            e,
+            context['course_id']
+        )
+    except requests.exceptions.RequestException as e:
+        log.error(
+            u"Unexpected error occurred during the course or program certificate template fetch request %s - %s",
+            e,
+            context['course_id']
+        )
+
+    if not any(ext in content_type for ext in ["png", "jpeg", "jpg"]):
+        return
+    img = Image.open(BytesIO(r.content))
+    draw = ImageDraw.Draw(img)
+    layout_dict = CERTIFICATE_LAYOUT_CONFIGS_DEFAULT
+    course_specific_certificate_layout_configs = get_switch_note_data(CERTIFICATE_LAYOUT_CONFIGS_+context['course_id'], return_note=True)
+    if course_specific_certificate_layout_configs:
+        try:
+            layout_dict = json.loads(course_specific_certificate_layout_configs)
+        except json.JSONDecodeError:
+            log.error(
+                u"exception parsing course or program specific certificate layout configs, fallback to default - %s",
+                context['course_id']
+            )
+    elif context.get('organization_short_name'):
+        organization_certificate_layout_configs = get_switch_note_data(CERTIFICATE_LAYOUT_CONFIGS_+context['organization_short_name'], return_note=True)
+        if organization_certificate_layout_configs:
+            try:
+                layout_dict = json.loads(organization_certificate_layout_configs)
+            except json.JSONDecodeError:
+                log.error(
+                    u"exception parsing organization certificate layout configs, fallback to default - %s",
+                    context['organization_short_name']
+                )
+                
+    values = []
+    for key, cfg in layout_dict.items():
+        text = cfg['prefix']+context[key] if "prefix" in cfg else context[key]
+        text = cfg.get("text", text)
+        text = text.upper() if cfg.get("transform") == "upper" else text
+        values.append((
+            text,
+            tuple(cfg["position"]),
+            cfg["font_size"],
+            tuple(cfg["box_size"]),
+            cfg.get("font", "Helvetica"),
+            cfg.get("background", "white"),
+            cfg.get("align", "left"),
+            cfg.get("text_color", "black")
+        ))
+
+    for text, pos, font_size, box_size, font_path, background, align, text_color in values:
+        font = ImageFont.truetype(FONT_MAP.get(font_path), int(font_size * img.info.get("dpi", (300, 300))[0] / 72))
+        text_width, _ = font.getsize(text)
+        if background:
+            draw.rectangle([pos[0]-5, pos[1]-5, pos[0] + box_size[0], pos[1] + box_size[1]], fill=background, outline=background)
+        if align == 'center':
+            pos = tuple([pos[0] + (box_size[0] - text_width) / 2, pos[1]])
+        if align == 'right':
+            pos = tuple([pos[0] + box_size[0] - text_width, pos[1]])
+        
+        draw.text(pos, text, font=font, fill=text_color)
+
+    buffer = BytesIO()
+    img.save(buffer, format=img.format)
+    buffer.seek(0)
+
+    return base64.b64encode(buffer.getvalue()).decode("utf-8")

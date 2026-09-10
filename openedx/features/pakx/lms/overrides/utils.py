@@ -1,5 +1,6 @@
 """ Overrides app util functions """
 
+import json
 from collections import OrderedDict
 from datetime import date, datetime
 from logging import getLogger
@@ -20,11 +21,14 @@ from django.utils.translation import ugettext as _
 from opaque_keys.edx.keys import CourseKey
 from pytz import utc
 from six import text_type
+from waffle.models import Switch
 
 from course_modes.models import CourseMode, format_course_price
 from lms.djangoapps.commerce.utils import EcommerceService
 from lms.djangoapps.course_api.blocks.serializers import BlockDictSerializer
 from lms.djangoapps.course_api.blocks.transformers.blocks_api import BlocksAPITransformer
+import lms.djangoapps.course_blocks.api as course_blocks_api
+from lms.djangoapps.course_blocks.usage_info import CourseUsageInfo
 from lms.djangoapps.courseware.courses import get_courses, sort_by_announcement, sort_by_start_date
 from lms.djangoapps.courseware.model_data import FieldDataCache
 from lms.djangoapps.courseware.module_render import toc_for_course
@@ -36,6 +40,7 @@ from openedx.core.djangoapps.site_configuration import helpers as configuration_
 from openedx.core.lib.request_utils import get_request_or_stub
 from openedx.features.course_experience.utils import get_course_outline_block_tree, get_resume_block
 from openedx.features.pakx.cms.custom_settings.models import CourseOverviewContent
+from openedx.features.pakx.lms.overrides.constants import COURSE_SLUG_MAPPING, TRAINING_SLUG_MAPPING
 from pakx_feedback.feedback_app.models import UserFeedbackModel
 from student.models import CourseEnrollment
 from util.organizations_helpers import get_organization_by_short_name
@@ -45,13 +50,15 @@ log = getLogger(__name__)
 
 VIDEO_BLOCK_TYPES = ['video', 'pakx_video']
 CORE_BLOCK_TYPES = ['html', 'video', 'problem', 'pakx_video', 'pakx_video_quiz',
-                    'edly_carousel', 'pakx_grid_dropdown', 'openassessment', ]
-PROBLEM_BLOCK_TYPES = ['problem', 'edly_carousel', 'pakx_grid_dropdown', 'pakx_video_quiz']
+                    'edly_carousel', 'pakx_grid_dropdown', 'openassessment', 'ai_grader']
+PROBLEM_BLOCK_TYPES = ['problem', 'edly_carousel', 'pakx_grid_dropdown', 'pakx_video_quiz', 'ai_grader']
 BLOCK_TYPES_TO_FILTER = [
     'course', 'chapter', 'sequential', 'vertical', 'discussion', 'openassessment', 'pb-mcq', 'pb-answer', 'pb-choice',
     'pb-message', 'pakx_microlearning', 'pakx_completion', 'google_drive', 'google-drive', 'google_document',
     'google-document'
 ]
+COURSE_SLUG_MAPPING_ = 'course_slug_mapping'
+TRAINING_SLUG_MAPPING_ = 'training_slug_mapping'
 
 
 def get_or_create_course_overview_content(course_key, custom_setting=None):
@@ -89,7 +96,6 @@ def get_course_card_data(course, org_prefetched=False):
         org_name = course_org.get('name') if is_blank_str(course_custom_setting.publisher_name) else \
             course_custom_setting.publisher_name
     else:
-
         org_name = course_custom_setting.course_set.publisher_org.name if is_blank_str(
             course_custom_setting.publisher_name) else course_custom_setting.publisher_name
         org_logo_url = course_custom_setting.publisher_card_logo_url or course_custom_setting.\
@@ -105,6 +111,14 @@ def get_course_card_data(course, org_prefetched=False):
         program_url = ''
     except NoReverseMatch:
         program_url = program_id
+
+    course_id = text_type(course.id)
+    if text_type(course.id) in get_course_slug_mapping().values():
+        custom_cap_url = reverse('custom-cap-url-courses', args=[get_key_from_value(get_course_slug_mapping(), course_id)])
+    elif text_type(course.id) in get_training_slug_mapping().values():
+        custom_cap_url = reverse('custom-cap-url-trainings', args=[get_key_from_value(get_training_slug_mapping(), course_id)])
+    else:
+        custom_cap_url = reverse('about_course', kwargs={'course_id': course_id})
 
     return {
         'key': course.id,
@@ -123,16 +137,22 @@ def get_course_card_data(course, org_prefetched=False):
         'offered_by': course_custom_setting.offered_by_html,
         'reviews': course_custom_setting.reviews_html,
         'publisher_logo_url': course_custom_setting.publisher_logo_url,
+        'recommended_courses': course_custom_setting.recommended_courses,
+        'is_professional_certificate': course_custom_setting.is_professional_certificate,
         'about_page_banner_color': course_custom_setting.about_page_banner_color,
         'is_text_color_dark': course_custom_setting.is_text_color_dark,
-        'url': reverse('about_course', kwargs={'course_id': text_type(course.id)}),
+        'url': custom_cap_url,
         'enrollment_count': course_custom_setting.enrollment_count,
         'program_name': program_name,
         'program_url': program_url,
         'difficulty_level': course_custom_setting.difficulty_level,
         'discount_percent': course_custom_setting.discount_percent,
         'discount_date': course_custom_setting.discount_date,
-        'seo_words': course_custom_setting.seo_words
+        'seo_words': course_custom_setting.seo_words,
+        'course_type': course_custom_setting.course_type,
+        'prerequisites': course_custom_setting.prerequisites,
+        'prerequisites_courses': course_custom_setting.prerequisites_courses,
+        'custom_language': course_custom_setting.custom_language,
     }
 
 
@@ -321,6 +341,10 @@ def _accumulate_total_block_counts(total_block_type_counts):
         'openassessment': 'problem',
         'journal_xblock': 'other',
         'github_xblock': 'problem',
+        'feedback': 'other',
+        'ai_grader': 'problem',
+        'pxc': 'problem',
+        'scormxblock': 'other',
     }
     if total_block_type_counts:
         for block_type, count in total_block_type_counts.items():
@@ -355,7 +379,7 @@ def _get_block_types_and_keys(course_block_structure):
     return block_types, block_keys
 
 
-def _serialize_course_block_structure(request, course_block_structure):
+def _serialize_course_block_structure(request, course_key, course_block_structure):
     """
     Serializes course block structure into dict.
 
@@ -369,7 +393,8 @@ def _serialize_course_block_structure(request, course_block_structure):
     """
 
     block_types, block_keys = _get_block_types_and_keys(course_block_structure)
-    transformers = BlockStructureTransformers()
+    transformers = BlockStructureTransformers(course_blocks_api.get_course_block_access_transformers(request.user))
+    transformers.usage_info = CourseUsageInfo(course_key, request.user, allow_start_dates_in_future=True)
     transformers += [
         BlocksAPITransformer(block_types_to_count=block_types, requested_student_view_data=set([]), depth=0)
     ]
@@ -408,7 +433,7 @@ def get_progress_information(request, course_key):
     course_key = CourseKey.from_string(course_key)
     course_block_structure = get_course_in_cache(course_key)
     serialized_course_block_structure, course_blocks_keys = _serialize_course_block_structure(
-        request, course_block_structure)
+        request, course_key, course_block_structure)
     blocks = serialized_course_block_structure.get('blocks')
     total_block_types = _accumulate_total_block_counts(
         blocks.get(list(blocks.keys())[0]).get('block_counts')
@@ -645,3 +670,21 @@ def get_key_from_value(dictionary, target_value):
         if value == target_value:
             return key
     return None
+
+
+def get_course_slug_mapping():
+    try:
+        course_slug_mapping = Switch.objects.get(name=COURSE_SLUG_MAPPING_).note
+        return {**COURSE_SLUG_MAPPING, **(json.loads(course_slug_mapping) if course_slug_mapping.strip() else {})}
+    except Exception:  # pylint: disable=broad-except
+        log.warning('Exception getting course_slug_mapping data from Switch note')
+        return COURSE_SLUG_MAPPING
+
+
+def get_training_slug_mapping():
+    try:
+        training_slug_mapping = Switch.objects.get(name=TRAINING_SLUG_MAPPING_).note
+        return {**TRAINING_SLUG_MAPPING, **(json.loads(training_slug_mapping) if training_slug_mapping.strip() else {})}
+    except Exception:  # pylint: disable=broad-except
+        log.warning('Exception getting training_slug_mapping data from Switch note')
+        return TRAINING_SLUG_MAPPING

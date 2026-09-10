@@ -69,19 +69,23 @@ class Command(BaseCommand):
         return parser.parse_args(argv).__dict__   # we want a dictionary, not a non-iterable Namespace object
 
     def handle(self, *args, **options):
-        program_uuids, usernames = None, None
         if options['args_from_database']:
             logger.info('Loading arguments from the database for custom programs or learners.')
 
             arguments = self.get_args_from_database()
-            program_uuids = arguments.get('program-uuids', None)
+            program_uuids = arguments.get('program_uuids', None)
             usernames = arguments.get('usernames', None)
+        else:
+            program_uuids = options.get('program_uuids')
+            usernames = options.get('usernames')
 
         logger.info('Loading programs from the catalog.')
         self._load_course_runs(program_uuids=program_uuids)
 
         logger.info('Looking for users who may be eligible for a program certificate.')
         self._load_usernames(users=usernames)
+
+        logger.info(u'Candidate usernames to be attempted (%d): %s', len(self.usernames), sorted(self.usernames))
 
         if options.get('commit'):
             logger.info(u'Enqueuing program certification tasks for %d candidates.', len(self.usernames))

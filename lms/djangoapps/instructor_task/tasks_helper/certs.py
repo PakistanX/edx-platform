@@ -3,13 +3,16 @@ Instructor tasks related to certificates.
 """
 
 
+from datetime import datetime
 from time import time
+from pytz import UTC
 
 from django.contrib.auth.models import User
 from django.db.models import Q
 
 from lms.djangoapps.certificates.api import generate_user_certificates
 from lms.djangoapps.certificates.models import CertificateStatuses, GeneratedCertificate
+from .utils import upload_csv_to_report_store
 from student.models import CourseEnrollment
 from xmodule.modulestore.django import modulestore
 
@@ -149,3 +152,44 @@ def invalidate_generated_certificates(course_id, enrolled_students, certificate_
         download_url='',
         grade='',
     )
+
+
+def download_generated_certificates_report(
+        _xmodule_instance_args, _entry_id, course_id, task_input, action_name):
+    base_url = task_input.get('base_url', 'https://ilmx.org/certificates/')
+    
+    start_time = time()
+    start_date = datetime.now(UTC)
+    num_reports = 1
+    task_progress = TaskProgress(action_name, num_reports, start_time)
+    current_step = {'step': 'Calculating generated certificates'}
+    task_progress.update_task_state(extra_meta=current_step)
+
+    header = ['Name', 'Username', 'Email', 'Certificate URL']
+    rows = []
+
+    certs = GeneratedCertificate.objects.filter(
+        course_id=course_id, 
+        status='downloadable'
+    ).select_related('user')
+
+    for cert in certs:
+        rows.append([
+            cert.user.profile.name,
+            cert.user.username,
+            cert.user.email,
+            "{}{}".format(base_url, cert.verify_uuid)
+        ])
+
+    task_progress.attempted = task_progress.succeeded = len(rows)
+    task_progress.skipped = task_progress.total - task_progress.attempted
+
+    rows.insert(0, header)
+
+    current_step = {'step': 'Uploading CSV'}
+    task_progress.update_task_state(extra_meta=current_step)
+
+    report_name = "generated_certificates_report"
+    upload_csv_to_report_store(rows, report_name, course_id, start_date)
+
+    return task_progress.update_task_state(extra_meta=current_step)

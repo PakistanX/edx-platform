@@ -2,23 +2,29 @@
 helpers functions for Admin Panel API
 """
 import json
+import os
 from datetime import datetime
 from uuid import uuid4
 
 import pytz
 from django.conf import settings
+from django.contrib.auth import login as django_login
 from django.contrib.auth.models import Group, User
 from django.contrib.sites.models import Site
 from django.db.models import Count, Q
 from django.urls import reverse
 from edx_ace import ace
 from edx_ace.recipient import Recipient
+from organizations.models import Organization
+from xmodule.contentstore.content import StaticContent
+from xmodule.contentstore.django import contentstore
 
+from lms.djangoapps.verify_student.models import ManualVerification
 from openedx.core.djangoapps.ace_common.template_context import get_base_template_context
 from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
 from openedx.core.djangoapps.site_configuration import helpers as configuration_helpers
 from openedx.features.pakx.lms.overrides.models import CourseProgressStats
-from student.models import Registration
+from student.helpers import authenticate_new_user
 
 from .constants import GROUP_ORGANIZATION_ADMIN, GROUP_TRAINING_MANAGERS, LEARNER, ORG_ADMIN, TRAINING_MANAGER
 from .message_types import RegistrationNotification
@@ -28,13 +34,59 @@ def get_user_org_filter(user):
     return {'profile__organization_id': user.profile.organization_id}
 
 
-def get_user_org(user):
-    """get org for given user object"""
+def is_unrestricted_admin(user):
+    """
+    Django admins (staff or superuser). This is the tier allowed to view any
+    organization's data and to pick a target org via the `org` query param.
+    Course staff (group-based org admins / training managers) are NOT included.
+    """
+    return bool(user and (user.is_staff or user.is_superuser))
 
-    user_org = getattr(user.profile.organization, "short_name", "").lower()
-    if user_org == 'arbisoft':  # TODO: REMOVE THIS IF WHEN WORK PLACE ESSENTIALS COURSES ARE REMOVED
-        return r'({}|{})'.format(user_org, 'pakx')
-    return r'({})'.format(user_org)
+
+def get_org_regex(org_short_name):
+    """build the org match regex for a given org short_name"""
+    org = (org_short_name or "").lower()
+    if org == 'arbisoft':  # TODO: REMOVE THIS IF WHEN WORK PLACE ESSENTIALS COURSES ARE REMOVED
+        return r'({}|{})'.format(org, 'pakx')
+    return r'({})'.format(org)
+
+
+def get_user_org(user):
+    """get org regex for given user object (from its profile organization)"""
+
+    return get_org_regex(getattr(user.profile.organization, "short_name", ""))
+
+
+def get_selected_org(request):
+    """
+    Return the org short_name an unrestricted admin selected via the `org` query
+    param, validated against existing organizations. Returns None when the
+    requester is not an unrestricted admin, or when no/invalid org was supplied.
+    Course staff can never scope by this param.
+    """
+    if not is_unrestricted_admin(request.user):
+        return None
+
+    org = request.query_params.get('org') if hasattr(request, 'query_params') else request.GET.get('org')
+    org = (org or '').strip()
+    if org and Organization.objects.filter(short_name__iexact=org).exists():
+        return org
+    return None
+
+
+def get_effective_org_regex(request):
+    """
+    Org regex to scope a queryset to, or None for no scoping (all orgs).
+
+    - unrestricted admin + valid `org` param -> that org
+    - unrestricted admin + no/invalid `org`  -> None (see every org)
+    - course staff / everyone else           -> their own profile org
+    """
+    if is_unrestricted_admin(request.user):
+        selected_org = get_selected_org(request)
+        return get_org_regex(selected_org) if selected_org else None
+
+    return get_user_org(request.user)
 
 
 def get_course_overview_same_org_filter(user):
@@ -56,13 +108,17 @@ def get_learners_filter():
     )
 
 
+def get_enrollment_org_q(org_regex):
+    """two-part enrollment filter (enrolled user's org AND course's org) for an org regex"""
+    return Q(
+        Q(courseenrollment__user__profile__organization__short_name__iregex=org_regex) &
+        Q(courseenrollment__course__org__iregex=org_regex)
+    )
+
+
 def get_user_enrollment_same_org_filter(user):
     """get filter against enrollment record and user's course enrollment, enrollment->course->org"""
-    user_org = get_user_org(user)
-    return Q(
-        Q(courseenrollment__user__profile__organization__short_name__iregex=user_org) &
-        Q(courseenrollment__course__org__iregex=user_org)
-    )
+    return get_enrollment_org_q(get_user_org(user))
 
 
 def get_roles_q_filters(roles):
@@ -116,13 +172,15 @@ def get_user_data_from_bulk_registration_file(file_reader, default_org_id):
                 'employee_id': clean(user_map.get('employee_id')),
                 'language_code': {'code': clean(user_map.get('language', ''))},
                 'organization': clean(user_map.get('organization_id')) or default_org_id,
-            }
+            },
+            'verified': clean(user_map.get('verified')).lower() in ('true', '1', 't', 'yes', 'y'),
+            'enroll_in_course_id': clean(user_map.get('enroll_in_course_id', ''))
         }
         users.append(user)
     return users
 
 
-def create_user(user_data, request_url_scheme, next_url=''):
+def create_user(user_data, next_url='', auto_login=False, request=None, send_creation_email=True):
     """
     util function
     :param user_data: user data for registration
@@ -135,14 +193,27 @@ def create_user(user_data, request_url_scheme, next_url=''):
     user_serializer = UserSerializer(data=user_data)
 
     if not user_serializer.is_valid():
-        return False, {**user_serializer.errors}
+        return False, {**user_serializer.errors}, None
 
     user = user_serializer.save()
-    send_registration_email(user, user_data['password'], request_url_scheme, next_url=next_url)
-    return True, user
+    if send_creation_email:
+        send_registration_email(user, user_data['password'], next_url=next_url)
+
+    if user_data.get('verified', None):
+        ManualVerification.objects.create(
+            status=u'approved',
+            user=user,
+            name='{}:Bulk Registration'.format(user.id),
+            reason='Bulk Registration from Admin Panel; Verified by CA team'
+        )
+    if auto_login and request:
+        new_user = authenticate_new_user(request, user_data['username'], user_data['password'])
+        django_login(request, new_user)
+        request.session.set_expiry(0)
+    return True, user, user_data['password'] if not send_creation_email else None
 
 
-def get_registration_email_message_context(user, password, protocol, is_public_registration, next_url=''):
+def get_registration_email_message_context(user, password, is_public_registration, next_url=''):
     """
     return context for registration notification email body
     """
@@ -154,6 +225,7 @@ def get_registration_email_message_context(user, password, protocol, is_public_r
     link = reverse('signin_user')
     if next_url:
         link = '{}?next={}'.format(link, next_url)
+    protocol = 'https' if not settings.DEBUG else 'http'
     message_context.update({
         'is_public_registration': is_public_registration,
         'platform_name': configuration_helpers.get_value('PLATFORM_NAME', settings.PLATFORM_NAME),
@@ -170,7 +242,7 @@ def get_registration_email_message_context(user, password, protocol, is_public_r
     return message_context
 
 
-def get_completed_course_count_filters(exclude_staff_superuser=True, req_user=None):
+def get_completed_course_count_filters(exclude_staff_superuser=True, request=None, active_users_only=False):
     completed = Q(
         Q(courseenrollment__enrollment_stats__email_reminder_status=CourseProgressStats.COURSE_COMPLETED) &
         Q(courseenrollment__is_active=True)
@@ -182,9 +254,14 @@ def get_completed_course_count_filters(exclude_staff_superuser=True, req_user=No
 
     is_exclude = not exclude_staff_superuser
     learners = Q(courseenrollment__user__is_staff=is_exclude) & Q(courseenrollment__user__is_superuser=is_exclude)
+    
+    if active_users_only:
+        learners = Q(learners) & Q(courseenrollment__user__is_active=True)
 
-    if req_user and not req_user.is_superuser:
-        learners = Q(learners & get_user_enrollment_same_org_filter(req_user))
+    if request is not None:
+        org_regex = get_effective_org_regex(request)
+        if org_regex is not None:
+            learners = Q(learners & get_enrollment_org_q(org_regex))
 
     completed_count = Count("courseenrollment", filter=Q(learners & completed))
     in_progress_count = Count("courseenrollment", filter=Q(learners & in_progress))
@@ -193,21 +270,46 @@ def get_completed_course_count_filters(exclude_staff_superuser=True, req_user=No
 
 def extract_filters_and_search(request):
     return request.GET.get('search', ''), json.loads(
-        request.GET.get('progress_filters', '{"in_progress": false, "completed": false}')
+        request.GET.get('progress_filters', '{"in_progress": false, "completed": false, "active_only": false}')
     )
 
 
-def get_org_users_qs(user):
+def get_org_users_qs_by_regex(org_regex):
     """
-    return users from the same organization as of the request.user
+    Users scoped to `org_regex` (None -> every organization): those linked to the org
+    by profile, or enrolled in one of the org's courses.
     """
     queryset = User.objects.filter(get_learners_filter())
-    if not user.is_superuser:
-        queryset = queryset.filter(get_user_same_org_filter(user))
+    if org_regex is not None:
+        # users linked to the org
+        queryset_1 = queryset.filter(profile__organization__short_name__iregex=org_regex)
+        # users enrolled in courses of the org
+        queryset_2 = queryset.filter(courseenrollment__course__org__iregex=org_regex)
+
+        queryset = (queryset_1 | queryset_2).distinct()
 
     return queryset.select_related(
         'profile'
     )
+
+
+def get_org_users_qs(request):
+    """
+    return users scoped to the effective organization: the request user's own org,
+    or the org an unrestricted admin selected via `org`. Unrestricted admin with no
+    org selected -> users from every organization.
+    """
+    return get_org_users_qs_by_regex(get_effective_org_regex(request))
+
+
+def get_org_users_qs_for_user(user):
+    """
+    Org-scoped users derived from a user object rather than a request (for background
+    tasks with no HTTP request/param): unrestricted admins -> every org, everyone
+    else -> their own profile org.
+    """
+    org_regex = None if is_unrestricted_admin(user) else get_user_org(user)
+    return get_org_users_qs_by_regex(org_regex)
 
 
 def get_enroll_able_course_qs():
@@ -241,15 +343,14 @@ def is_courses_enroll_able(course_keys):
     return courses_qs.filter(get_enroll_able_course_qs()).count() == len(course_keys)
 
 
-def do_user_and_courses_have_same_org(course_keys, user, exempt_super_user=True):
+def do_user_and_courses_have_same_org(course_keys, user):
     """
     Check if all courses have same org as the user
     :param course_keys: list of course keys
     :param user: user object
-    :param exempt_super_user: bool flag to exempt super users from this check
     :return: (bool) boolean flag representing all courses have same org as the user
     """
-    if exempt_super_user and user.is_superuser:
+    if is_unrestricted_admin(user):
         return True
 
     courses_qs = CourseOverview.objects.filter(id__in=course_keys)
@@ -266,7 +367,7 @@ def get_request_user_org_id(request):
     return request.user.profile.organization_id
 
 
-def send_registration_email(user, password, protocol, is_public_registration=False, next_url=''):
+def send_registration_email(user, password, is_public_registration=False, next_url=''):
     """
     send a registration notification via email
     """
@@ -274,7 +375,32 @@ def send_registration_email(user, password, protocol, is_public_registration=Fal
         recipient=Recipient(user.username, user.email),
         language=user.profile.language,
         user_context=get_registration_email_message_context(
-            user, password, protocol, is_public_registration, next_url=next_url
+            user, password, is_public_registration, next_url=next_url
         ),
     )
     ace.send(message)
+
+
+def save_file_to_contentstore(uploaded_file, course_key):
+    """Uploads a file object to contentstore
+
+    Args:
+        uploaded_file (ContentFile): The file object bytes to upload
+        course_key (CourseKey): Upload file to assets of course_key 
+
+    Returns:
+        String: URL of the uploaded file object
+    """
+    name, ext = os.path.splitext(uploaded_file.name)
+    filename = "{}_{}{}".format(name, uuid4().hex[:4], ext)
+    content_bytes = uploaded_file.read()
+    asset_key = StaticContent.compute_location(course_key, filename)
+    content = StaticContent(
+        asset_key,
+        filename,
+        uploaded_file.content_type,
+        content_bytes,
+        import_path=None,
+    )
+    contentstore().save(content)
+    return asset_key
