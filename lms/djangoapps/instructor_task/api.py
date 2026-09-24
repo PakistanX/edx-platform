@@ -363,8 +363,9 @@ def submit_recalculate_course_grades(request, course_key, student=None, force=Fa
 
     If ``student`` (a User) is given, only that learner's grades are recomputed;
     otherwise every active enrollment in the course is recomputed. ``force``
-    recomputes even when the course's grades are frozen and is only ever passed
-    from the Django admin by a superuser. If ``problem_location`` is given, only
+    recomputes even when the course's grades are frozen; it is only ever passed
+    by a Django superuser (re-enforced by the admin action and the dashboard
+    view). If ``problem_location`` is given, only
     the subsection(s) containing that problem are recomputed (recalculation
     aggregates at the subsection level); otherwise the whole course is recomputed.
 

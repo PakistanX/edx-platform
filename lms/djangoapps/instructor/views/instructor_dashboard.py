@@ -49,6 +49,7 @@ from lms.djangoapps.grades.api import is_writable_gradebook_enabled
 from lms.djangoapps.instructor_task.config.waffle import (
     default_progress_structure_mode,
     grade_report_batch_range_enabled,
+    recalculate_grades_force_enabled,
 )
 from openedx.core.djangoapps.course_groups.cohorts import DEFAULT_COHORT_NAME, get_course_cohorts, is_course_cohorted
 from openedx.core.djangoapps.django_comment_common.models import FORUM_ROLE_ADMINISTRATOR, CourseDiscussionSettings
@@ -644,6 +645,11 @@ def _section_student_admin(course, access):
         ),
         'rescore_problem_url': reverse('rescore_problem', kwargs={'course_id': six.text_type(course_key)}),
         'recalculate_grades_url': reverse('recalculate_grades', kwargs={'course_id': six.text_type(course_key)}),
+        # "Force even if frozen" recalc control: only for Django superusers, and
+        # only when the waffle switch is on. The view re-enforces both.
+        'show_recalculate_grades_force': (
+            access.get('superuser', False) and recalculate_grades_force_enabled()
+        ),
         'override_problem_score_url': reverse(
             'override_problem_score',
             kwargs={'course_id': six.text_type(course_key)}

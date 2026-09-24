@@ -2305,15 +2305,25 @@ def recalculate_grades(request, course_id):
     # Optional: recompute only the subsection(s) that contain this problem.
     problem_location = strip_if_string(request.POST.get('problem_location')) or None
 
+    # Optional: recompute even when the course's grades are frozen. Re-enforced
+    # here (never trust the client): honored only for Django superusers and only
+    # when the waffle switch is on -- otherwise silently ignored.
+    from lms.djangoapps.instructor_task.config.waffle import recalculate_grades_force_enabled
+    force = (
+        _get_boolean_param(request, 'force')
+        and request.user.is_superuser
+        and recalculate_grades_force_enabled()
+    )
+
     response_payload = {'course_id': text_type(course_key)}
     if student:
         response_payload['student'] = student_identifier
         task_api.submit_recalculate_course_grades(
-            request, course_key, student=student, problem_location=problem_location
+            request, course_key, student=student, force=force, problem_location=problem_location
         )
     elif all_students:
         task_api.submit_recalculate_course_grades(
-            request, course_key, problem_location=problem_location
+            request, course_key, force=force, problem_location=problem_location
         )
     else:
         return HttpResponseBadRequest("Missing query parameters.")

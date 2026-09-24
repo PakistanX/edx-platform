@@ -250,6 +250,21 @@ class CourseEnrollmentAdmin(admin.ModelAdmin):
     form = CourseEnrollmentForm
     actions = ['recalculate_grades']
 
+    @transaction.non_atomic_requests
+    def changelist_view(self, request, extra_context=None):
+        """
+        Run the changelist (and therefore the ``recalculate_grades`` action)
+        outside a request-level atomic block.
+
+        With ``ATOMIC_REQUESTS`` enabled the admin request is wrapped in a
+        transaction, but submitting an instructor task goes through
+        ``outer_atomic()``, which refuses to run nested inside another atomic
+        block (raising ``Cannot be inside an atomic block``). The instructor
+        dashboard endpoint sidesteps this with ``@transaction.non_atomic_requests``;
+        this does the same for the admin action.
+        """
+        return super(CourseEnrollmentAdmin, self).changelist_view(request, extra_context)
+
     def recalculate_grades(self, request, queryset):
         """
         Admin action: enqueue a grade recalculation for each selected enrollment.

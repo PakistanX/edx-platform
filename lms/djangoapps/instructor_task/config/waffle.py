@@ -30,6 +30,10 @@ PARALLELIZE_GRADE_REPORT = u'parallelize_grade_report'
 # range) on the grade-report options. Gated additionally to Django superusers in
 # the view; this switch only makes the controls available at all.
 GRADE_REPORT_BATCH_RANGE = u'grade_report_batch_range'
+# Expose a "force even if grades are frozen" checkbox on the instructor
+# dashboard's Recalculate Grades controls. Gated additionally to Django
+# superusers in the view; this switch only makes the control available at all.
+RECALCULATE_GRADES_FORCE = u'recalculate_grades_force'
 
 
 def waffle_flags():
@@ -106,6 +110,15 @@ def grade_report_batch_range_enabled():
     these to Django superusers.
     """
     return WAFFLE_SWITCHES.is_enabled(GRADE_REPORT_BATCH_RANGE)
+
+
+def recalculate_grades_force_enabled():
+    """
+    Returns True if the "force even if grades are frozen" checkbox on the
+    dashboard's Recalculate Grades controls is available. The view further
+    restricts the force flag to Django superusers.
+    """
+    return WAFFLE_SWITCHES.is_enabled(RECALCULATE_GRADES_FORCE)
 
 
 def generate_grade_report_for_verified_only():

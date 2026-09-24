@@ -50,6 +50,9 @@
             this.$btn_task_history_single = this.$section.find("input[name='task-history-single']");
             this.$table_task_history_single = this.$section.find('.task-history-single-table');
             this.$btn_recalculate_grades_single = this.$section.find("input[name='recalculate-grades-single']");
+            this.$checkbox_recalculate_grades_force_single = this.$section.find(
+                "input[name='recalculate-grades-force-single']"
+            );
             this.$field_exam_grade = this.$section.find("input[name='entrance-exam-student-select-grade']");
             this.$btn_reset_entrance_exam_attempts = this.$section.find("input[name='reset-entrance-exam-attempts']");
             this.$btn_delete_entrance_exam_state = this.$section.find("input[name='delete-entrance-exam-state']");
@@ -67,6 +70,9 @@
             this.$btn_task_history_all = this.$section.find("input[name='task-history-all']");
             this.$table_task_history_all = this.$section.find('.task-history-all-table');
             this.$btn_recalculate_grades_all = this.$section.find("input[name='recalculate-grades-all']");
+            this.$checkbox_recalculate_grades_force_all = this.$section.find(
+                "input[name='recalculate-grades-force-all']"
+            );
             this.instructor_tasks = new (PendingInstructorTasks())(this.$section);
             this.$request_err_enrollment_status = findAndAssert(this.$section, '.student-enrollment-status-container .request-response-error');
             this.$request_err_progress = findAndAssert(this.$section, '.student-progress-container .request-response-error');
@@ -491,6 +497,9 @@
                     unique_student_identifier: uniqStudentIdentifier,
                     problem_location: studentadmin.$field_problem_select_single.val()
                 };
+                if (studentadmin.$checkbox_recalculate_grades_force_single.is(':checked')) {
+                    sendData.force = true;
+                }
                 successMessage = gettext("Started a task to recalculate grades for student '<%- student_id %>'.");  // eslint-disable-line max-len
                 errorMessage = gettext("Error starting a task to recalculate grades for student '<%- student_id %>'. Make sure that the student identifier is spelled correctly.");  // eslint-disable-line max-len
                 fullSuccessMessage = _.template(successMessage)({
@@ -520,6 +529,9 @@
                         all_students: true,
                         problem_location: studentadmin.$field_problem_select_all.val()
                     };
+                    if (studentadmin.$checkbox_recalculate_grades_force_all.is(':checked')) {
+                        sendData.force = true;
+                    }
                     return $.ajax({
                         type: 'POST',
                         dataType: 'json',
