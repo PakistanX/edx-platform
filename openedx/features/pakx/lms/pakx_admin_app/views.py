@@ -193,7 +193,12 @@ class UserProfileViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         if request.data.get('profile'):
-            request.data['profile']['organization'] = get_request_user_org_id(self.request)
+            # Course staff are locked to their own org; ignore any submitted org.
+            # Unrestricted admins (Django staff/superuser) may target any org: the
+            # org they picked in the form is honored and validated by
+            # UserProfileSerializer.validate_organization (empty is rejected).
+            if not is_unrestricted_admin(request.user):
+                request.data['profile']['organization'] = get_request_user_org_id(self.request)
 
         is_created, res_data, _ = create_user(request.data, next_url=reverse('account_settings'))
         if is_created:
@@ -209,9 +214,15 @@ class UserProfileViewSet(viewsets.ModelViewSet):
         file_reader = DictReader(file_data)
 
         required_col_names = {'name', 'username', 'email', 'organization_id', 'role', 'employee_id', 'language', 'verified'}
-        if not set(file_reader.fieldnames) == required_col_names:
+        optional_col_names = {'company'}
+        provided_col_names = set(file_reader.fieldnames or [])
+        missing = required_col_names - provided_col_names
+        unexpected = provided_col_names - required_col_names - optional_col_names
+        if missing or unexpected:
             return Response(
-                'Invalid column names! Correct names are: "{}"'.format('" | "'.join(required_col_names)),
+                'Invalid column names! Required: "{}". Optional: "{}"'.format(
+                    '" | "'.join(sorted(required_col_names)), '" | "'.join(sorted(optional_col_names))
+                ),
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -222,7 +233,10 @@ class UserProfileViewSet(viewsets.ModelViewSet):
 
     def partial_update(self, request, *args, **kwargs):
         user = self.get_object()
-        request.data['profile'].update({'organization': get_request_user_org_id(self.request)})
+        # Course staff stay locked to their own org; unrestricted admins keep the
+        # org supplied in the payload (if any) so they can move a user's org.
+        if not is_unrestricted_admin(request.user):
+            request.data['profile'].update({'organization': get_request_user_org_id(self.request)})
         user_serializer = UserSerializer(user, data=request.data, partial=True)
 
         if user_serializer.is_valid():
@@ -1097,7 +1111,8 @@ class DownloadCSVView(LearnerListAPI, CourseStatsListAPI):
                 'func': self.write_learner_data,
                 'filename': 'Learner Stats.csv',
                 'field_names': [
-                    'Name', 'Email', 'Last Login', 'Assigned Courses', 'Incomplete Courses', 'Completed Courses'
+                    'Name', 'Email', 'Company', 'Last Login',
+                    'Assigned Courses', 'Incomplete Courses', 'Completed Courses'
                 ]
             },
             'course': {
@@ -1133,6 +1148,7 @@ class DownloadCSVView(LearnerListAPI, CourseStatsListAPI):
             csv_writer.writerow({
                 'Name': row['name'],
                 'Email': row['email'],
+                'Company': row['company'],
                 'Last Login': self.convert_to_localtime(row['last_login'], self.request.GET.get('offset', '0')),
                 'Assigned Courses': row['assigned_courses'],
                 'Incomplete Courses': row['incomplete_courses'],
@@ -1225,8 +1241,8 @@ class OrganizationListAPI(views.APIView):
 
     :return:
         [
-            {"short_name": "acme", "name": "Acme Inc."},
-            {"short_name": "globex", "name": "Globex"}
+            {"id": 1, "short_name": "acme", "name": "Acme Inc."},
+            {"id": 2, "short_name": "globex", "name": "Globex"}
         ]
     """
     authentication_classes = [SessionAuthentication]
@@ -1235,7 +1251,7 @@ class OrganizationListAPI(views.APIView):
     def get(self, request, *args, **kwargs):  # pylint: disable=unused-argument
         organizations = Organization.objects.filter(
             active=True
-        ).order_by('name').values('short_name', 'name')
+        ).order_by('name').values('id', 'short_name', 'name')
         return Response(status=status.HTTP_200_OK, data=list(organizations))
 
 

@@ -458,6 +458,7 @@ class UserProfile(models.Model):
     name = models.CharField(blank=True, max_length=255, db_index=True)
 
     employee_id = models.CharField(blank=True, max_length=12, db_index=True)
+    company = models.CharField(blank=True, default='', max_length=128)
     organization = models.ForeignKey(
         Organization, db_index=True, related_name='user_profiles', on_delete=models.CASCADE, null=True, blank=True
     )

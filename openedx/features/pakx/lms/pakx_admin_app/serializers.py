@@ -130,13 +130,14 @@ class UserDetailViewSerializer(serializers.ModelSerializer):
     Serializer User's object retrieve view
     """
     employee_id = serializers.CharField(source='profile.employee_id')
+    company = serializers.CharField(source='profile.company')
     name = serializers.CharField(source='profile.name')
     course_enrolled = serializers.SerializerMethodField()
     completed_courses = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'name', 'employee_id', 'is_active', 'date_joined',
+        fields = ('id', 'username', 'email', 'name', 'employee_id', 'company', 'is_active', 'date_joined',
                   'last_login', 'course_enrolled', 'completed_courses')
 
     @staticmethod
@@ -176,7 +177,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = UserProfile
-        fields = ('name', 'employee_id', 'languages', 'language_code', 'organization')
+        fields = ('name', 'employee_id', 'company', 'languages', 'language_code', 'organization')
 
     def validate_name(self, value):
         if not value.strip():
@@ -274,7 +275,12 @@ class UserSerializer(serializers.ModelSerializer):
             profile = instance.profile
             profile.name = profile_data.get('name', profile.name)
             profile.employee_id = profile_data.get('employee_id', profile.employee_id)
-            profile.save(update_fields=['name', 'employee_id'])
+            profile.company = profile_data.get('company', profile.company)
+            update_fields = ['name', 'employee_id', 'company']
+            if 'organization' in profile_data:
+                profile.organization = profile_data['organization']
+                update_fields.append('organization')
+            profile.save(update_fields=update_fields)
 
             language_code = profile_data.pop('language_code', None)
             if language_code:
@@ -288,6 +294,7 @@ class LearnersSerializer(serializers.ModelSerializer):
     Serializer Learner list view for analytics view list view
     """
     name = serializers.CharField(source='profile.name')
+    company = serializers.CharField(source='profile.company')
     assigned_courses = serializers.SerializerMethodField()
     incomplete_courses = serializers.SerializerMethodField()
     completed_courses = serializers.SerializerMethodField()
@@ -295,7 +302,7 @@ class LearnersSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = (
-            'id', 'username', 'name', 'email', 'last_login',
+            'id', 'username', 'name', 'email', 'company', 'last_login',
             'assigned_courses', 'incomplete_courses', 'completed_courses'
         )
 
