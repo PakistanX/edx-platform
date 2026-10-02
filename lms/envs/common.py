@@ -2857,7 +2857,7 @@ REGISTRATION_FIELD_ORDER = [
     "year_of_birth",
     "level_of_education",
     "specialty",
-    "profession"
+    "profession",
     "company",
     "title",
     "mailing_address",

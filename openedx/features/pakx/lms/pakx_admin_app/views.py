@@ -214,7 +214,7 @@ class UserProfileViewSet(viewsets.ModelViewSet):
         file_reader = DictReader(file_data)
 
         required_col_names = {'name', 'username', 'email', 'organization_id', 'role', 'employee_id', 'language', 'verified'}
-        optional_col_names = {'company'}
+        optional_col_names = {'company', 'city', 'phone_number'}
         provided_col_names = set(file_reader.fieldnames or [])
         missing = required_col_names - provided_col_names
         unexpected = provided_col_names - required_col_names - optional_col_names

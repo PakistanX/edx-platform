@@ -131,14 +131,16 @@ class UserDetailViewSerializer(serializers.ModelSerializer):
     """
     employee_id = serializers.CharField(source='profile.employee_id')
     company = serializers.CharField(source='profile.company')
+    city = serializers.CharField(source='profile.city')
+    phone_number = serializers.CharField(source='profile.phone_number')
     name = serializers.CharField(source='profile.name')
     course_enrolled = serializers.SerializerMethodField()
     completed_courses = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'name', 'employee_id', 'company', 'is_active', 'date_joined',
-                  'last_login', 'course_enrolled', 'completed_courses')
+        fields = ('id', 'username', 'email', 'name', 'employee_id', 'company', 'city', 'phone_number',
+                  'is_active', 'date_joined', 'last_login', 'course_enrolled', 'completed_courses')
 
     @staticmethod
     def get_course_enrolled(obj):
@@ -177,7 +179,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = UserProfile
-        fields = ('name', 'employee_id', 'company', 'languages', 'language_code', 'organization')
+        fields = ('name', 'employee_id', 'company', 'city', 'phone_number', 'languages', 'language_code', 'organization')
 
     def validate_name(self, value):
         if not value.strip():

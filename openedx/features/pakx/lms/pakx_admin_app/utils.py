@@ -171,6 +171,8 @@ def get_user_data_from_bulk_registration_file(file_reader, default_org_id):
                 'name': clean(user_map.get('name', '').title()),
                 'employee_id': clean(user_map.get('employee_id')),
                 'company': clean(user_map.get('company', '')) or '',
+                'city': clean(user_map.get('city', '')) or '',
+                'phone_number': clean(user_map.get('phone_number', '')) or '',
                 'language_code': {'code': clean(user_map.get('language', ''))},
                 'organization': clean(user_map.get('organization_id')) or default_org_id,
             },

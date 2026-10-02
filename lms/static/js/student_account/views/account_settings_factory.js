@@ -241,7 +241,31 @@
                                 options: fieldsData.preferred_language.options,
                                 persistChanges: true
                             })
-                        }
+                        },
+                        {
+                            view: new AccountSettingsFieldViews.TextFieldView({
+                                model: userAccountModel,
+                                title: gettext('Company'),
+                                valueAttribute: 'company',
+                                persistChanges: true
+                            })
+                        },
+                        {
+                            view: new AccountSettingsFieldViews.TextFieldView({
+                                model: userAccountModel,
+                                title: gettext('Phone Number'),
+                                valueAttribute: 'phone_number',
+                                persistChanges: true
+                            })
+                        },
+                        {
+                            view: new AccountSettingsFieldViews.TextFieldView({
+                                model: userAccountModel,
+                                title: gettext('City'),
+                                valueAttribute: 'city',
+                                persistChanges: true
+                            })
+                        },
                     ]
                 }
             ];
