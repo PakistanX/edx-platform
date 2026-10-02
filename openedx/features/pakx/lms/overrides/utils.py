@@ -292,27 +292,125 @@ def get_resume_course_info(request, course_id, are_future_start_dates_allowed=Fa
     return has_visited_course, resume_course_url, resume_course_title
 
 
+def get_resume_course_info_fast(request, course_key):
+    """
+    Lightweight variant of get_resume_course_info for the enrolled-courses
+    listing. Instead of building and transforming the full course outline tree
+    per course, it derives the resume block straight from the learner's latest
+    BlockCompletion.
+
+    The outline tree marks exactly the latest-completed block as the resume
+    block (see openedx.features.course_experience.utils.get_resume_block), and
+    a block's lms_web_url is just its 'jump_to' URL, so this returns the same
+    target while avoiding a full-tree pass per course on the dashboard.
+
+    Returns the same tuple as get_resume_course_info:
+        (has_visited_course, resume_course_url, resume_course_title)
+    """
+    from rest_framework.reverse import reverse as api_reverse
+
+    structure = get_course_in_cache(course_key)
+    latest = BlockCompletion.get_latest_block_completed(request.user, course_key)
+
+    block_key = latest.full_block_key if latest is not None else None
+    # Treat as "visited" only when the latest completed block is still part of
+    # the published structure; otherwise fall back to the course root, matching
+    # what the outline-tree path does when it cannot find the resume block.
+    has_visited_course = block_key is not None and structure.get_xblock_field(block_key, 'category') is not None
+    if not has_visited_course:
+        block_key = structure.root_block_usage_key
+
+    resume_course_url = api_reverse(
+        'jump_to',
+        kwargs={'course_id': text_type(course_key), 'location': text_type(block_key)},
+        request=request,
+    )
+    resume_course_title = structure.get_xblock_field(block_key, 'display_name')
+    return has_visited_course, resume_course_url, resume_course_title
+
+
 def add_course_progress_to_enrolled_courses(request, courses_list):
     """
-    Adds a tag enrolled to the course in which user is enrolled
+    Adds a tag enrolled to the course in which user is enrolled.
+
+    Progress is read from the stored CourseProgressStats.progress (maintained by
+    the update_course_progress_stats task) in a single bulk query instead of
+    being recomputed live per course. Live progress is computed only as a
+    fallback for a visited course that has no stored row yet (detected via one
+    bulk BlockCompletion query); an unvisited course stays at '0' without any
+    block-structure work.
+
+    The resume link is NOT set here -- it is a per-course lookup and is applied
+    only to the courses that are actually rendered, by add_resume_course_info,
+    so it scales with the page size rather than the whole enrollment count.
 
     :param request: (HttpRequest) request object
     :param courses_list: [CourseView] list of course view objects
     """
+    from openedx.features.pakx.lms.overrides.models import CourseProgressStats
+
+    user = request.user
+    course_ids = [course.id for course in courses_list]
+    enrolled_ids = set(
+        CourseEnrollment.objects.filter(
+            user=user, course_id__in=course_ids, is_active=True
+        ).values_list('course_id', flat=True)
+    )
+    stored_progress = {
+        text_type(stat.enrollment.course_id): stat.progress
+        for stat in CourseProgressStats.objects.filter(
+            enrollment__user=user,
+            enrollment__course_id__in=enrolled_ids,
+            enrollment__is_active=True,
+        ).select_related('enrollment')
+    }
+    # One query to learn which courses the learner has any completion in, so the
+    # rare live-progress fallback below needs no per-course block-structure work.
+    visited_ids = {
+        text_type(context_key)
+        for context_key in BlockCompletion.objects.filter(
+            user=user, context_key__in=enrolled_ids
+        ).values_list('context_key', flat=True).distinct()
+    }
+
     for course in courses_list:
-        is_enrolled = CourseEnrollment.is_enrolled(request.user, course.id)
+        is_enrolled = course.id in enrolled_ids
         course.user_progress = '0'
-        if is_enrolled:
-            course_id = text_type(course.id)
-            has_visited_course, resume_course_url, resume_course_title = get_resume_course_info(
-                request, course_id, True
-            )
-            course.user_progress = get_course_progress_percentage(request, course_id)
-            course.resume_course_url = resume_course_url
-            course.has_visited_course = has_visited_course
-            course.resume_course_title = resume_course_title
         course.enrolled = is_enrolled
         course.dir = 'rtl' if is_rtl_language(course.language) else ''
+        if not is_enrolled:
+            continue
+
+        course_id = text_type(course.id)
+        if course_id in stored_progress:
+            course.user_progress = format(stored_progress[course_id], '.0f')
+        elif course_id in visited_ids:
+            # Visited but not yet captured by the stats task -- compute live (rare).
+            course.user_progress = get_course_progress_percentage(request, course_id)
+
+
+def add_resume_course_info(request, courses):
+    """
+    Set the resume-link fields (resume_course_url, resume_course_title,
+    has_visited_course) on each enrolled course in ``courses``.
+
+    Kept separate from add_course_progress_to_enrolled_courses, and called only
+    with the courses on a rendered page, so the per-course resume lookup
+    (get_resume_course_info_fast) runs for the handful of visible cards rather
+    than every enrollment.
+
+    :param request: (HttpRequest) request object
+    :param courses: iterable of course view objects (typically one paginated page)
+    """
+    for course in courses:
+        if not getattr(course, 'enrolled', False):
+            continue
+        has_visited_course, resume_course_url, resume_course_title = get_resume_course_info_fast(
+            request, course.id
+        )
+        course.resume_course_url = resume_course_url
+        course.has_visited_course = has_visited_course
+        course.resume_course_title = resume_course_title
 
 
 def _accumulate_total_block_counts(total_block_type_counts):

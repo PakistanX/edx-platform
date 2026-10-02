@@ -5,6 +5,7 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import AnonymousUser, User
+from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import prefetch_related_objects
 from django.forms.models import model_to_dict
@@ -67,6 +68,7 @@ from openedx.features.pakx.lms.overrides.forms import AboutUsForm
 from openedx.features.pakx.lms.overrides.tasks import send_contact_us_email
 from openedx.features.pakx.lms.overrides.utils import (
     add_course_progress_to_enrolled_courses,
+    add_resume_course_info,
     create_discount_data,
     get_active_campaign_data,
     get_course_card_data,
@@ -151,6 +153,23 @@ def is_course_public_for_current_space(course, org_name):
     return False
 
 
+DASHBOARD_COURSES_PAGE_SIZE = 12
+
+
+def _paginate_courses(courses, request, page_param):
+    """
+    Paginate one category list for the courses dashboard.
+
+    Returns a Django Page: iterating it yields the current page's courses, and
+    ``.paginator.count`` gives the category total while ``.number`` /
+    ``.has_next`` / ``.has_previous`` drive the controls. ``get_page`` clamps a
+    missing, non-integer, or out-of-range page to a valid one, so a bad query
+    param never 500s.
+    """
+    page_size = getattr(settings, 'DASHBOARD_COURSES_PAGE_SIZE', DASHBOARD_COURSES_PAGE_SIZE)
+    return Paginator(courses, page_size).get_page(request.GET.get(page_param))
+
+
 @ensure_csrf_cookie
 @login_required
 def courses(request, section='in-progress'):
@@ -205,13 +224,22 @@ def courses(request, section='in-progress'):
         else:
             upcoming_courses.append(course)
 
+    # Paginate each category, then resolve resume links only for the courses on
+    # the rendered pages (browse courses are not enrolled, so they need none).
+    in_progress_page = _paginate_courses(in_progress_courses, request, 'ip_page')
+    upcoming_page = _paginate_courses(upcoming_courses, request, 'up_page')
+    browse_page = _paginate_courses(browse_courses, request, 'br_page')
+    completed_page = _paginate_courses(completed_courses, request, 'cp_page')
+    for page in (in_progress_page, upcoming_page, completed_page):
+        add_resume_course_info(request, page)
+
     # Add marketable programs to the context.
     programs_list = get_programs_with_type(request.site, include_hidden=False)
     context = {
-        'in_progress_courses': in_progress_courses,
-        'upcoming_courses': upcoming_courses,
-        'browse_courses': browse_courses,
-        'completed_courses': completed_courses,
+        'in_progress_courses': in_progress_page,
+        'upcoming_courses': upcoming_page,
+        'browse_courses': browse_page,
+        'completed_courses': completed_page,
         'course_discovery_meanings': course_discovery_meanings,
         'programs_list': programs_list,
         'section': section,
