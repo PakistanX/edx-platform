@@ -36,6 +36,21 @@ class CourseEnrollmentPagination(PageNumberPagination):
         return response
 
 
+class CoursePagination(PageNumberPagination):
+    """
+    Pagination for the courses management table: default page size 10,
+    client-adjustable via `page_size`, with total_pages in the response.
+    """
+    page_size = 10
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
+    def get_paginated_response(self, data):
+        response = super(CoursePagination, self).get_paginated_response(data)
+        response.data['total_pages'] = self.page.paginator.num_pages
+        return response
+
+
 class MAUReportPagination(PageNumberPagination):
     """
     Pagination for the MAU reports table: default page size 10, client-adjustable

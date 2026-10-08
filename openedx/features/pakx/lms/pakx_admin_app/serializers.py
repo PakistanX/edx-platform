@@ -340,6 +340,38 @@ class CoursesSerializer(serializers.ModelSerializer):
         return self.context['instructors'].get(obj.id) or []
 
 
+class CourseManagementSerializer(serializers.ModelSerializer):
+    """
+    Serializer for the courses management tab: exposes org/number/run parsed
+    from the course key and an active/archived status derived from end date
+    (archived once the course end date has passed, matching Studio).
+    """
+    org = serializers.SerializerMethodField()
+    number = serializers.SerializerMethodField()
+    run = serializers.SerializerMethodField()
+    status = serializers.SerializerMethodField()
+
+    class Meta:
+        model = CourseOverview
+        fields = ('id', 'display_name', 'org', 'number', 'run', 'start_date', 'end_date', 'status')
+
+    @staticmethod
+    def get_org(obj):
+        return obj.id.org
+
+    @staticmethod
+    def get_number(obj):
+        return obj.id.course
+
+    @staticmethod
+    def get_run(obj):
+        return obj.id.run
+
+    @staticmethod
+    def get_status(obj):
+        return 'archived' if obj.end_date and obj.end_date < now() else 'active'
+
+
 # Dialog Academy Enrollments Specific
 class DialogAcademyCourseActionSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=255, required=True)

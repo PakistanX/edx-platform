@@ -58,9 +58,10 @@ from .constants import (
     TRAINING_MANAGER,
     USER_ACCOUNT_DEACTIVATED_MSG
 )
-from .pagination import CourseEnrollmentPagination, MAUReportPagination, PakxAdminAppPagination
+from .pagination import CourseEnrollmentPagination, CoursePagination, MAUReportPagination, PakxAdminAppPagination
 from .permissions import CanAccessPakXAdminPanel, DialogAcademyIsStaffOrAllowedEmail, IsSameOrganization, IsStaffOrSuperUser
 from .serializers import (
+    CourseManagementSerializer,
     CoursesSerializer,
     CourseStatsListSerializer,
     LearnersSerializer,
@@ -1216,6 +1217,7 @@ class UserInfo(views.APIView):
             'is_superuser': self.request.user.is_superuser,
             'is_staff': self.request.user.is_staff,
             'id': self.request.user.id,
+            'organization': getattr(self.request.user.profile.organization, 'short_name', '') or '',
             'csrf_token': csrf.get_token(self.request),
             'languages': [lang[0] for lang in groupby(languages)],
             'all_languages': all_languages,
@@ -1338,6 +1340,128 @@ class CourseListAPI(generics.ListAPIView):
             self.instructors[course_access_role.course_id] = course_instructors
 
         return queryset
+
+
+class CourseManagementListAPI(generics.ListAPIView):
+    """
+    Courses management tab listing, scoped to the viewer's organization.
+
+    <lms>/adminpanel/courses/manage/
+
+    Query params:
+        search: case-insensitive match on display name.
+        status: 'active' or 'archived' (archived once the end date has passed);
+                omitted/other returns all courses in scope.
+    """
+    authentication_classes = [SessionAuthentication]
+    permission_classes = [CanAccessPakXAdminPanel]
+    pagination_class = CoursePagination
+    serializer_class = CourseManagementSerializer
+
+    def get_queryset(self):
+        queryset = CourseOverview.objects.all()
+
+        org_regex = get_effective_org_regex(self.request)
+        if org_regex is not None:
+            queryset = queryset.filter(org__iregex=org_regex)
+
+        search_text = self.request.query_params.get('search', '').strip()
+        if search_text:
+            queryset = queryset.filter(display_name__icontains=search_text)
+
+        status_filter = self.request.query_params.get('status', '').strip().lower()
+        now = timezone.now()
+        if status_filter == 'active':
+            queryset = queryset.filter(Q(end_date__isnull=True) | Q(end_date__gte=now))
+        elif status_filter == 'archived':
+            queryset = queryset.filter(end_date__isnull=False, end_date__lt=now)
+
+        return queryset.order_by('-start_date')
+
+
+class CourseCreateAPIView(views.APIView):
+    """
+    Create a new (empty) course shell for an organization.
+
+    <lms>/adminpanel/courses/create/
+
+    Body: {name, number, run, org?}. Course staff are locked to their own org;
+    Django admins (staff/superuser) must supply a valid `org`.
+    """
+    authentication_classes = [SessionAuthentication]
+    permission_classes = [CanAccessPakXAdminPanel]
+
+    def post(self, request, *args, **kwargs):  # pylint: disable=unused-argument
+        name = (request.data.get('name') or '').strip()
+        number = (request.data.get('number') or '').strip()
+        run = (request.data.get('run') or '').strip()
+        if not all([name, number, run]):
+            return Response(
+                {'error': 'Course name, number, and run are all required.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if is_unrestricted_admin(request.user):
+            org = (request.data.get('org') or '').strip()
+            if not org or not Organization.objects.filter(short_name__iexact=org, active=True).exists():
+                return Response(
+                    {'error': 'A valid organization is required.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        else:
+            org = getattr(getattr(request.user, 'profile', None), 'organization', None)
+            org = getattr(org, 'short_name', '') or ''
+            if not org:
+                return Response(
+                    {'error': 'Your account has no organization assigned.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+        # Create the course shell directly via modulestore. The CMS contentstore
+        # package is NOT importable from the LMS process, so we mirror the essential
+        # steps Studio performs in create_new_course_in_store using LMS-safe imports.
+        from xmodule.modulestore.django import modulestore
+        from xmodule.modulestore.exceptions import DuplicateCourseError
+        from common.djangoapps.student.roles import CourseInstructorRole, CourseStaffRole
+        from organizations.api import add_organization_course, get_organization_by_short_name
+
+        fields = {
+            'display_name': name,
+            'language': getattr(settings, 'DEFAULT_COURSE_LANGUAGE', 'en'),
+            'cert_html_view_enabled': True,
+        }
+        store = modulestore()
+        try:
+            with store.default_store('split'):
+                new_course = store.create_course(org, number, run, request.user.id, fields=fields)
+        except DuplicateCourseError:
+            return Response(
+                {'error': 'A course with this organization, number, and run already exists.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except Exception as exc:  # pylint: disable=broad-except
+            log.exception('Admin panel course creation failed')
+            return Response({'error': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Grant the creator instructor + staff access, mirroring Studio's add_instructor.
+        CourseInstructorRole(new_course.id).add_users(request.user)
+        CourseStaffRole(new_course.id).add_users(request.user)
+
+        # Link the course to its organization.
+        org_data = get_organization_by_short_name(org)
+        if org_data:
+            add_organization_course(org_data, new_course.id)
+
+        # Force-create the course overview so the new course shows up in listings at once.
+        try:
+            CourseOverview.get_from_id(new_course.id)
+        except Exception:  # pylint: disable=broad-except
+            log.exception('CourseOverview generation failed for %s', new_course.id)
+
+        return Response(
+            {'course_key': six.text_type(new_course.id), 'display_name': name},
+            status=status.HTTP_201_CREATED
+        )
 
 
 class UserSearchInputListAPI(views.APIView):
