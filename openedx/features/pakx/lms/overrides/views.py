@@ -59,6 +59,7 @@ from openedx.features.course_experience.waffle import ENABLE_COURSE_ABOUT_SIDEBA
 from openedx.features.course_experience.waffle import waffle as course_experience_waffle
 from openedx.features.enterprise_support.api import data_sharing_consent_required
 from openedx.features.pakx.cms.custom_settings.models import CourseOverviewContent
+from openedx.features.pakx.lms.pakx_admin_app.models import TrendingCourse
 from openedx.features.pakx.common.utils import (
     get_active_partner_model,
     get_partner_space_meta,
@@ -230,7 +231,19 @@ def courses(request, section='in-progress'):
     upcoming_page = _paginate_courses(upcoming_courses, request, 'up_page')
     browse_page = _paginate_courses(browse_courses, request, 'br_page')
     completed_page = _paginate_courses(completed_courses, request, 'cp_page')
-    for page in (in_progress_page, upcoming_page, completed_page):
+    # Trending: curated global list managed in Django admin (TrendingCourse).
+    # Ordered by the admin-set position; if every entry is still at the default
+    # position 0 (no manual ordering), fall back to course release date (newest
+    # first, undated last).
+    trending_entries = list(TrendingCourse.objects.filter(is_active=True).select_related('course'))
+    if trending_entries and not any(entry.position for entry in trending_entries):
+        oldest = datetime.min.replace(tzinfo=utc)  # undated courses sort last
+        trending_entries.sort(key=lambda entry: entry.course.start or oldest, reverse=True)
+    trending_courses = [entry.course for entry in trending_entries]
+    add_course_progress_to_enrolled_courses(request, trending_courses)
+    trending_page = _paginate_courses(trending_courses, request, 'tr_page')
+
+    for page in (in_progress_page, upcoming_page, completed_page, trending_page):
         add_resume_course_info(request, page)
 
     # Add marketable programs to the context.
@@ -240,6 +253,7 @@ def courses(request, section='in-progress'):
         'upcoming_courses': upcoming_page,
         'browse_courses': browse_page,
         'completed_courses': completed_page,
+        'trending_courses': trending_page,
         'course_discovery_meanings': course_discovery_meanings,
         'programs_list': programs_list,
         'section': section,
@@ -827,6 +841,22 @@ def _progress(request, course_key, student_id):
 
     cert_data, is_whitelisted = _get_cert_data(student, course, enrollment_mode, course_grade)
 
+    # Recommended courses (from this course's custom settings) for the completion
+    # section shown at 100% progress, rendered with the same slider as the about
+    # page. Best-effort: a malformed course id or missing card data must never
+    # break the progress page, so swallow any error and show no section.
+    recommended_courses = []
+    try:
+        custom_setting = CourseOverviewContent.objects.filter(course_id=course.id).first()
+        if custom_setting and custom_setting.recommended_courses:
+            rec_ids = [cid.strip() for cid in custom_setting.recommended_courses.split(',') if cid.strip()]
+            if rec_ids:
+                recommended_courses = [
+                    get_course_card_data(overview) for overview in CourseOverview.objects.filter(id__in=rec_ids)
+                ]
+    except Exception:  # pylint: disable=broad-except
+        recommended_courses = []
+
     context = {
         'course': course,
         'courseware_summary': courseware_summary,
@@ -843,7 +873,8 @@ def _progress(request, course_key, student_id):
         'whitelisted_certificate': is_whitelisted,
         'block_info': block_info,
         'accumulated_percentages_for_each_block': accumulated_percentages_for_each_block,
-        'course_block_tree': course_block_tree
+        'course_block_tree': course_block_tree,
+        'recommended_courses': recommended_courses,
     }
 
     context.update(

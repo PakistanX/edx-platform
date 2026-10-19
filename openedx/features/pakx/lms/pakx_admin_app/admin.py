@@ -3,7 +3,18 @@ Django admin for the PakX Admin Panel app.
 """
 from django.contrib import admin
 
-from .models import MAUReport, MAUReportExcludedUser
+from .models import MAUReport, MAUReportExcludedUser, TrendingCourse
+
+
+@admin.register(TrendingCourse)
+class TrendingCourseAdmin(admin.ModelAdmin):
+    """Curate the dashboard "Trending Courses" tab (global list)."""
+    list_display = ('course', 'position', 'is_active', 'created_at')
+    list_filter = ('is_active',)
+    list_editable = ('position', 'is_active')
+    search_fields = ('course__id', 'course__display_name')
+    autocomplete_fields = ('course',)
+    ordering = ('position', '-created_at')
 
 
 @admin.register(MAUReport)

@@ -3,6 +3,31 @@ Models for the PakX Admin Panel app.
 """
 from django.db import models
 
+from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
+
+
+class TrendingCourse(models.Model):
+    """
+    A course curated to appear in the dashboard's "Trending Courses" tab.
+
+    Global (site-wide) list, managed from Django admin. One row per course;
+    `position` controls display order and `is_active` toggles visibility
+    without deleting the row.
+    """
+    course = models.OneToOneField(
+        CourseOverview, on_delete=models.CASCADE, related_name='trending_entry',
+    )
+    position = models.PositiveIntegerField(default=0, help_text="Lower shows first.")
+    is_active = models.BooleanField(default=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        app_label = 'pakx_admin_app'
+        ordering = ['position', '-created_at']
+
+    def __str__(self):
+        return '{} (pos {}){}'.format(self.course_id, self.position, '' if self.is_active else ' [inactive]')
+
 
 class MAUReport(models.Model):
     """
