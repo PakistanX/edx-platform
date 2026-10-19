@@ -39,7 +39,7 @@ class MAUReportSerializer(serializers.ModelSerializer):
     def get_organization(obj):
         if obj.is_overall:
             return 'All organizations'
-        return obj.organization_name or obj.organization_short_name
+        return obj.organization_short_name or obj.organization_name
 
 
 class CourseStatsListSerializer(serializers.ModelSerializer):
