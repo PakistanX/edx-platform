@@ -38,6 +38,8 @@ from openedx.core.djangoapps.site_configuration import helpers as configuration_
 from openedx.core.djangoapps.user_api.accounts.image_helpers import get_profile_image_urls_for_user
 from openedx.core.lib.celery.task_utils import emulate_http_request
 from openedx.features.pakx.lms.overrides.models import CourseProgressStats
+from openedx.features.pakx.lms.overrides.tasks import create_manual_verification
+from openedx.features.pakx.lms.overrides.waffle import manual_verification_cert_gate_enabled
 from organizations.models import Organization
 from student.models import CourseAccessRole, CourseEnrollment, LanguageProficiency
 
@@ -363,6 +365,33 @@ class UserProfileViewSet(viewsets.ModelViewSet):
         for user in users:
             send_password_reset_email_for_user(user, request)
             destroy_oauth_tokens(user)
+
+        return Response(status=status.HTTP_200_OK)
+
+    def verify_enrollment(self, request, *args, **kwargs):
+        """
+        Create an approved ManualVerification record for the given user IDs so
+        verified-track certificates can be issued for them. Mirrors
+        reset_user_password. No-op (404) unless the
+        ilmx.manual_verification_cert_gate waffle switch is enabled.
+        :param ids: user IDs ("all", a single int, or a list) to verify
+        :return: response with respective status
+        """
+        if not manual_verification_cert_gate_enabled():
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+        from django.contrib.auth.models import User
+
+        ids = request.data["ids"]
+        if isinstance(ids, int):
+            users = User.objects.filter(id=ids)
+        elif ids == "all":
+            users = self.get_queryset().all()
+        else:
+            users = User.objects.filter(id__in=ids)
+
+        for user in users:
+            create_manual_verification(user)
 
         return Response(status=status.HTTP_200_OK)
 
@@ -1223,6 +1252,9 @@ class UserInfo(views.APIView):
             'all_languages': all_languages,
             'role': None,
             'learner_state': 'active',
+            # Frontend shows the "Verify Enrollment" action only when the cert
+            # gate is on (off by default).
+            'manual_verification_cert_gate': manual_verification_cert_gate_enabled(),
         }
         user_groups = Group.objects.filter(
             user=self.request.user, name__in=[GROUP_TRAINING_MANAGERS, GROUP_ORGANIZATION_ADMIN], 

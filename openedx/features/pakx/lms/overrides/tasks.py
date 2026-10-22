@@ -224,18 +224,33 @@ def send_reminder_emails():
         check_and_send_emails(item)
 
 
+def create_manual_verification(user, name=None, reason='Verified via ilmX admin panel'):
+    """
+    Create an approved ManualVerification record for ``user`` if they do not
+    already have one. Records are valid for settings.VERIFY_STUDENT["DAYS_GOOD_FOR"]
+    (365 days). Returns True if a record was created, False if one already existed.
+    """
+    if ManualVerification.objects.filter(user=user).exists():
+        return False
+    ManualVerification.objects.create(
+        status=u'approved',
+        user=user,
+        name=name or '{}:ilmX'.format(user.id),
+        reason=reason,
+    )
+    return True
+
+
 @task(name='verify_user_and_change_enrollment')
 def verify_user_and_change_enrollment(user, course_key):
     """Manually verify user for verified certificate and change enrollment mode if needed.."""
     modes = CourseMode.objects.filter(course_id=course_key)
     if bool(modes.filter(mode_slug=CourseMode.VERIFIED)):
-        if not bool(ManualVerification.objects.filter(user=user)):
-            ManualVerification.objects.create(
-                status=u'approved',
-                user=user,
-                name='{}:{}'.format(user.id, course_key),
-                reason='Verified after enrolling in {}'.format(course_key)
-            )
+        create_manual_verification(
+            user,
+            name='{}:{}'.format(user.id, course_key),
+            reason='Verified after enrolling in {}'.format(course_key),
+        )
         if len(modes) == 1:
             log.info('Starting mode change for user: {} and course {}'.format(user.id, course_key))
             CourseEnrollment.objects.filter(user_id=user.id, course=course_key, mode='audit').update(mode='verified')
