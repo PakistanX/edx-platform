@@ -1490,6 +1490,19 @@ class CourseCreateAPIView(views.APIView):
         except Exception:  # pylint: disable=broad-except
             log.exception('CourseOverview generation failed for %s', new_course.id)
 
+        # Seed discussion/forum permission roles, enroll the creator and give them the
+        # default forum role — mirrors Studio's initialize_permissions (that helper lives
+        # in the CMS contentstore package, not importable from the LMS process, so its
+        # steps are replicated here). Best-effort: the course already exists if this fails.
+        try:
+            from openedx.core.djangoapps.django_comment_common.utils import seed_permissions_roles
+            from openedx.core.djangoapps.django_comment_common.models import assign_default_role
+            seed_permissions_roles(new_course.id)
+            CourseEnrollment.enroll(request.user, new_course.id)
+            assign_default_role(new_course.id, request.user)
+        except Exception:  # pylint: disable=broad-except
+            log.exception('Course seeding (forum roles / enrollment) failed for %s', new_course.id)
+
         return Response(
             {'course_key': six.text_type(new_course.id), 'display_name': name},
             status=status.HTTP_201_CREATED
