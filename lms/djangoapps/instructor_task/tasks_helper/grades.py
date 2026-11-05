@@ -28,7 +28,13 @@ from six.moves import zip, zip_longest
 
 from course_blocks.api import get_course_blocks
 from course_modes.models import CourseMode
-from lms.djangoapps.certificates.models import CertificateWhitelist, GeneratedCertificate, certificate_info_for_user
+from lms.djangoapps.certificates import api as certs_api
+from lms.djangoapps.certificates.models import (
+    CertificateStatuses,
+    CertificateWhitelist,
+    GeneratedCertificate,
+    certificate_info_for_user
+)
 from lms.djangoapps.courseware.courses import get_course_by_id
 from lms.djangoapps.courseware.user_state_client import DjangoXBlockUserStateClient
 from lms.djangoapps.grades.api import CourseGradeFactory
@@ -102,6 +108,42 @@ COMPLETION_EXCLUDED_BLOCK_TYPES = frozenset([
 ])
 
 
+def _queue_certificate_if_eligible(user, course, course_grade):
+    """
+    Queue certificate generation for a learner whose grade was just recalculated,
+    if they pass (or are whitelisted) and do not already have a certificate.
+
+    The cheap eligibility checks live here so we do not queue pointless tasks; the
+    rest (beta testers, ID verification, enrollment-mode rules) is enforced by
+    generate_user_certificates itself. Returns True if a task was queued.
+    """
+    # Imported here to avoid a circular import at module load time.
+    from lms.djangoapps.certificates.tasks import generate_certificate
+
+    course_id = course.id
+    is_whitelisted = CertificateWhitelist.objects.filter(user=user, course_id=course_id, whitelist=True).exists()
+    if not (course_grade.passed or is_whitelisted):
+        return False
+
+    enrollment_mode, is_active = CourseEnrollment.enrollment_mode_for_user(user, course_id)
+    if not is_active or (enrollment_mode == CourseMode.AUDIT and not is_whitelisted):
+        return False
+
+    if certs_api.is_certificate_invalid(user, course_id):
+        return False
+
+    cert = GeneratedCertificate.certificate_for_student(user, course_id)
+    if cert and cert.status in (CertificateStatuses.downloadable, CertificateStatuses.generating):
+        return False
+
+    # Web certs without an active configuration in Studio would render blank.
+    if certs_api.has_html_certificates_enabled(course) and not certs_api.get_active_web_certificate(course):
+        return False
+
+    generate_certificate.apply_async(kwargs={'student': six.text_type(user.id), 'course_key': six.text_type(course_id)})
+    return True
+
+
 def recalculate_grades_for_course(_xmodule_instance_args, _entry_id, course_id, task_input, action_name):
     """
     Recompute course and subsection grades for enrolled learners, tracking
@@ -112,6 +154,9 @@ def recalculate_grades_for_course(_xmodule_instance_args, _entry_id, course_id, 
             active enrollments in the course are recomputed.
         force (optional): if truthy, recompute even when the course's grades
             are frozen. Only ever set from the Django admin by a superuser.
+
+    After recomputing, certificate generation is queued for every learner who
+    passes and is eligible but does not yet have a certificate.
     """
     start_time = time()
     student_id = task_input.get('student_id')
@@ -131,6 +176,8 @@ def recalculate_grades_for_course(_xmodule_instance_args, _entry_id, course_id, 
     total = enrollments.count()
     task_progress = TaskProgress(action_name, total, start_time)
     task_progress.update_task_state()
+    course = get_course_by_id(course_id)
+    certs_queued = 0
 
     # When grades are frozen we skip the actual recompute unless forced.
     if are_grades_frozen(course_id) and not force:
@@ -155,6 +202,9 @@ def recalculate_grades_for_course(_xmodule_instance_args, _entry_id, course_id, 
                     force_update_subsections=True,
                 )
                 task_progress.succeeded += 1
+                course_grade = CourseGradeFactory().update(enrollment.user, course)
+                if _queue_certificate_if_eligible(enrollment.user, course, course_grade):
+                    certs_queued += 1
             except Exception:  # pylint: disable=broad-except
                 TASK_LOG.exception(
                     u'Failed to recalculate subsection grades for user %s in course %s',
@@ -169,7 +219,7 @@ def recalculate_grades_for_course(_xmodule_instance_args, _entry_id, course_id, 
         # course grade (the same call used by the grade report and the
         # compute_grades management command).
         users = (enrollment.user for enrollment in enrollments)
-        for _student, _course_grade, error in CourseGradeFactory().iter(
+        for student, course_grade, error in CourseGradeFactory().iter(
                 users=users, course_key=course_id, force_update=True,
         ):
             task_progress.attempted += 1
@@ -177,8 +227,12 @@ def recalculate_grades_for_course(_xmodule_instance_args, _entry_id, course_id, 
                 task_progress.failed += 1
             else:
                 task_progress.succeeded += 1
+                if _queue_certificate_if_eligible(student, course, course_grade):
+                    certs_queued += 1
             task_progress.update_task_state()
 
+    TASK_LOG.info(u'Queued certificate generation for %s learner(s) after recalculating grades in %s',
+                  certs_queued, course_id)
     return task_progress.update_task_state()
 
 
