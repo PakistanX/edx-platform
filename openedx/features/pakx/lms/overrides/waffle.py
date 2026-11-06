@@ -26,7 +26,7 @@ def manual_verification_cert_gate_enabled():
 
 
 # When ON, visits to registered course links (alias slugs / utm sources) are counted.
-# When OFF (default) nothing is recorded and the course pages behave exactly as before.
+# When OFF (default) nothing is counted and no cookie is set; registered aliases still serve their page.
 COURSE_LINK_TRACKING = u'course_link_tracking'
 
 
