@@ -6,6 +6,8 @@ from django.urls import include, path
 
 from rest_framework.routers import DefaultRouter
 
+from .course_link_api import CourseLinkClientViewSet, CourseLinkViewSet
+
 from .views import (
     AnalyticsStats,
     AnalyticsEnrollmentStats,
@@ -32,6 +34,8 @@ from .views import (
 
 user_viewset_router = DefaultRouter()
 user_viewset_router.register('users', UserProfileViewSet, basename='users')
+user_viewset_router.register('course-link-clients', CourseLinkClientViewSet, basename='course-link-clients')
+user_viewset_router.register('course-links', CourseLinkViewSet, basename='course-links')
 
 urlpatterns = [
     url(r'^users/activate/$', UserProfileViewSet.as_view({"post": "activate_users"})),

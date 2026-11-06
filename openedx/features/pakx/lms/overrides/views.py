@@ -59,6 +59,12 @@ from openedx.features.course_experience.waffle import ENABLE_COURSE_ABOUT_SIDEBA
 from openedx.features.course_experience.waffle import waffle as course_experience_waffle
 from openedx.features.enterprise_support.api import data_sharing_consent_required
 from openedx.features.pakx.cms.custom_settings.models import CourseOverviewContent
+from openedx.features.pakx.lms.pakx_admin_app.course_links import (
+    canonical_url,
+    record_visit,
+    resolve_alias,
+    tracked_utm_link
+)
 from openedx.features.pakx.lms.pakx_admin_app.models import TrendingCourse
 from openedx.features.pakx.common.utils import (
     get_active_partner_model,
@@ -907,16 +913,44 @@ def course_about_fiveemodel(request):
     ))
 
 
+def _custom_cap_url_response(request, slug, slug_mapping):
+    """
+    Render the about page for a canonical slug or a registered alias slug, and count the visit when
+    it came through a tracked link (the alias itself, or a registered ?utm_source= on the canonical slug).
+
+    shortcut: counting happens inside the view, so re-enabling a cache decorator on these views
+    would hide cached hits; move record_visit into a decorator above the cache one if that happens.
+    """
+    link = None
+    course_key = slug_mapping.get(slug)
+    if course_key is None:
+        # shortcut: a canonical slug added to the mapping later wins over an alias of the same name, because the
+        # alias is only checked against the canonical slugs when it is created; re-check the aliases then
+        link = resolve_alias(slug)
+        if link is None:
+            raise Http404
+        course_key = text_type(link.course_id)
+    else:
+        link = tracked_utm_link(request, course_key)
+
+    response = render_to_response('courseware/course_about_static.html', _get_course_about_context(
+        request, course_key
+    ))
+    record_visit(request, response, link)
+    if link is not None and link.kind == link.ALIAS:
+        # the alias page duplicates the canonical one; tell search engines which to index
+        canonical = canonical_url(course_key)
+        if canonical:
+            response['Link'] = '<{}>; rel="canonical"'.format(canonical)
+    return response
+
+
 # noinspection PyInterpreter
 @ensure_csrf_cookie
 # @cache_if_anonymous()
 def custom_cap_url_courses(request, course_id):
     """Custom URL for course about page for different courses."""
-
-    return render_to_response('courseware/course_about_static.html', _get_course_about_context(
-        request,
-        get_course_slug_mapping()[course_id]
-    ))
+    return _custom_cap_url_response(request, course_id, get_course_slug_mapping())
 
 
 # noinspection PyInterpreter
@@ -924,11 +958,7 @@ def custom_cap_url_courses(request, course_id):
 # @cache_if_anonymous()
 def custom_cap_url_trainings(request, course_id):
     """Custom URL for course about page for different courses."""
-
-    return render_to_response('courseware/course_about_static.html', _get_course_about_context(
-        request,
-        get_training_slug_mapping()[course_id]
-    ))
+    return _custom_cap_url_response(request, course_id, get_training_slug_mapping())
 
 
 @login_required

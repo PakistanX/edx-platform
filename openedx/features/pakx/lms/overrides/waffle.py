@@ -23,3 +23,13 @@ MANUAL_VERIFICATION_CERT_GATE = u'manual_verification_cert_gate'
 def manual_verification_cert_gate_enabled():
     """Return True when the ilmx.manual_verification_cert_gate switch is on."""
     return WAFFLE_SWITCHES.is_enabled(MANUAL_VERIFICATION_CERT_GATE)
+
+
+# When ON, visits to registered course links (alias slugs / utm sources) are counted.
+# When OFF (default) nothing is counted and no cookie is set; registered aliases still serve their page.
+COURSE_LINK_TRACKING = u'course_link_tracking'
+
+
+def course_link_tracking_enabled():
+    """Return True when the ilmx.course_link_tracking switch is on."""
+    return WAFFLE_SWITCHES.is_enabled(COURSE_LINK_TRACKING)
