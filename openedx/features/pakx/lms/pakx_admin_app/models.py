@@ -3,6 +3,7 @@ Models for the PakX Admin Panel app.
 """
 import uuid
 
+from django.core.exceptions import ValidationError
 from django.db import models
 from organizations.models import Organization
 
@@ -171,6 +172,19 @@ class CourseLink(models.Model):
         if update_fields is not None and ('value' in update_fields or 'kind' in update_fields):
             kwargs['update_fields'] = set(update_fields) | {'alias_slug'} | set(self.UTM_EXTRA_FIELDS)
         super(CourseLink, self).save(*args, **kwargs)
+
+    def clean(self):
+        """Same rules as the admin-panel API (called by the Django admin's form validation)."""
+        from .course_links import link_errors  # pylint: disable=import-outside-toplevel; avoids a circular import
+        if not self.course_id:
+            return
+        self.value = (self.value or '').strip().lower()
+        for field in self.UTM_EXTRA_FIELDS:
+            setattr(self, field, (getattr(self, field) or '').strip().lower())
+        extras = {field: getattr(self, field) for field in self.UTM_EXTRA_FIELDS}
+        errors = link_errors(self.kind, self.value, self.course, self.pk, extras, self.client_id)
+        if errors:
+            raise ValidationError(errors)
 
 
 class CourseLinkDailyStat(models.Model):
