@@ -2,6 +2,8 @@ from django.conf import settings
 from django.conf.urls import url
 from django.views.generic.base import RedirectView
 
+from openedx.features.pakx.lms.pakx_admin_app.course_link_report import course_link_report
+
 from openedx.features.pakx.lms.overrides.views import (
     AboutUsView,
     BaseTemplateView,
@@ -44,6 +46,7 @@ urlpatterns = [
     url(r'^5emodel/signup/$', course_about_fiveemodel, name='5emodel-course-about'),
     url(r'^courses/{}/$'.format(r'(?P<course_id>[\w-]+)'), custom_cap_url_courses, name='custom-cap-url-courses'),
     url(r'^trainings/{}/$'.format(r'(?P<course_id>[\w-]+)'), custom_cap_url_trainings, name='custom-cap-url-trainings'),
+    url(r'^course-link-report/(?P<token>[0-9a-fA-F-]{32,36})/$', course_link_report, name='course-link-report'),
     url(r'^basket_checkout$', basket_checkout, name='basket-checkout'),
     url(r'^checkout_lumsx$', checkout_lumsx, name='checkout-lumsx'),
     # url(r'^track_enrollments_lumsx$', track_enrollments_lumsx, name='track-enrollments-lumsx'),

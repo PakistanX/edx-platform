@@ -916,7 +916,10 @@ TRACKING_BACKENDS = {
 
 # We're already logging events, and we don't want to capture user
 # names/passwords.  Heartbeat events are likely not interesting.
-TRACKING_IGNORE_URL_PATTERNS = [r'^/event', r'^/login', r'^/heartbeat', r'^/segmentio/event', r'^/performance']
+# the course link report URL carries a secret token, which must not end up in tracking.log
+TRACKING_IGNORE_URL_PATTERNS = [
+    r'^/event', r'^/login', r'^/heartbeat', r'^/segmentio/event', r'^/performance', r'^/course-link-report/',
+]
 
 EVENT_TRACKING_ENABLED = True
 EVENT_TRACKING_BACKENDS = {
