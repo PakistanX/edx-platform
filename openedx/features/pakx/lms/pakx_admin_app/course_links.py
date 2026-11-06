@@ -77,21 +77,41 @@ def reserved_slugs(mappings=None):
     return set(training_mapping) | set(course_mapping)
 
 
+def org_matches(course_org, org_short_name):
+    """
+    True when a course's org belongs to the organization: equal to its short name, compared whole and
+    case-insensitively (so ``ac`` does not take ``acme``'s courses and ``.`` is not a wildcard).
+    ``arbisoft`` also owns the ``pakx`` courses, as in utils.get_org_regex (whose TODO to drop that
+    exception applies here too).
+    """
+    names = {(org_short_name or '').lower()}
+    if 'arbisoft' in names:
+        names.add('pakx')
+    return (course_org or '').lower() in names
+
+
+def course_in_org(course, org_short_name):
+    """True when the course belongs to the organization."""
+    return org_matches(course.org, org_short_name)
+
+
 def course_in_client_org(course, client_id):
-    """
-    True when the client has no organization, or the course belongs to it. The match is anchored (and
-    case-insensitive) so that organization ``ac`` does not take ``acme``'s courses.
-    """
-    # utils pulls in a lot of the app, so import it here to keep this module light
-    from .utils import get_org_regex  # pylint: disable=import-outside-toplevel
+    """True when the client has no organization, or the course belongs to it."""
     short_name = CourseLinkClient.objects.filter(
         pk=client_id
     ).values_list('organization__short_name', flat=True).first()
-    if not short_name:
-        return True
-    return CourseOverview.objects.filter(
-        pk=course.pk, org__iregex='^{}$'.format(get_org_regex(short_name))
-    ).exists()
+    return not short_name or course_in_org(course, short_name)
+
+
+def links_outside_org(client, organization):
+    """Course keys of the client's links that do not belong to ``organization`` (None: no restriction)."""
+    if organization is None or client.pk is None:
+        return []
+    return sorted({
+        text_type(course_key) for course_key, org in CourseLink.objects.filter(client=client).values_list(
+            'course_id', 'course__org'
+        ) if not org_matches(org, organization.short_name)
+    })
 
 
 def link_errors(kind, value, course, pk=None, extras=None, client_id=None):

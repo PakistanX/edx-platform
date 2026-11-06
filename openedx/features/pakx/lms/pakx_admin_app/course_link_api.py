@@ -27,6 +27,7 @@ from .course_links import (
     link_url,
     parse_report_range,
     link_errors,
+    links_outside_org,
     slug_mappings
 )
 from .models import CourseLink, CourseLinkClient
@@ -73,6 +74,14 @@ class CourseLinkClientSerializer(serializers.ModelSerializer):
             'link_count', 'created_at',
         )
         read_only_fields = ('created_at',)
+
+    def validate_organization(self, organization):
+        outside = links_outside_org(self.instance, organization) if self.instance is not None else []
+        if outside:
+            raise serializers.ValidationError(
+                'This client has links to courses outside that organization: {}.'.format(', '.join(outside))
+            )
+        return organization
 
     def get_report_url(self, obj):
         return report_url(obj)

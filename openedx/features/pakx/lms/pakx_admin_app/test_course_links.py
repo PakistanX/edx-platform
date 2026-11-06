@@ -38,6 +38,7 @@ from .course_links import (
     VISITOR_RETENTION_DAYS,
     client_stats,
     link_url,
+    org_matches,
     parse_report_range,
     today
 )
@@ -253,6 +254,7 @@ class CourseLinkApiTest(CourseLinkTestCase):
         self.acme_admin = self._org_admin(self.org)
         self.globex_admin = self._org_admin(self.other_org)
         CourseOverview.objects.filter(pk=self.course.pk).update(org='acme')  # the course belongs to Acme
+        self.course.refresh_from_db()
         self.api = APIClient()
 
     def _org_admin(self, org):
@@ -915,3 +917,52 @@ class OwnershipAndAdminEditsTest(CourseLinkTestCase):
         self.assertNotIn('if(!sel) return;\nvar box', body)  # the chart-only guard no longer ends the script early
         self.assertIn("table.querySelectorAll('.copy')", body)
         self.assertIn("th.sortable", body)
+
+    def test_inline_links_cannot_be_added_before_the_client_exists(self):
+        inline = admin.site._registry[CourseLinkClient].inlines[0](CourseLinkClient, admin.site)
+        self.assertFalse(inline.has_add_permission(self.request, None))  # the "add client" page
+        self.assertTrue(inline.has_add_permission(self.request, self.client_obj))
+
+    def test_changing_a_clients_organization_keeps_its_links_inside_it(self):
+        acme = Organization.objects.create(name='Acme Org', short_name='acme')
+        globex = Organization.objects.create(name='Globex Org', short_name='globex')
+        CourseOverview.objects.filter(pk=self.course.pk).update(org='acme')
+        CourseLinkClient.objects.filter(pk=self.client_obj.pk).update(organization=acme)
+        self.api.force_authenticate(self.staff)
+        url = '/adminpanel/course-link-clients/{}/'.format(self.client_obj.pk)
+        refused = self.api.patch(url, {'organization': globex.pk}, format='json')
+        self.assertEqual(refused.status_code, 400)
+        self.assertIn(COURSE_KEY, refused.json()['organization'][0])
+        self.assertEqual(self.api.patch(url, {'organization': None}, format='json').status_code, 200)
+        self.assertEqual(self.api.patch(url, {'organization': acme.pk}, format='json').status_code, 200)
+        form_class = admin.site._registry[CourseLinkClient].get_form(self.request)
+        data = {'name': 'Acme', 'organization': globex.pk, 'is_report_enabled': 'on'}
+        form = form_class(data, instance=self.client_obj)
+        form.is_valid()
+        self.assertIn('organization', form.errors)
+        data['organization'] = acme.pk
+        self.assertNotIn('organization', form_class(data, instance=self.client_obj).errors)
+
+    def test_inline_checks_the_organization_changed_in_the_same_submit(self):
+        CourseOverview.objects.filter(pk=self.course.pk).update(org='acme')
+        globex = Organization.objects.create(name='Globex Org', short_name='globex')
+        self.client_obj.organization = globex  # what the admin has in memory before saving the parent form
+        inline_class = admin.site._registry[CourseLinkClient].inlines[0]
+        formset_class = inline_class(CourseLinkClient, admin.site).get_formset(self.request, self.client_obj)
+        prefix = formset_class.get_default_prefix()
+        data = {
+            prefix + '-TOTAL_FORMS': '1', prefix + '-INITIAL_FORMS': '0', prefix + '-MIN_NUM_FORMS': '0',
+            prefix + '-MAX_NUM_FORMS': '1000', prefix + '-0-kind': 'utm', prefix + '-0-value': 'fresh',
+            prefix + '-0-course': COURSE_KEY, prefix + '-0-is_active': 'on',
+        }
+        formset = formset_class(data, instance=self.client_obj, queryset=CourseLink.objects.none())
+        self.assertFalse(formset.is_valid())
+        self.assertTrue(any('does not belong' in error for error in formset.non_form_errors()))
+
+    def test_organization_names_are_compared_whole_and_arbisoft_keeps_its_pakx_courses(self):
+        self.assertTrue(org_matches('Acme', 'acme'))
+        self.assertFalse(org_matches('acme', 'ac'))
+        self.assertFalse(org_matches('aXb', 'a.b'))  # a dot in a short name is not a wildcard
+        self.assertTrue(org_matches('a.b', 'a.b'))
+        self.assertTrue(org_matches('PAKX', 'Arbisoft'))  # as in utils.get_org_regex
+        self.assertFalse(org_matches('pakx', 'acme'))

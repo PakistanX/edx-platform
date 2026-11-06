@@ -3,11 +3,12 @@ Django admin for the PakX Admin Panel app.
 """
 from django.contrib import admin
 from django.core.exceptions import ValidationError
+from django import forms
 from django.forms import BaseInlineFormSet
 from django.utils.html import format_html
 
 from .course_link_api import report_url
-from .course_links import link_url, slug_mappings
+from .course_links import course_in_org, link_url, links_outside_org, slug_mappings
 from .models import (
     CourseLink,
     CourseLinkClient,
@@ -97,6 +98,12 @@ class CourseLinkInlineFormSet(BaseInlineFormSet):
             if key in seen:
                 raise ValidationError('Two rows define the same link.')
             seen.add(key)
+            # the client in memory carries an organization changed in this same submit, unlike the database
+            organization = getattr(self.instance, 'organization', None)
+            if organization is not None and data.get('course') is not None and not course_in_org(
+                    data['course'], organization.short_name
+            ):
+                raise ValidationError("A link's course does not belong to the client's organization.")
 
 
 class CourseLinkInline(SlugMappingsMixin, admin.TabularInline):
@@ -112,10 +119,28 @@ class CourseLinkInline(SlugMappingsMixin, admin.TabularInline):
     def has_change_permission(self, request, obj=None):
         return False
 
+    def has_add_permission(self, request, obj=None):
+        # on the add page the client does not exist yet, so its organization checks cannot run: save it first
+        return obj is not None and super(CourseLinkInline, self).has_add_permission(request, obj)
+
+
+class CourseLinkClientForm(forms.ModelForm):
+    """Moving a client to another organization must not leave it with links to the old one's courses."""
+
+    def clean_organization(self):
+        organization = self.cleaned_data.get('organization')
+        outside = links_outside_org(self.instance, organization)
+        if outside:
+            raise ValidationError(
+                'This client has links to courses outside that organization: {}.'.format(', '.join(outside))
+            )
+        return organization
+
 
 @admin.register(CourseLinkClient)
 class CourseLinkClientAdmin(NoDeleteAdmin):
     """Clients that get tracked links; the report URL is what is shared with them."""
+    form = CourseLinkClientForm
     list_display = ('name', 'organization', 'is_report_enabled', 'report_url')
     list_filter = ('is_report_enabled',)
     list_select_related = ('organization',)
