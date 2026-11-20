@@ -19,3 +19,7 @@ class ContactUs(BaseMessageType):
 
 class PostAssessment(BaseMessageType):
     pass
+
+
+class VerifiedUpgradeCampaign(BaseMessageType):
+    pass
