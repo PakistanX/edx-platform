@@ -22,7 +22,7 @@ from openedx.core.djangoapps.lang_pref import LANGUAGE_KEY
 from openedx.core.djangoapps.site_configuration import helpers as configuration_helpers
 from openedx.core.djangoapps.user_api.preferences.api import get_user_preference
 from openedx.core.lib.celery.task_utils import emulate_http_request
-from openedx.features.pakx.lms.overrides.message_types import ContactUs, CourseProgress
+from openedx.features.pakx.lms.overrides.message_types import ContactUs, CourseProgress, VerifiedUpgradeCampaign
 from openedx.features.pakx.lms.overrides.models import CourseProgressStats
 from openedx.features.pakx.lms.overrides.post_assessment import check_and_unlock_user_milestone
 from openedx.features.pakx.lms.overrides.reminder_email import check_and_send_emails
@@ -254,3 +254,40 @@ def verify_user_and_change_enrollment(user, course_key):
         if len(modes) == 1:
             log.info('Starting mode change for user: {} and course {}'.format(user.id, course_key))
             CourseEnrollment.objects.filter(user_id=user.id, course=course_key, mode='audit').update(mode='verified')
+
+
+@task(name='send_verified_upgrade_emails')
+def send_verified_upgrade_emails(payloads):
+    """
+    Send the verified certificate upgrade email for each payload.
+
+    :param payloads: (list<dict>) payloads built by upgrade_campaign.build_payload, with the user_id, the to_email
+        address and the template context. A payload whose user no longer exists is skipped.
+    """
+    site = Site.objects.get_current()
+    sent = 0
+    failed_user_ids = []
+    for payload in payloads:
+        user = User.objects.filter(id=payload['user_id']).first()
+        if user is None:
+            log.warning('Verified upgrade email skipped, user {} does not exist'.format(payload['user_id']))
+            continue
+        try:
+            with emulate_http_request(site, user):
+                context = get_base_template_context(site)
+                context.update(payload['context'])
+                message = VerifiedUpgradeCampaign().personalize(
+                    recipient=Recipient(user.username, payload['to_email']),
+                    language='en',
+                    user_context=context,
+                )
+                ace.send(message)
+            sent += 1
+        except Exception:  # pylint: disable=broad-except
+            log.exception('Failed to send verified upgrade email to user {}'.format(user.id))
+            failed_user_ids.append(user.id)
+    log.info('Verified upgrade emails: sent {sent}, failed {failed}{ids}'.format(
+        sent=sent,
+        failed=len(failed_user_ids),
+        ids=' (user ids: {})'.format(', '.join(str(user_id) for user_id in failed_user_ids)) if failed_user_ids else '',
+    ))
