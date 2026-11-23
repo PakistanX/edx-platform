@@ -23,7 +23,7 @@ from student.models import CourseEnrollment
 log = getLogger(__name__)
 
 UTM_PARAMS = 'utm_source=email&utm_medium=marketing&utm_campaign=verified_upgrade'
-DEFAULT_HERO_IMAGE_URL = 'https://pakistanx-static-assets.s3.amazonaws.com/verified-upgrade-hero.png'
+DEFAULT_HERO_IMAGE_URL = 'https://ilmx.org/asset-v1:arbisoft+FILES1+2025_26+type@asset+block@verified-upgrade-hero.png'
 
 InputRow = namedtuple('InputRow', ['line', 'user_id', 'email', 'course_id'])
 RowResult = namedtuple('RowResult', ['row', 'user', 'course_key', 'course_title', 'progress', 'reason'])
