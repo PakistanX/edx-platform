@@ -399,6 +399,13 @@ class EmailContextTests(CampaignDataMixin, TestCase):
         assert msg.context['course_ids'] == [str(self.course_key), str(self.course_key_2)]
         assert mock_ace.send.call_args_list[1][0][0].recipient.email_address == 'bilal@x.com'
 
+    @mock.patch('openedx.core.djangoapps.ace_common.message.configuration_helpers.get_value',
+                return_value='no-reply@ilmx.org')
+    @mock.patch('openedx.features.pakx.lms.overrides.tasks.ace')
+    def test_task_sends_from_support(self, mock_ace, _mock_get_value):
+        send_verified_upgrade_emails([build_payload(self.learner_email, DEFAULT_HERO_IMAGE_URL)])
+        assert mock_ace.send.call_args[0][0].options['from_address'] == 'support@ilmx.org'
+
     @mock.patch('openedx.features.pakx.lms.overrides.tasks.ace')
     def test_task_uses_test_address(self, mock_ace):
         send_verified_upgrade_emails([build_payload(self.learner_email, DEFAULT_HERO_IMAGE_URL, to_email='qa@x.com')])
